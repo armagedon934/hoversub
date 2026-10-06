@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HoverSub Privacy Policy</title>
+<meta name="description" content="HoverSub privacy policy: what the extension reads, what it sends to Google Translate, and what stays in your browser.">
+<style>
+:root {
+  --bg: #f6f7fb; --panel: #ffffff; --line: #dfe3ee; --text: #1d2130; --soft: #3d4357; --muted: #646b80;
+  --accent: #4d63e0; --mark: #8a5a00; --mark-bg: rgba(255, 212, 121, .35); --good: #1f7a4d;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161923; --panel: #1e2230; --line: #2c3245; --text: #eceef4; --soft: #c4c9d6; --muted: #9aa1b4;
+    --accent: #a9bcff; --mark: #ffd479; --mark-bg: rgba(255, 212, 121, .13); --good: #7fd8a4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161923; --panel: #1e2230; --line: #2c3245; --text: #eceef4; --soft: #c4c9d6; --muted: #9aa1b4;
+  --accent: #a9bcff; --mark: #ffd479; --mark-bg: rgba(255, 212, 121, .13); --good: #7fd8a4;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.65 var(--font); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
+nav { display: flex; gap: 8px; justify-content: flex-end; }
+nav a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--soft); text-decoration: none; font-size: 14px; }
+nav a:hover { border-color: var(--accent); color: var(--accent); }
+h1 { font-size: 30px; line-height: 1.25; margin: 18px 0 4px; }
+.meta { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+.summary { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; }
+.summary h2 { margin-top: 0; }
+.summary li { margin: 6px 0; }
+h2 { font-size: 20px; margin: 30px 0 8px; }
+h3 { font-size: 16px; margin: 18px 0 4px; }
+p, li { color: var(--soft); }
+b, strong { color: var(--text); font-weight: 600; }
+.no { color: var(--good); font-weight: 600; }
+a { color: var(--accent); }
+code { font-size: 14px; padding: 1px 6px; border-radius: 6px; background: var(--mark-bg); color: var(--text); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-top: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+.tablewrap { overflow-x: auto; }
+.lang { display: none; }
+.lang:target, body:not(:has(.lang:target)) #en { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><a href="#en" lang="en">English</a><a href="#ru" lang="ru">Русский</a></nav>
+
+<section class="lang" id="en" lang="en">
+  <h1>HoverSub Privacy Policy</h1>
+  <p class="meta">Extension: HoverSub — English subtitles to Russian on hover · Version 0.4.0 · Effective 5 October 2026</p>
+
+  <div class="summary">
+    <h2>In short</h2>
+    <ul>
+      <li>HoverSub has <b>no servers, no accounts, no analytics and no ads</b>. The developer receives no data from you.</li>
+      <li>It works <b>only on the sites where you press “Enable on this site”</b>. Installing it gives it access to no website at all.</li>
+      <li>There it reads <b>only the text of subtitles shown over a video</b>. It <span class="no">never takes screenshots</span> and does not read anything else on the page.</li>
+      <li>When you <b>point at a word</b>, that word and its subtitle line are sent to <b>Google Translate</b> to get the translation. Nothing is sent before you point at a word.</li>
+      <li>Your saved words stay <b>in your browser only</b>. You can export or delete them at any time.</li>
+    </ul>
+  </div>
+
+  <h2>1. What HoverSub reads</h2>
+  <p>HoverSub does nothing on a site until you click its icon there and press <b>Enable on this site</b>. Chrome then asks you to allow that site and, if the video plays in a frame from another site, that player's site too. You can turn it off on the same button (“Turn off here”) or in Chrome's own site access settings at any time.</p>
+  <p>On an enabled page (or its player frame) that contains a <code>&lt;video&gt;</code>, HoverSub looks at text displayed on the picture of that video — the subtitles — to find the word under your mouse pointer (and at text right under the picture if the player marks it as subtitles). Other text on the page, form fields and passwords are not read. On pages without a video the extension stays idle.</p>
+  <p>While a video plays, the last subtitle lines are kept <b>in the page's memory only</b> (up to 30 lines, never stored), so that a sentence split over two lines can be translated as a whole. They are discarded when you close or reload the page.</p>
+  <p>The position of your mouse pointer is used only on your computer to find the word under it; it is not stored or sent. The 🔊 button speaks a word with a voice installed on your computer.</p>
+
+  <h2>2. What is sent, and to whom</h2>
+  <p>When you point at a word (or save it), HoverSub sends the following to Google Translate over an encrypted connection (HTTPS) at <code>translate.googleapis.com</code>, or at <code>clients5.google.com</code> if the first address refuses:</p>
+  <ul>
+    <li>the English word, and its dictionary form;</li>
+    <li>the subtitle line it is in, plus up to two earlier lines of the same sentence from the last 15 seconds of the video;</li>
+    <li>the Russian translation of the word, to find its dictionary form (for example «гнезде» → «гнездо»).</li>
+  </ul>
+  <p>After an update of HoverSub, the sentences of words you saved earlier may be sent once more in the same way, so that their translations follow the new version.</p>
+  <p>HoverSub adds no account, identifier, page address or other personal data to these requests. As with any internet request, Google receives your IP address and standard browser information. Google's processing is covered by the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>. No other service receives any data, and the extension downloads no code or fonts from the internet.</p>
+
+  <h2>3. What is stored on your computer</h2>
+  <div class="tablewrap"><table>
+    <tr><th>What</th><th>Where</th><th>Why, and how to remove it</th></tr>
+    <tr><td><b>Your word list</b> — words you save with a right-click: the word, translation, pronunciation, the subtitle sentence and its translation, the title and address of the page and the time in the video where you saved it, dates and review progress</td><td><code>chrome.storage.local</code> on this device</td><td>For your list and reviews. Never sent anywhere. Delete words on the “My words” page; removing the extension deletes all of it. “Back up” exports a file you control.</td></tr>
+    <tr><td><b>Two settings</b> — translate on hover, meaning of the whole phrase</td><td><code>chrome.storage.sync</code></td><td>Remember your choice. If Chrome sync is on, Chrome copies these two switches to your other browsers.</td></tr>
+    <tr><td><b>Sort order</b> of your word list</td><td>the extension page's own storage</td><td>Remember your choice.</td></tr>
+    <tr><td><b>Translation cache</b> — recent translations</td><td><code>chrome.storage.session</code></td><td>Fewer repeated requests. Cleared automatically when the browser closes.</td></tr>
+  </table></div>
+
+  <h2>4. What HoverSub does not do</h2>
+  <ul>
+    <li>No screenshots or screen capture.</li>
+    <li>No collection of browsing history; page addresses are kept only with the words you save yourself, and only on your device.</li>
+    <li>No analytics, telemetry, tracking, cookies or advertising.</li>
+    <li>No selling or sharing of data. No use of data for anything other than translating words and keeping your word list.</li>
+    <li>No remote code: everything the extension runs is inside the extension package.</li>
+  </ul>
+
+  <h2>5. Permissions</h2>
+  <ul>
+    <li><b>storage, unlimitedStorage</b> — your word list, settings and the translation cache, on your device.</li>
+    <li><b>Access to a site — only when you ask for it.</b> Pressing “Enable on this site” asks Chrome for that site (and its video player's site). Nothing is granted at install.</li>
+    <li><b>activeTab</b> — when you click the icon, lets the extension see which site the open page is, and which site its video player comes from, so it can ask for exactly those.</li>
+    <li><b>scripting</b> — starts the subtitle reader on the sites you enabled, and nowhere else.</li>
+    <li>Google Translate is reached without any site permission (it accepts such requests from anywhere).</li>
+  </ul>
+
+  <h2>6. Chrome Web Store User Data Policy</h2>
+  <p>HoverSub's use of information complies with the <a href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq" target="_blank" rel="noopener">Chrome Web Store User Data Policy</a>, including the Limited Use requirements. Data is used only for the extension's single purpose — translating subtitle words and keeping your word list — and is not transferred, sold or used for advertising.</p>
+
+  <h2>7. Changes and contact</h2>
+  <p>If this policy changes, the new version will be published here with a new date. Questions: use the contact or support link on HoverSub's page in the Chrome Web Store.</p>
+</section>
+
+<section class="lang" id="ru" lang="ru">
+  <h1>Политика конфиденциальности HoverSub</h1>
+  <p class="meta">Расширение: HoverSub — перевод английских субтитров наведением · Версия 0.4.0 · Действует с 5 октября 2026 г.</p>
+
+  <div class="summary">
+    <h2>Коротко</h2>
+    <ul>
+      <li>У HoverSub <b>нет серверов, аккаунтов, аналитики и рекламы</b>. Разработчик не получает от вас никаких данных.</li>
+      <li>Расширение работает <b>только на сайтах, где вы нажали «Включить на этом сайте»</b>. Сама установка не даёт ему доступа ни к одному сайту.</li>
+      <li>Там оно читает <b>только текст субтитров поверх видео</b>. Оно <span class="no">никогда не делает скриншотов</span> и не читает остальную страницу.</li>
+      <li>Когда вы <b>наводите мышку на слово</b>, это слово и его строка субтитров отправляются в <b>Google Переводчик</b> за переводом. Пока вы не навели на слово, ничего не отправляется.</li>
+      <li>Сохранённые слова хранятся <b>только в вашем браузере</b>. Их можно выгрузить или удалить в любой момент.</li>
+    </ul>
+  </div>
+
+  <h2>1. Что читает HoverSub</h2>
+  <p>На сайте HoverSub ничего не делает, пока вы не нажмёте на его значок и кнопку <b>«Включить на этом сайте»</b>. Тогда Chrome спросит разрешение для этого сайта, а если видео играет во фрейме с другого сайта — и для сайта плеера. Выключить можно той же кнопкой («Выключить здесь») или в настройках доступа к сайтам в самом Chrome.</p>
+  <p>На включённой странице (или во фрейме её плеера), где есть <code>&lt;video&gt;</code>, HoverSub смотрит на текст, показанный на картинке этого видео, — на субтитры, — чтобы найти слово под курсором (и на текст сразу под картинкой, если плеер помечает его как субтитры). Остальной текст страницы, поля форм и пароли не читаются. На страницах без видео расширение ничего не делает.</p>
+  <p>Пока видео идёт, последние строки субтитров держатся <b>только в памяти страницы</b> (до 30 строк, никуда не сохраняются), чтобы предложение, разбитое на две строки, переводилось целиком. Они исчезают, когда вы закрываете или обновляете страницу.</p>
+  <p>Положение курсора используется только на вашем компьютере, чтобы найти слово под ним; оно не сохраняется и не отправляется. Кнопка 🔊 произносит слово голосом, установленным на вашем компьютере.</p>
+
+  <h2>2. Что отправляется и кому</h2>
+  <p>Когда вы наводите на слово (или сохраняете его), HoverSub отправляет в Google Переводчик по защищённому соединению (HTTPS) на <code>translate.googleapis.com</code>, а если тот отказывает — на <code>clients5.google.com</code>:</p>
+  <ul>
+    <li>английское слово и его словарную форму;</li>
+    <li>строку субтитров с этим словом и до двух предыдущих строк того же предложения за последние 15 секунд видео;</li>
+    <li>русский перевод слова — чтобы найти его начальную форму (например, «гнезде» → «гнездо»).</li>
+  </ul>
+  <p>После обновления HoverSub фразы ранее сохранённых слов могут один раз отправиться так же ещё раз, чтобы их переводы соответствовали новой версии.</p>
+  <p>HoverSub не добавляет к этим запросам ни аккаунтов, ни идентификаторов, ни адреса страницы, ни других личных данных. Как при любом запросе в интернет, Google видит ваш IP-адрес и стандартные данные браузера; их обработку описывает <a href="https://policies.google.com/privacy?hl=ru" target="_blank" rel="noopener">Политика конфиденциальности Google</a>. Никакие другие сервисы данных не получают, и расширение не загружает из интернета ни код, ни шрифты.</p>
+
+  <h2>3. Что хранится на вашем компьютере</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Что</th><th>Где</th><th>Зачем и как удалить</th></tr>
+    <tr><td><b>Ваш словарь</b> — слова, сохранённые правым кликом: слово, перевод, произношение, фраза из субтитров и её перевод, название и адрес страницы и время в видео, где слово сохранено, даты и прогресс повторения</td><td><code>chrome.storage.local</code> на этом устройстве</td><td>Для словаря и повторения. Никуда не отправляется. Слова удаляются на странице «Мой словарь»; удаление расширения удаляет всё. «Резервная копия» сохраняет файл, которым распоряжаетесь вы.</td></tr>
+    <tr><td><b>Две настройки</b> — перевод при наведении, смысл всей фразы</td><td><code>chrome.storage.sync</code></td><td>Запомнить ваш выбор. Если в Chrome включена синхронизация, Chrome переносит эти два переключателя в другие ваши браузеры.</td></tr>
+    <tr><td><b>Порядок сортировки</b> словаря</td><td>собственное хранилище страницы расширения</td><td>Запомнить ваш выбор.</td></tr>
+    <tr><td><b>Кэш переводов</b> — недавние переводы</td><td><code>chrome.storage.session</code></td><td>Меньше повторных запросов. Очищается сам при закрытии браузера.</td></tr>
+  </table></div>
+
+  <h2>4. Чего HoverSub не делает</h2>
+  <ul>
+    <li>Не делает скриншотов и не захватывает экран.</li>
+    <li>Не собирает историю браузера; адреса страниц хранятся только рядом со словами, которые вы сохранили сами, и только на вашем устройстве.</li>
+    <li>Без аналитики, телеметрии, слежки, cookies и рекламы.</li>
+    <li>Не продаёт и не передаёт данные. Данные используются только для перевода слов и вашего словаря.</li>
+    <li>Без удалённого кода: всё, что выполняет расширение, находится внутри его пакета.</li>
+  </ul>
+
+  <h2>5. Разрешения</h2>
+  <ul>
+    <li><b>storage, unlimitedStorage</b> — словарь, настройки и кэш переводов на вашем устройстве.</li>
+    <li><b>Доступ к сайту — только по вашей просьбе.</b> Кнопка «Включить на этом сайте» просит у Chrome разрешение для этого сайта (и сайта его плеера). При установке не выдаётся ничего.</li>
+    <li><b>activeTab</b> — когда вы нажимаете на значок, расширение видит, какой это сайт и с какого сайта его плеер, чтобы попросить разрешение ровно для них.</li>
+    <li><b>scripting</b> — запускает чтение субтитров на включённых вами сайтах и больше нигде.</li>
+    <li>Google Переводчик доступен без разрешений на сайты (он принимает такие запросы отовсюду).</li>
+  </ul>
+
+  <h2>6. Правила Chrome Web Store</h2>
+  <p>Использование данных в HoverSub соответствует <a href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq" target="_blank" rel="noopener">правилам Chrome Web Store о пользовательских данных</a>, включая требования Limited Use. Данные используются только для единственной цели расширения — переводить слова из субтитров и вести ваш словарь — и не передаются, не продаются и не используются для рекламы.</p>
+
+  <h2>7. Изменения и связь</h2>
+  <p>Если политика изменится, новая версия появится здесь с новой датой. Вопросы — через ссылку для связи или поддержки на странице HoverSub в Chrome Web Store.</p>
+</section>
+</div>
+</body>
+</html>
