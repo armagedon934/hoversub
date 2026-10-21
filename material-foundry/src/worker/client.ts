@@ -1,7 +1,8 @@
 // High-level generation / export API on top of the worker pool.
 
-import { assembleBands, type GeneratedMaterial } from '../engine/generate';
-import type { Fields } from '../engine/fields';
+import { resolveSettings, type GeneratedMaterial } from '../engine/generate';
+import { createFields } from '../engine/fields';
+import { getFamily } from '../engine/registry';
 import type { MaterialSettings } from '../engine/types';
 import { applicableMaps, mapsSubset, type ExportOptions, type MapId } from '../export/exporter';
 import { fieldsTransferables } from './protocol';
@@ -39,7 +40,11 @@ export async function generateParallel(
     opts.onProgress?.('Generating material fields', (0.75 * s) / bandCount);
   };
   report();
-  const bandPromises: Promise<Fields>[] = [];
+  // The complete field set is allocated once; each band is copied in as soon as it arrives so
+  // its buffers can be released immediately (keeps peak memory near one copy of the fields).
+  const resolved = resolveSettings(settings);
+  const fields = createFields(size, getFamily(resolved.family).emits(resolved.params), size);
+  const bandPromises: Promise<void>[] = [];
   for (let b = 0; b < bandCount; b++) {
     const y0 = b * bandRows;
     const y1 = Math.min(size, y0 + bandRows);
@@ -58,21 +63,25 @@ export async function generateParallel(
         )
         .then((r) => {
           if (r.kind !== 'band') throw new Error('Unexpected worker result');
+          const f = r.fields;
+          fields.depth = f.depth;
+          fields.albedo.set(f.albedo, y0 * size * 3);
+          fields.height.set(f.height, y0 * size);
+          fields.rough.set(f.rough, y0 * size);
+          fields.metal.set(f.metal, y0 * size);
+          if (fields.emissive && f.emissive) fields.emissive.set(f.emissive, y0 * size * 3);
           bandProgress[b] = 1;
           report();
-          return r.fields;
         }),
     );
   }
-  let bands: Fields[];
   try {
-    bands = await Promise.all(bandPromises);
+    await Promise.all(bandPromises);
   } catch (e) {
     opts.token.cancel(); // stop sibling bands
     throw e;
   }
   const tFields = performance.now() - t0;
-  const fields = assembleBands(size, bands);
   const r = await p.run(
     { kind: 'finish', settings, fields },
     {

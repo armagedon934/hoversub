@@ -11,8 +11,9 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node scripts/e2e.mjs",
-    "examples": "tsx scripts/make-examples.ts"
+    "e2e": "tsx scripts/e2e.ts",
+    "examples": "tsx scripts/make-examples.ts",
+    "e2e:4096": "tsx scripts/e2e-4096.ts"
   },
   "license": "MIT",
   "dependencies": {

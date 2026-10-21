@@ -93,7 +93,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'concrete',
     seed: 1,
     tags: ['clean', 'industrial'],
-    params: { pores: 0.35, aggregate: 0.1, stains: 0.2, crackDensity: 0.05 },
+    params: { pores: 0.35, aggregate: 0.1, stains: 0.25, crackDensity: 0.05, colorA: '#a9a397', scale: 3 },
   },
   {
     id: 'brutalist_formwork',
@@ -101,7 +101,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'concrete',
     seed: 1968,
     tags: ['industrial', 'architectural'],
-    params: { formwork: 'panels', pores: 0.5, stains: 0.55, crackDensity: 0.1, colorA: '#a19e97' },
+    params: { formwork: 'panels', pores: 0.5, stains: 0.6, crackDensity: 0.1, colorA: '#979a9b', colorB: '#4d5052' },
   },
   {
     id: 'board_formed',
@@ -109,7 +109,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'concrete',
     seed: 312,
     tags: ['industrial'],
-    params: { formwork: 'boards', pores: 0.3, stains: 0.3, colorA: '#93918b', detail: 0.6 },
+    params: { formwork: 'boards', pores: 0.3, stains: 0.4, colorA: '#8c877d', colorB: '#4f4a42', detail: 0.7 },
   },
   {
     id: 'cracked_slab',
@@ -217,7 +217,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'painted_panels',
     seed: 1337,
     tags: ['worn', 'industrial'],
-    params: { panelsX: 2, panelsY: 3, offsetRows: true, fasteners: 'bolts', rivetSpacing: 0.9, rivetSize: 0.7, colorA: '#d9a521', colorB: '#4b4d50', wear: 0.7, scratches: 0.55, dirt: 0.55 },
+    params: { panelsX: 2, panelsY: 3, offsetRows: true, fasteners: 'bolts', rivetSpacing: 0.9, rivetSize: 0.7, colorA: '#d9a521', colorB: '#4b4d50', wear: 0.5, scratches: 0.45, dirt: 0.45 },
   },
   {
     id: 'scifi_hull',
@@ -333,7 +333,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'arcane_stone',
     seed: 2600,
     tags: ['clean'],
-    params: { inlay: 'metal', runeColor: '#e3b55a', colorA: '#c2ad8c', colorB: '#a38f70', blocks: 2, runeDensity: 0.8, complexity: 0.7, wear: 0.2 },
+    params: { inlay: 'metal', runeColor: '#e3b55a', colorA: '#c2ad8c', colorB: '#a38f70', blocks: 2, runeDensity: 1, complexity: 0.7, wear: 0.2 },
   },
   {
     id: 'void_runes',

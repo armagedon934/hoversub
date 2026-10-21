@@ -87,7 +87,7 @@ export const concreteFamily: FamilyDefinition = {
         if (form === 'panels') {
           const gx = Math.min(Math.abs(uw - 0.5), uw, 1 - uw); // seams at u = 0 / 0.5
           const gy = Math.min(Math.abs(vw - 0.5), vw, 1 - vw);
-          const seam = 1 - smoothstep(0.0008, 0.0022, Math.min(gx, gy));
+          const seam = 1 - smoothstep(0.0012, 0.003, Math.min(gx, gy));
           const lip = (1 - smoothstep(0.0, 0.006, Math.min(gx, gy))) * 0.5;
           h += lip * 0.04 - seam * 0.12;
           k *= 1 - seam * 0.25;
@@ -97,8 +97,8 @@ export const concreteFamily: FamilyDefinition = {
           const dx = (tu - 0.5) / 4;
           const dy = (tv - 0.5) / 4;
           const d = Math.sqrt(dx * dx + dy * dy);
-          const hole = 1 - smoothstep(0.006, 0.0075, d);
-          const ring = (1 - smoothstep(0.0075, 0.016, d)) * (1 - hole);
+          const hole = 1 - smoothstep(0.008, 0.0095, d);
+          const ring = (1 - smoothstep(0.0095, 0.02, d)) * (1 - hole);
           h -= hole * 0.3;
           k *= 1 - hole * 0.55 - ring * 0.12;
           rough += ring * 0.05;
@@ -109,8 +109,8 @@ export const concreteFamily: FamilyDefinition = {
           const step = (unit(rehash(subSeed(sF, 'b'), (bi % boards + boards) % boards)) - 0.5) * 0.08;
           const joint = 1 - smoothstep(0.0, 0.03, Math.min(fr, 1 - fr));
           const grain = fbmAniso(u, v, 3, 96, styledOctaves(ctx, 96, 2), sF + bi) * 0.5;
-          h += step + grain * 0.035 - joint * 0.06;
-          k *= 1 + step * 1.4 + grain * 0.08 - joint * 0.12;
+          h += step + grain * 0.07 - joint * 0.08;
+          k *= 1 + step * 1.8 + grain * 0.16 - joint * 0.2;
         }
 
         // Pores and bug holes (small sharp recesses).

@@ -1,0 +1,202 @@
+{
+  "date": "2026-10-21T15:42:36.755Z",
+  "passed": 39,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "First run opens directly into a generated material",
+      "ok": true,
+      "detail": "8.4 s to first full material (software WebGL, shared CPU)"
+    },
+    {
+      "name": "Workflow introduction is shown on first run",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preset gallery shows real generated thumbnails",
+      "ok": true,
+      "detail": "42 thumbnail canvases"
+    },
+    {
+      "name": "Introduction can be dismissed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview: castle_ashlar on wall",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview: oak_floor on block",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview: corroded_plate on sphere",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview: molten_crust on floor",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview: weathered_brick on scene",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview: glowing_runes on wall",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Lighting preset switches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Turntable toggles",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Rapid slider changes never leave a stale result displayed",
+      "ok": true,
+      "detail": "displayed material params === current params after 31 rapid edits"
+    },
+    {
+      "name": "Undo and redo restore material changes",
+      "ok": true,
+      "detail": "0.73 -> 0.25 -> 0.73"
+    },
+    {
+      "name": "Randomize seed changes the seed",
+      "ok": true,
+      "detail": "seed 77072"
+    },
+    {
+      "name": "Seed lock keeps the seed when switching presets",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Reset to preset restores the preset seed and parameters",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Controls that do not apply are hidden",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Switching presets and objects does not accumulate WebGL resources",
+      "ok": true,
+      "detail": "textures 11 -> 11, geometries 14 -> 14 after 18 switches"
+    },
+    {
+      "name": "Selecting a variation applies that exact configuration",
+      "ok": true,
+      "detail": "Apply Red Brick Running Bond · V2"
+    },
+    {
+      "name": "Inspector switches between all generated maps",
+      "ok": true,
+      "detail": "8 enabled map views"
+    },
+    {
+      "name": "Inspector zoom and texel readout work",
+      "ok": true,
+      "detail": "512×512 · zoom 35% · x 256  y 156  ·  RGB 117, 111, 100"
+    },
+    {
+      "name": "Inspector \"Export map\" downloads the viewed map",
+      "ok": true,
+      "detail": "stone_wall_seed_1042_basecolor_512.png"
+    },
+    {
+      "name": "Favorites persist across reloads",
+      "ok": true,
+      "detail": "[\"My Walnut Test\"]"
+    },
+    {
+      "name": "Current material persists across reloads",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "High-resolution (2048) ZIP export completes",
+      "ok": true,
+      "detail": "14.8 s"
+    },
+    {
+      "name": "Interface keeps rendering frames during the 2048 export",
+      "ok": true,
+      "detail": "frame gaps p95 19 ms, max 150 ms over 869 frames"
+    },
+    {
+      "name": "ZIP contains the expected files",
+      "ok": true,
+      "detail": "README.txt, lava_rock_seed_1815_ao_2048.png, lava_rock_seed_1815_basecolor_2048.png, lava_rock_seed_1815_emissive_2048.png, lava_rock_seed_1815_height_16bit_2048.png, lava_rock_seed_1815_metallic_2048.png, lava_rock_seed_1815_normal_opengl_2048.png, lava_rock_seed_1815_orm_2048.png, lava_rock_seed_1815_roughness_2048.png, settings.json"
+    },
+    {
+      "name": "Exported PNGs are 2048x2048 with valid encoding",
+      "ok": true,
+      "detail": "ao_2048.png: 2048x2048 8-bit ct0 crcok; basecolor_2048.png: 2048x2048 8-bit ct2 crcok; emissive_2048.png: 2048x2048 8-bit ct2 crcok; height_16bit_2048.png: 2048x2048 16-bit ct0 crcok; metallic_2048.png: 2048x2048 8-bit ct0 crcok; normal_opengl_2048.png: 2048x2048 8-bit ct2 crcok; orm_2048.png: 2048x2048 8-bit ct2 crcok; roughness_2048.png: 2048x2048 8-bit ct0 crcok"
+    },
+    {
+      "name": "ORM channels are R=AO, G=Roughness, B=Metallic",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Long exports can be cancelled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Settings JSON downloads",
+      "ok": true,
+      "detail": "lava_rock_seed_1815_settings.json"
+    },
+    {
+      "name": "Preview PNG downloads a real image",
+      "ok": true,
+      "detail": "lava_rock_seed_1815_preview.png 830x570"
+    },
+    {
+      "name": "Individual map download from the export dialog",
+      "ok": true,
+      "detail": "lava_rock_seed_1815_normal_opengl_1024.png"
+    },
+    {
+      "name": "Importing settings JSON restores the material",
+      "ok": true,
+      "detail": "{\"family\":\"lava_rock\",\"seed\":4321,\"name\":\"Imported Lava\",\"heat\":0.75}"
+    },
+    {
+      "name": "Invalid settings JSON shows a helpful error",
+      "ok": true,
+      "detail": "Downloaded lava_rock_seed_1815_normal_opengl_1024.png.Imported “Imported Lava”.Could not import “bad.json”: This file uses settings schema v7, but this version of Material Foundry only understands up to v1."
+    },
+    {
+      "name": "Key controls are visible and unclipped at 1366x768",
+      "ok": true,
+      "detail": "open-export:ok undo:ok save-favorite:ok shape-scene:ok reset-camera:ok generate-variations:ok reset-preset:ok seed-input:ok"
+    },
+    {
+      "name": "Without WebGL a useful 2D fallback is shown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No console errors during the whole session",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

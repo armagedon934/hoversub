@@ -49,8 +49,10 @@ export function downloadBytes(data: Uint8Array | Blob, name: string, mime: strin
 async function materialAt(settings: MaterialSettings, size: number, token: JobToken, onProgress: (s: string, f: number) => void): Promise<GeneratedMaterial> {
   const key = `${settingsKey(settings)}|${settings.name}|${size}`;
   if (cache && cache.key === key) return cache.material;
+  cache = null; // release the previous export-resolution material before generating a new one
   const m = await generateParallel(settings, size, { priority: Priority.Background, token, onProgress });
-  cache = { key, material: m };
+  // Keep it for follow-up single-map downloads, except very large materials (~300 MB at 4096).
+  if (size <= 2048) cache = { key, material: m };
   return m;
 }
 

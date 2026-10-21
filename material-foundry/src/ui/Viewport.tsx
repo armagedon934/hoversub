@@ -169,10 +169,10 @@ export function Viewport() {
       <div className="view-toolbar" role="toolbar" aria-label="Preview options">
         <div className="seg" role="tablist" aria-label="View mode">
           <button className={viewMode === '3d' ? 'on' : ''} onClick={() => setPrefs({ viewMode: '3d' })} role="tab" aria-selected={viewMode === '3d'} data-testid="mode-3d" title="3D preview">
-            <Box size={14} /> 3D Preview
+            <Box size={14} /> 3D
           </button>
           <button className={viewMode === 'maps' ? 'on' : ''} onClick={() => setPrefs({ viewMode: 'maps' })} role="tab" aria-selected={viewMode === 'maps'} data-testid="mode-maps" title="2D map inspector">
-            <ImageIcon size={14} /> Map Inspector
+            <ImageIcon size={14} /> Maps
           </button>
         </div>
         {viewMode === '3d' && (
@@ -181,7 +181,7 @@ export function Viewport() {
               {SHAPES.map((s) => (
                 <button key={s.id} className={prefs.shape === s.id ? 'on' : ''} onClick={() => setPrefs({ shape: s.id })} title={`${s.label}: ${s.hint}`} role="radio" aria-checked={prefs.shape === s.id} data-testid={`shape-${s.id}`}>
                   <s.icon size={14} />
-                  <span className="btn-label">{s.label}</span>
+                  <span>{s.label}</span>
                 </button>
               ))}
             </div>

@@ -122,8 +122,8 @@ export function Inspector({ material, onExportMap }: { material: GeneratedMateri
     const el = hostRef.current;
     if (!el) return;
     const span = material.size * (tiled ? 3 : 1);
-    const zoom = Math.min(el.clientWidth, el.clientHeight) / span * 0.92;
-    setView({ zoom, x: 0, y: 0 });
+    const zoom = (Math.min(el.clientWidth, el.clientHeight - 90) / span) * 0.96;
+    setView({ zoom, x: 0, y: 30 });
   }, [material.size, tiled]);
 
   useEffect(() => {
@@ -219,7 +219,7 @@ export function Inspector({ material, onExportMap }: { material: GeneratedMateri
       >
         <canvas ref={canvasRef} />
       </div>
-      <div className="overlay-tl">
+      <div className="inspector-bar">
         <div className="seg" role="radiogroup" aria-label="Map to inspect" data-testid="inspect-maps">
           {INSPECT_OPTIONS.map((o) => (
             <button
@@ -227,7 +227,13 @@ export function Inspector({ material, onExportMap }: { material: GeneratedMateri
               className={which === o.id ? 'on' : ''}
               onClick={() => setPrefs({ inspectMap: o.id })}
               disabled={o.id === 'emissive' && !hasEm}
-              title={o.id === 'emissive' && !hasEm ? 'This material does not emit light' : o.id === 'normal' ? `Normal map (${convention === 'opengl' ? 'OpenGL Y+' : 'DirectX Y−'})` : o.label}
+              title={
+                o.id === 'emissive' && !hasEm
+                  ? 'This material does not emit light'
+                  : o.id === 'normal'
+                    ? `Normal map (${convention === 'opengl' ? 'OpenGL Y+' : 'DirectX Y−'})`
+                    : o.label
+              }
               role="radio"
               aria-checked={which === o.id}
             >
@@ -235,35 +241,57 @@ export function Inspector({ material, onExportMap }: { material: GeneratedMateri
             </button>
           ))}
         </div>
-      </div>
-      <div className="overlay-tr row">
-        {which === 'normal' && (
-          <div className="seg" role="radiogroup" aria-label="Normal convention">
-            {(['opengl', 'directx'] as const).map((c) => (
-              <button key={c} className={convention === c ? 'on' : ''} onClick={() => setPrefs({ normalConvention: c })} role="radio" aria-checked={convention === c}>
-                {c === 'opengl' ? 'OpenGL (Y+)' : 'DirectX (Y−)'}
-              </button>
-            ))}
-          </div>
-        )}
-        <button className={`btn small ${tiled ? 'active' : ''}`} onClick={() => setPrefs({ inspectTiled: !tiled })} title="Show the texture tiled 3×3 to check seams" aria-pressed={tiled} data-testid="tile-3x3">
-          <Grid3x3 size={14} /> 3×3 tiling
-        </button>
-        <button className="btn small icon" onClick={() => zoomBy(1.4)} title="Zoom in">
-          <ZoomIn size={14} />
-        </button>
-        <button className="btn small icon" onClick={() => zoomBy(1 / 1.4)} title="Zoom out">
-          <ZoomOut size={14} />
-        </button>
-        <button className="btn small" onClick={fit} title="Fit to view (double-click also fits)">
-          <Maximize size={14} /> Fit
-        </button>
-        <button className="btn small" onClick={() => setView((v) => ({ zoom: Math.max(4, v.zoom), x: v.x, y: v.y }))} title="Magnify to at least 400% to inspect individual texels">
-          400%
-        </button>
-        <button className="btn small" onClick={onExportMap} disabled={which === 'lit'} title={which === 'lit' ? 'The lit swatch is a preview, not a texture map' : 'Download this map as PNG at the export resolution'} data-testid="export-current-map">
-          <Download size={14} /> Export map
-        </button>
+        <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+          {which === 'normal' && (
+            <div className="seg" role="radiogroup" aria-label="Normal convention">
+              {(['opengl', 'directx'] as const).map((c) => (
+                <button
+                  key={c}
+                  className={convention === c ? 'on' : ''}
+                  onClick={() => setPrefs({ normalConvention: c })}
+                  role="radio"
+                  aria-checked={convention === c}
+                >
+                  {c === 'opengl' ? 'OpenGL (Y+)' : 'DirectX (Y−)'}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            className={`btn small ${tiled ? 'active' : ''}`}
+            onClick={() => setPrefs({ inspectTiled: !tiled })}
+            title="Show the texture tiled 3×3 to check seams"
+            aria-pressed={tiled}
+            data-testid="tile-3x3"
+          >
+            <Grid3x3 size={14} /> 3×3 tiling
+          </button>
+          <button className="btn small icon" onClick={() => zoomBy(1.4)} title="Zoom in">
+            <ZoomIn size={14} />
+          </button>
+          <button className="btn small icon" onClick={() => zoomBy(1 / 1.4)} title="Zoom out">
+            <ZoomOut size={14} />
+          </button>
+          <button className="btn small" onClick={fit} title="Fit to view (double-click also fits)">
+            <Maximize size={14} /> Fit
+          </button>
+          <button
+            className="btn small"
+            onClick={() => setView((v) => ({ zoom: Math.max(4, v.zoom), x: v.x, y: v.y }))}
+            title="Magnify to at least 400% to inspect individual texels"
+          >
+            400%
+          </button>
+          <button
+            className="btn small"
+            onClick={onExportMap}
+            disabled={which === 'lit'}
+            title={which === 'lit' ? 'The lit swatch is a preview, not a texture map' : 'Download this map as PNG at the export resolution'}
+            data-testid="export-current-map"
+          >
+            <Download size={14} /> Export map
+          </button>
+        </div>
       </div>
       <div className="overlay-bl">
         <span className="chip readout" data-testid="inspector-readout">

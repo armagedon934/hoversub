@@ -186,9 +186,9 @@ export const woodFamily: FamilyDefinition = {
           rough = 0.55 + 0.08 * late;
         } else {
           // Weathered: UV greying toward silver, dry and rough.
-          const l = 0.22 * (0.7 + 0.3 * (1 - gT));
-          const grey: RGB = [l * 0.95, l * 0.93, l * 0.88];
-          const wT = 0.75;
+          const l = 0.26 * (1 - 0.5 * gT);
+          const grey: RGB = [l * 0.97, l * 0.94, l * 0.88];
+          const wT = 0.8;
           r = lerp(r, grey[0], wT);
           g = lerp(g, grey[1], wT);
           bl = lerp(bl, grey[2], wT);
@@ -197,7 +197,8 @@ export const woodFamily: FamilyDefinition = {
         // Knots stay dark under every finish (resin-rich, dense wood).
         const knotT = Math.min(1, knotCore * 0.9 + knotRing * 0.35);
         if (knotT > 0) {
-          const kc = mixRGB(cB, [0.02, 0.012, 0.006], weathered ? 0.75 : 0.45);
+          let kc = mixRGB(cB, [0.02, 0.012, 0.006], 0.45);
+          if (weathered) kc = mixRGB(kc, [0.05, 0.048, 0.045], 0.75);
           r = lerp(r, kc[0], knotT);
           g = lerp(g, kc[1], knotT);
           bl = lerp(bl, kc[2], knotT);
