@@ -8,6 +8,7 @@
 
 import { hash2, imod, rehash, unit } from './hash';
 
+
 const GRAD_COUNT = 256;
 const GX = new Float64Array(GRAD_COUNT);
 const GY = new Float64Array(GRAD_COUNT);
@@ -30,23 +31,41 @@ export function gradNoise(x: number, y: number, px: number, py: number, seed: nu
   const yf0 = Math.floor(y);
   const fx = x - xf0;
   const fy = y - yf0;
-  const x0 = imod(xf0, px);
-  const y0 = imod(yf0, py);
-  const x1 = x0 + 1 === px ? 0 : x0 + 1;
-  const y1 = y0 + 1 === py ? 0 : y0 + 1;
-  const g00 = hash2(x0, y0, seed) & 255;
-  const g10 = hash2(x1, y0, seed) & 255;
-  const g01 = hash2(x0, y1, seed) & 255;
-  const g11 = hash2(x1, y1, seed) & 255;
+  const ipx = px | 0;
+  const ipy = py | 0;
+  let x0 = (xf0 | 0) % ipx;
+  if (x0 < 0) x0 += ipx;
+  let y0 = (yf0 | 0) % ipy;
+  if (y0 < 0) y0 += ipy;
+  const x1 = x0 + 1 === ipx ? 0 : x0 + 1;
+  const y1 = y0 + 1 === ipy ? 0 : y0 + 1;
+  // Inline hashing: row hashes are shared between the two corners of each row.
+  const s = Math.imul(seed | 0, 0x9e3779b1);
+  const hx0 = Math.imul(x0, 0x27d4eb2d);
+  const hx1 = Math.imul(x1, 0x27d4eb2d);
+  const hy0 = Math.imul(y0, 0x165667b1) ^ s;
+  const hy1 = Math.imul(y1, 0x165667b1) ^ s;
+  const g00 = mix32(hx0 ^ hy0) & 255;
+  const g10 = mix32(hx1 ^ hy0) & 255;
+  const g01 = mix32(hx0 ^ hy1) & 255;
+  const g11 = mix32(hx1 ^ hy1) & 255;
   const n00 = GX[g00] * fx + GY[g00] * fy;
   const n10 = GX[g10] * (fx - 1) + GY[g10] * fy;
   const n01 = GX[g01] * fx + GY[g01] * (fy - 1);
   const n11 = GX[g11] * (fx - 1) + GY[g11] * (fy - 1);
-  const sx = fade(fx);
-  const sy = fade(fy);
+  const sx = fx * fx * fx * (fx * (fx * 6 - 15) + 10);
+  const sy = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
   const a = n00 + sx * (n10 - n00);
   const b = n01 + sx * (n11 - n01);
   return (a + sy * (b - a)) * 1.4142;
+}
+
+/** Final avalanche step of hash2 (kept identical so gradNoise matches hash2-based lattices). */
+function mix32(h0: number): number {
+  let h = h0 >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 /** Periodic value noise (smooth interpolation of random lattice values), output in [0, 1]. */
@@ -158,26 +177,51 @@ export interface VoronoiResult {
   f1: number;
   /** Distance to second nearest feature point, in UV units. */
   f2: number;
-  /** Exact distance to the nearest Voronoi cell border, in UV units. */
+  /** Distance to the nearest Voronoi cell border, in UV units. */
   edge: number;
   /** Hash identifying the nearest cell (stable across tile boundaries). */
   id: number;
   /** Offset from the sample to the nearest feature point, in UV units. */
   dx: number;
   dy: number;
-  /** Hash of the second nearest cell (useful for cross-cell blending). */
+  /** Hash of the second nearest cell. */
   id2: number;
+  /** Internal cache of the 5x5 feature points around the last evaluated cell. */
+  cache: VoronoiCache;
+}
+
+interface VoronoiCache {
+  key: string;
+  xi: number;
+  yi: number;
+  px: Float64Array; // feature point x in cell units (unwrapped)
+  py: Float64Array;
+  ids: Uint32Array;
 }
 
 export function makeVoronoiResult(): VoronoiResult {
-  return { f1: 0, f2: 0, edge: 0, id: 0, dx: 0, dy: 0, id2: 0 };
+  return {
+    f1: 0,
+    f2: 0,
+    edge: 0,
+    id: 0,
+    dx: 0,
+    dy: 0,
+    id2: 0,
+    cache: { key: '', xi: 0, yi: 0, px: new Float64Array(25), py: new Float64Array(25), ids: new Uint32Array(25) },
+  };
 }
 
 /**
  * Periodic Voronoi / Worley evaluation with `nx` x `ny` cells per tile.
  * jitter in [0, 1] controls how far feature points stray from cell centres.
- * When `withEdge` is true the exact border distance is computed (two-pass method),
- * otherwise `edge` is approximated as (f2 - f1) / 2.
+ * When `withEdge` is true the distance to the nearest cell border is computed with the
+ * two-pass bisector method (over the cached 5x5 neighbourhood), otherwise `edge` is
+ * approximated as (f2 - f1) / 2.
+ *
+ * Feature points come from hashes of wrapped cell indices, so the diagram is periodic.
+ * The 5x5 neighbourhood of feature points is cached on `out`, which makes scanline
+ * evaluation (neighbouring pixels share a cell) much cheaper.
  */
 export function voronoi(
   u: number,
@@ -195,23 +239,41 @@ export function voronoi(
   const y = v * ny;
   const xi = Math.floor(x);
   const yi = Math.floor(y);
+  const c = out.cache;
+  const key = `${nx},${ny},${seed},${jitter}`;
+  if (c.key !== key || c.xi !== xi || c.yi !== yi) {
+    c.key = key;
+    c.xi = xi;
+    c.yi = yi;
+    let k = 0;
+    for (let j = -2; j <= 2; j++) {
+      const cj = yi + j;
+      let wj = cj % ny;
+      if (wj < 0) wj += ny;
+      for (let i = -2; i <= 2; i++) {
+        const ci = xi + i;
+        let wi = ci % nx;
+        if (wi < 0) wi += nx;
+        const h = hash2(wi, wj, seed);
+        c.px[k] = ci + 0.5 + jitter * (unit(h) - 0.5);
+        c.py[k] = cj + 0.5 + jitter * (unit(rehash(h, 1)) - 0.5);
+        c.ids[k] = h;
+        k++;
+      }
+    }
+  }
   let f1 = 1e9;
   let f2 = 1e9;
   let mx = 0;
   let my = 0;
-  let mi = 0;
-  let mj = 0;
+  let mk = 12;
   let id = 0;
   let id2 = 0;
-  for (let j = -1; j <= 1; j++) {
-    for (let i = -1; i <= 1; i++) {
-      const ci = xi + i;
-      const cj = yi + j;
-      const h = hash2(imod(ci, nx), imod(cj, ny), seed);
-      const px = ci + 0.5 + jitter * (unit(h) - 0.5);
-      const py = cj + 0.5 + jitter * (unit(rehash(h, 1)) - 0.5);
-      const ddx = (px - x) * sx;
-      const ddy = (py - y) * sy;
+  for (let j = 1; j <= 3; j++) {
+    for (let i = 1; i <= 3; i++) {
+      const k = j * 5 + i;
+      const ddx = (c.px[k] - x) * sx;
+      const ddy = (c.py[k] - y) * sy;
       const d = ddx * ddx + ddy * ddy;
       if (d < f1) {
         f2 = f1;
@@ -219,12 +281,11 @@ export function voronoi(
         f1 = d;
         mx = ddx;
         my = ddy;
-        mi = ci;
-        mj = cj;
-        id = h;
+        mk = k;
+        id = c.ids[k];
       } else if (d < f2) {
         f2 = d;
-        id2 = h;
+        id2 = c.ids[k];
       }
     }
   }
@@ -239,23 +300,17 @@ export function voronoi(
     return out;
   }
   let edge = 1e9;
-  for (let j = -2; j <= 2; j++) {
-    for (let i = -2; i <= 2; i++) {
-      const ci = mi + i;
-      const cj = mj + j;
-      if (ci === mi && cj === mj) continue;
-      const h = hash2(imod(ci, nx), imod(cj, ny), seed);
-      const px = ci + 0.5 + jitter * (unit(h) - 0.5);
-      const py = cj + 0.5 + jitter * (unit(rehash(h, 1)) - 0.5);
-      const rx = (px - x) * sx;
-      const ry = (py - y) * sy;
-      const ex = rx - mx;
-      const ey = ry - my;
-      const el = Math.sqrt(ex * ex + ey * ey);
-      if (el < 1e-9) continue;
-      const d = ((mx + rx) * 0.5 * ex + (my + ry) * 0.5 * ey) / el;
-      if (d < edge) edge = d;
-    }
+  for (let k = 0; k < 25; k++) {
+    if (k === mk) continue;
+    const rx = (c.px[k] - x) * sx;
+    const ry = (c.py[k] - y) * sy;
+    const ex = rx - mx;
+    const ey = ry - my;
+    const el2 = ex * ex + ey * ey;
+    if (el2 < 1e-18) continue;
+    // Only points closer than the current edge bound can define a nearer bisector.
+    const d = ((mx + rx) * 0.5 * ex + (my + ry) * 0.5 * ey) / Math.sqrt(el2);
+    if (d < edge) edge = d;
   }
   out.edge = edge;
   return out;
