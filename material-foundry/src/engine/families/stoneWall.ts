@@ -81,9 +81,9 @@ export const stoneWallFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         let sdf: number;
         let id: number;
@@ -123,7 +123,7 @@ export const stoneWallFamily: FamilyDefinition = {
         const faceN = fbm(u, v, 6, oFace, sFace);
         const chisel = billow(u, v, 10, styledOctaves(ctx, 10, 3), sFace + 5);
         let faceTop = 0.72 + 0.12 * bulge + (r3 * tiltX + r4 * tiltY) * 0.06;
-        faceTop += faceRough * (faceN * 0.1 + (chisel - 0.35) * 0.08 * nat);
+        faceTop += faceRough * (faceN * 0.14 + (chisel - 0.35) * 0.14 * nat);
         faceTop += detail * 0.035 * fbm(u, v, 48, styledOctaves(ctx, 48, 3), sFace + 9);
 
         // Cracks cut into the stone faces only.
@@ -138,10 +138,13 @@ export const stoneWallFamily: FamilyDefinition = {
 
         // Color: per-stone hue/value choice, mineral mottling, darkened cracks and recesses.
         const t = tone(clamp01(r1 * (0.3 + cvar)), nat, 3);
-        const base = mixRGB(cA, cB, t);
+        // Per-stone value and slight warm/cool shift so neighbouring stones read separately.
+        const warm = (unit(rehash(id, 6)) - 0.5) * 0.12 * cvar;
+        const b0 = mixRGB(cA, cB, t);
+        const base: RGB = [b0[0] * (1 + warm), b0[1], b0[2] * (1 - warm)];
         const mott = tone(fbm(u, v, 8, oCol, sCol) * 0.5 + 0.5, nat, 3);
         const speck = detail * nat * (fbm(u, v, 64, ctx.octaves(64, 2), sCol + 3) > 0.45 ? 1 : 0);
-        const k = (1 + (r2 - 0.5) * 0.35 * cvar) * (0.85 + 0.28 * mott) * (1 - 0.15 * speck) * (1 - crack * 0.5);
+        const k = (1 + (r2 - 0.5) * 0.6 * cvar) * (0.78 + 0.38 * mott) * (1 - 0.15 * speck) * (1 - crack * 0.5);
         const m = smoothstep(0.0, 0.5, prof);
         const grit = 0.85 + 0.25 * (mortarN * 0.5 + 0.5);
         c[0] = lerp(cM[0] * grit, base[0] * k, m);

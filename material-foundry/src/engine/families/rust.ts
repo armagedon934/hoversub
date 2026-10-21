@@ -56,6 +56,7 @@ export const rustFamily: FamilyDefinition = {
     const sS = subSeed(seed, 'streak');
     const sMs = subSeed(seed, 'mill');
     const vor = makeVoronoiResult();
+    const vorF = makeVoronoiResult();
     const oC = styledOctaves(ctx, 2 * s, 7);
     const oF = styledOctaves(ctx, 24, 4);
     const threshold = 1 - cov;
@@ -64,9 +65,9 @@ export const rustFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         const wu = u + 0.05 * fbm(u, v, s, 3, sW);
         const wv = v + 0.05 * fbm(u, v, s, 3, sW + 1);
@@ -81,8 +82,8 @@ export const rustFamily: FamilyDefinition = {
         if (pitting > 0 && N >= 128) {
           voronoi(u, v, 48, 48, sP, 1, vor, false);
           const near = smoothstep(threshold - 0.2, threshold + 0.1, cv);
-          if (unit(vor.id) < pitting * 0.8 * near) {
-            const rr = (0.12 + 0.25 * unit(rehash(vor.id, 2))) / 48;
+          if (unit(vor.id) < pitting * 0.45 * near) {
+            const rr = (0.06 + 0.3 * unit(rehash(vor.id, 2)) ** 2) / 48;
             pit = 1 - smoothstep(rr * 0.3, rr, vor.f1);
           }
         }
@@ -90,8 +91,16 @@ export const rustFamily: FamilyDefinition = {
         const flake = billow(u, v, 24, oF, sF);
         const fine = fbm(u, v, 64, styledOctaves(ctx, 64, 2), sF + 3);
 
+        // Flaking plates: oxide scale breaks into plates whose edges lift.
+        let plateEdge = 0;
+        let plateTone = 0;
+        if (flaking > 0) {
+          voronoi(wu, wv, 6 * s, 6 * s, sF + 11, 0.9, vorF, true);
+          plateEdge = (1 - smoothstep(0, 0.012 / s, vorF.edge)) * deep;
+          plateTone = (unit(vorF.id) - 0.5) * deep;
+        }
         // Height: rust sits slightly proud of the metal, with lumps; pits go down.
-        let h = 0.45 + rust * (0.12 + 0.25 * flaking * flake + 0.08 * deep) + 0.03 * fine * detail;
+        let h = 0.45 + rust * (0.12 + 0.25 * flaking * flake + 0.08 * deep + 0.12 * flaking * plateEdge) + 0.03 * fine * detail;
         h -= pit * 0.3;
 
         // Metal appearance: steel with darker mill-scale patches.
@@ -114,7 +123,7 @@ export const rustFamily: FamilyDefinition = {
         }
 
         // Rust color: dark base with orange crusts on the raised flakes.
-        const rt = tone(clamp01(0.35 + 0.5 * flake + 0.25 * fine - 0.3 * deep * (1 - flake)), nat, 3);
+        const rt = tone(clamp01(0.35 + 0.5 * flake + 0.25 * fine - 0.3 * deep * (1 - flake) + 0.2 * plateTone * flaking + 0.1 * plateEdge), nat, 3);
         const rr2 = lerp(cD[0], cL[0], rt);
         const rg2 = lerp(cD[1], cL[1], rt);
         const rb2 = lerp(cD[2], cL[2], rt);

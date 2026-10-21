@@ -57,9 +57,9 @@ export const brushedMetalFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const vy = (y + 0.5) / N;
+      const vy = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const ux = (x + 0.5) / N;
+        const ux = (x + 0.5) / N + ctx.offsetU;
         // Work in brush space: "u" runs along the stroke.
         const u = vertical ? vy : ux;
         const v = vertical ? ux : vy;
@@ -79,7 +79,7 @@ export const brushedMetalFamily: FamilyDefinition = {
         c[0] = cA[0] * k;
         c[1] = cA[1] * k;
         c[2] = cA[2] * k;
-        let rough = 0.32 + 0.1 * brush * brushS + 0.05 * broad + 0.18 * sm + 0.12 * scr;
+        let rough = 0.38 + 0.1 * brush * brushS + 0.05 * broad + 0.18 * sm + 0.12 * scr;
         rough = clamp01(rough);
         // Brushed metal is always a conductor: metallic = 1 everywhere.
         writePixel(out, i, c, h, roughBias(rough, rbias), 1);

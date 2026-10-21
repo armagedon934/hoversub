@@ -84,7 +84,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'rough_rock',
     seed: 4242,
     tags: ['natural', 'rugged'],
-    params: { scale: 3, strata: 0.55, strataDir: 'd', sharpness: 0.6, veins: 0.65, specks: 0.1, colorA: '#3b3f45', colorB: '#5d636b', colorC: '#e6e7e3' },
+    params: { scale: 3, strata: 0.35, strataDir: 'd', sharpness: 0.6, veins: 0.6, specks: 0.1, colorA: '#3b3f45', colorB: '#5d636b', colorC: '#e6e7e3' },
   },
   // ---------------------------------------------------------------- Concrete
   {
@@ -159,7 +159,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'brushed_metal',
     seed: 316,
     tags: ['clean', 'industrial'],
-    params: { colorA: '#c4c6c8', brushStrength: 0.65, wear: 0.25, smudges: 0.2 },
+    params: { colorA: '#c4c6c8', brushStrength: 0.65, wear: 0.25, smudges: 0.2, roughness: 0.5 },
   },
   {
     id: 'brushed_copper',
@@ -325,7 +325,7 @@ export const PRESETS: PresetDefinition[] = [
     family: 'arcane_stone',
     seed: 1111,
     tags: ['emissive', 'stylized'],
-    params: { inlay: 'glow', blocks: 2, runeDensity: 0.85, complexity: 0.55, emissionIntensity: 2, frame: true },
+    params: { inlay: 'glow', blocks: 3, runeDensity: 0.7, complexity: 0.55, emissionIntensity: 2, frame: true },
   },
   {
     id: 'gilded_temple',

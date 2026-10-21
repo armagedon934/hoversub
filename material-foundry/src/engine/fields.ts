@@ -47,6 +47,12 @@ export interface GenContext {
   /** Row range to generate: [y0, y1). Arrays in the output Fields start at row y0. */
   y0: number;
   y1: number;
+  /**
+   * Sampling offset in UV units (0 in normal use). Used by tests to verify periodicity: shifting
+   * by a whole number of pixels must reproduce the same image, rolled.
+   */
+  offsetU: number;
+  offsetV: number;
   seed: number;
   /** 0 = stylized, 1 = natural. */
   natural: number;
@@ -66,11 +72,15 @@ export function makeContext(
   progress: (f: number) => void,
   y0 = 0,
   y1 = size,
+  offsetU = 0,
+  offsetV = 0,
 ): GenContext {
   return {
     size,
     y0,
     y1,
+    offsetU,
+    offsetV,
     seed,
     natural,
     progress,

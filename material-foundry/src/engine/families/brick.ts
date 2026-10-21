@@ -92,9 +92,9 @@ export const brickFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         brickCell(u, v, cols, rows, bond, stagger, seed, cell);
         const id = cell.id;

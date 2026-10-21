@@ -1,5 +1,5 @@
 import { hexToLinear, type RGB } from '../color';
-import { hash1, imod, subSeed, unit } from '../hash';
+import { hash1, imod, rehash, subSeed, unit } from '../hash';
 import { clamp01, fbm, lerp, makeVoronoiResult, ridged, smoothstep, voronoi } from '../noise';
 import { color, detailParam, range, reliefParam, roughnessParam, select, styleParam } from '../params';
 import { num, str, type FamilyDefinition } from '../types';
@@ -64,9 +64,9 @@ export const rockFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         // Domain warp keeps periodicity because the warp field itself tiles.
         const wu = u + 0.07 * fbm(u, v, s, 3, sW);
@@ -91,16 +91,21 @@ export const rockFamily: FamilyDefinition = {
         let vein = 0;
         if (veins > 0) {
           const vn = fbm(wu * 1 + 0.03 * fbm(u, v, 8, 2, sV + 3), wv, s * 2, styledOctaves(ctx, s * 2, 4), sV);
-          const w = 0.012 + 0.03 * veins;
-          vein = (1 - smoothstep(0, w, Math.abs(vn))) * smoothstep(0.3, 0.7, fbm(u, v, s, 2, sV + 9) * 0.5 + 0.5 + veins * 0.4);
+          const w = 0.005 + 0.014 * veins;
+          vein = (1 - smoothstep(w * 0.4, w, Math.abs(vn))) * smoothstep(0.45, 0.75, fbm(u, v, s, 2, sV + 9) * 0.5 + 0.5 + veins * 0.25);
         }
 
         // Specks: small crystalline inclusions.
         let speck = 0;
+        let dark = false;
         if (specks > 0 && N >= 128) {
-          voronoi(u, v, 72, 72, sS, 1, vor, false);
-          const on = unit(vor.id) < specks * 0.55;
-          if (on) speck = 1 - smoothstep(0.0025, 0.0055, vor.f1);
+          voronoi(u, v, 96, 96, sS, 1, vor, false);
+          const on = unit(vor.id) < specks * 0.7;
+          if (on) {
+            const rr = (0.22 + 0.3 * unit(rehash(vor.id, 2))) / 96;
+            speck = 1 - smoothstep(rr * 0.55, rr, vor.f1);
+            dark = unit(rehash(vor.id, 3)) < 0.45;
+          }
           speck *= nat * 0.7 + 0.3;
         }
 
@@ -117,10 +122,17 @@ export const rockFamily: FamilyDefinition = {
         c[0] = base[0] * k;
         c[1] = base[1] * k;
         c[2] = base[2] * k;
-        const mineral = Math.max(vein, speck);
+        const mineral = Math.max(vein, dark ? 0 : speck);
         c[0] = lerp(c[0], cC[0], mineral);
         c[1] = lerp(c[1], cC[1], mineral);
         c[2] = lerp(c[2], cC[2], mineral);
+        if (dark && speck > 0) {
+          // Dark mica / hornblende grains.
+          const dk = 1 - 0.75 * speck;
+          c[0] *= dk;
+          c[1] *= dk;
+          c[2] *= dk;
+        }
 
         const r = 0.86 - 0.08 * cav + 0.05 * grain - 0.35 * mineral;
         writePixel(out, i, c, h, roughBias(r, rbias), 0);

@@ -63,9 +63,9 @@ export const lavaFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         const jag = lerp(0.3, 1, nat);
         const wu = u + jag * (0.03 * fbm(u, v, 4, 2, sW) + 0.006 * fbm(u, v, 16, oW, sW + 2));

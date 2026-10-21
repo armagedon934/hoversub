@@ -39,6 +39,7 @@ export function generateFieldBand(
   y1: number,
   onProgress?: (fraction: number) => void,
   isCancelled?: () => boolean,
+  offset: [number, number] = [0, 0],
 ): Fields {
   const s = resolveSettings(settings);
   const family = getFamily(s.family);
@@ -53,6 +54,8 @@ export function generateFieldBand(
     },
     y0,
     y1,
+    offset[0],
+    offset[1],
   );
   family.generate(ctx, s.params, fields);
   onProgress?.(1);
@@ -67,15 +70,13 @@ export function assembleBands(size: number, bands: Fields[]): Fields {
   out.depth = bands[0].depth;
   let row = 0;
   for (const b of bands) {
-    const n = b.rows * size;
     out.albedo.set(b.albedo, row * size * 3);
     out.height.set(b.height, row * size);
     out.rough.set(b.rough, row * size);
     out.metal.set(b.metal, row * size);
     if (out.emissive && b.emissive) out.emissive.set(b.emissive, row * size * 3);
     row += b.rows;
-    void n;
-  }
+    }
   if (row !== size) throw new Error(`Band assembly covered ${row} of ${size} rows`);
   return out;
 }

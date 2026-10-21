@@ -90,9 +90,9 @@ export const tilesFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         tileCell(u, v, across, down, layout, seed, cell);
         const id = cell.id;
@@ -116,12 +116,13 @@ export const tilesFamily: FamilyDefinition = {
         const faceN = fbm(u, v, 8, oF, sF);
         let top = 0.8 + (r3 * lxN + r4 * lyN) * 0.03 * unev + faceN * 0.04 * unev;
         let crack = 0;
+        const cleft = finish === 'stone' ? ridged(u, v, 10, styledOctaves(ctx, 10, 4), sF + 13) : 0;
         if (damaged) {
           crack = crackField(u, v, sC, { cells: Math.max(3, across), density: 0.85, width: 0.0012, jag: 0.8, octaves: ctx.octaves });
           crack *= smoothstep(0.3, 1, prof);
           top -= crack * 0.3;
         }
-        const h = 0.2 + (top - 0.2) * prof + (1 - prof) * 0.03 * fbm(u, v, 48, styledOctaves(ctx, 48, 2), sG);
+        const h = 0.2 + (top - 0.2 + cleft * 0.07 * unev) * prof + (1 - prof) * 0.03 * fbm(u, v, 48, styledOctaves(ctx, 48, 2), sG);
 
         // Tile color.
         let tT = tone(clamp01(r1 * (0.25 + cvar)), nat, 3);
@@ -137,8 +138,8 @@ export const tilesFamily: FamilyDefinition = {
           rough = 0.1 + 0.04 * (faceN * 0.5 + 0.5) + r2 * 0.03;
         } else if (finish === 'stone') {
           const mott = tone(fbm(u, v, 6, oF, sF + 3) * 0.5 + 0.5, nat, 3);
-          k *= 0.82 + 0.3 * mott;
-          base = mixRGB(base, cB, (1 - mott) * 0.25);
+          k *= 0.78 + 0.4 * mott;
+          base = mixRGB(base, cB, (1 - mott) * 0.35);
           rough = 0.72 + 0.1 * faceN;
         } else {
           // Marble: soft clouds and sharp veins, continuous across tiles of one slab.

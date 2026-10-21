@@ -66,32 +66,34 @@ export const concreteFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         const mott = fbm(u, v, 2 * s, oM, sM);
         const cloud = fbm(u, v, 1, 3, sM + 5);
         let h = 0.62 + 0.04 * mott + 0.03 * cloud;
         const fine = fbm(u, v, 64, oF, sM + 9);
         h += 0.03 * fine * detail;
-        let k = 1 + 0.12 * tone(mott * 0.5 + 0.5, nat, 4) - 0.06 + 0.06 * cloud;
+        let k = 1 + 0.2 * tone(mott * 0.5 + 0.5, nat, 4) - 0.1 + 0.1 * cloud;
         let rough = 0.82 + 0.06 * fine;
         let r0 = cA[0];
         let g0 = cA[1];
         let b0 = cA[2];
 
         // Formwork imprint.
+        const uw = u - Math.floor(u);
+        const vw = v - Math.floor(v);
         if (form === 'panels') {
-          const gx = Math.min(Math.abs(u - 0.5), u, 1 - u); // seams at u = 0 / 0.5
-          const gy = Math.min(Math.abs(v - 0.5), v, 1 - v);
+          const gx = Math.min(Math.abs(uw - 0.5), uw, 1 - uw); // seams at u = 0 / 0.5
+          const gy = Math.min(Math.abs(vw - 0.5), vw, 1 - vw);
           const seam = 1 - smoothstep(0.0008, 0.0022, Math.min(gx, gy));
           const lip = (1 - smoothstep(0.0, 0.006, Math.min(gx, gy))) * 0.5;
           h += lip * 0.04 - seam * 0.12;
           k *= 1 - seam * 0.25;
           // Tie holes: 2x2 per panel (panel = half tile).
-          const tu = (u * 4) % 1;
-          const tv = (v * 4) % 1;
+          const tu = (uw * 4) % 1;
+          const tv = (vw * 4) % 1;
           const dx = (tu - 0.5) / 4;
           const dy = (tv - 0.5) / 4;
           const d = Math.sqrt(dx * dx + dy * dy);
@@ -101,7 +103,7 @@ export const concreteFamily: FamilyDefinition = {
           k *= 1 - hole * 0.55 - ring * 0.12;
           rough += ring * 0.05;
         } else if (form === 'boards') {
-          const bv = v * boards;
+          const bv = vw * boards;
           const bi = Math.floor(bv);
           const fr = bv - bi;
           const step = (unit(rehash(subSeed(sF, 'b'), (bi % boards + boards) % boards)) - 0.5) * 0.08;
@@ -115,13 +117,14 @@ export const concreteFamily: FamilyDefinition = {
         let pore = 0;
         if (pores > 0 && N >= 128) {
           voronoi(u, v, 56, 56, sP, 1, vor, false);
-          if (unit(vor.id) < pores * 0.6) {
-            const rr = (0.08 + 0.18 * unit(rehash(vor.id, 2))) / 56;
-            pore = 1 - smoothstep(rr * 0.5, rr, vor.f1);
+          if (unit(vor.id) < pores * 0.45) {
+            const rr = (0.05 + 0.14 * unit(rehash(vor.id, 2)) ** 2) / 56;
+            const irregular = 1 + 0.35 * gradNoise(u * 160, v * 160, 160, 160, sP + 3);
+            pore = 1 - smoothstep(rr * 0.5, rr, vor.f1 * irregular);
           }
           voronoi(u, v, 16, 16, sP2, 1, vor, false);
-          if (unit(vor.id) < pores * 0.35) {
-            const rr = (0.06 + 0.12 * unit(rehash(vor.id, 2))) / 16;
+          if (unit(vor.id) < pores * 0.18) {
+            const rr = (0.025 + 0.055 * unit(rehash(vor.id, 2))) / 16;
             pore = Math.max(pore, 1 - smoothstep(rr * 0.6, rr, vor.f1));
           }
           pore *= lerp(0.5, 1, nat);
@@ -133,15 +136,15 @@ export const concreteFamily: FamilyDefinition = {
         // Exposed aggregate stones.
         let stone = 0;
         if (agg > 0) {
-          voronoi(u, v, 22, 22, sA, 0.9, vor, false);
-          const sel = unit(vor.id) < 0.25 + agg * 0.6;
+          voronoi(u, v, 34, 34, sA, 0.9, vor, false);
+          const sel = unit(vor.id) < 0.3 + agg * 0.65;
           if (sel) {
-            const rr = (0.22 + 0.2 * unit(rehash(vor.id, 3))) / 22;
+            const rr = (0.28 + 0.22 * unit(rehash(vor.id, 3))) / 34;
             const edgeN = 1 + 0.25 * gradNoise(u * 64, v * 64, 64, 64, sA + 7) * nat;
             stone = (1 - smoothstep(rr * 0.75, rr, vor.f1 * edgeN)) * smoothstep(0, 0.6, agg + 0.1);
             if (stone > 0) {
               const tint = unit(rehash(vor.id, 5));
-              const sc = 0.7 + 0.6 * tint;
+              const sc = 0.6 + 0.8 * tint;
               const mixT = stone * Math.min(1, agg * 1.6);
               r0 = lerp(r0, cG[0] * sc, mixT);
               g0 = lerp(g0, cG[1] * sc, mixT);

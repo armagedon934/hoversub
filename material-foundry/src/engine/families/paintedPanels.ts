@@ -111,9 +111,9 @@ export const paintedPanelsFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         panelCell(u, v, px, py, offsetRows, seed, cell);
         const r1 = unit(rehash(cell.id, 1)) - 0.5;

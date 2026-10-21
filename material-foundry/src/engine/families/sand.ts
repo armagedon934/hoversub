@@ -47,7 +47,7 @@ export const sandFamily: FamilyDefinition = {
     const rk = Math.round(num(p, 'rippleScale', 14));
     const rdir = str(p, 'rippleDir', 'h');
     const stones = num(p, 'stones', 0.2);
-    const stoneCells = Math.round(lerp(36, 10, num(p, 'stoneSize', 0.45)));
+    const stoneCells = Math.round(lerp(30, 8, num(p, 'stoneSize', 0.45)));
     const detail = num(p, 'detail', 0.6);
     const rbias = num(p, 'roughness', 0.5);
     const moist = num(p, 'moisture', 0);
@@ -68,9 +68,9 @@ export const sandFamily: FamilyDefinition = {
 
     for (let y = ctx.y0; y < ctx.y1; y++) {
       rowProgress(ctx, y);
-      const v = (y + 0.5) / N;
+      const v = (y + 0.5) / N + ctx.offsetV;
       for (let x = 0; x < N; x++) {
-        const u = (x + 0.5) / N;
+        const u = (x + 0.5) / N + ctx.offsetU;
         const i = (y - ctx.y0) * N + x;
         const broad = fbm(u, v, 2 * s, oB, sB);
         const earth = smoothstep(0.55 - earthMix * 0.6, 0.75 - earthMix * 0.6, fbm(u, v, s, 4, sB + 3) * 0.5 + 0.5) * Math.min(1, earthMix * 3);
@@ -109,15 +109,21 @@ export const sandFamily: FamilyDefinition = {
           h += curl * 0.05 * cracks - crack * 0.3;
         }
 
-        // Pebbles partially buried in sand.
+        // Pebbles partially buried in sand: rotated ellipses with irregular outlines.
         let pebble = 0;
         let pebbleId = 0;
         if (stones > 0) {
-          voronoi(u, v, stoneCells, stoneCells, sP, 0.9, vor, false);
-          if (unit(vor.id) < stones * 0.7) {
-            const rr = (0.18 + 0.22 * unit(rehash(vor.id, 2))) / stoneCells;
-            const en = 1 + 0.15 * gradNoise(u * 48, v * 48, 48, 48, sP + 5) * nat;
-            const d = (vor.f1 * en) / rr;
+          voronoi(u, v, stoneCells, stoneCells, sP, 0.85, vor, false);
+          if (unit(vor.id) < stones * 0.95) {
+            const rr = (0.3 + 0.22 * unit(rehash(vor.id, 2))) / stoneCells;
+            const ang = unit(rehash(vor.id, 5)) * Math.PI;
+            const elong = 0.65 + 0.35 * unit(rehash(vor.id, 6));
+            const ca = Math.cos(ang);
+            const sa = Math.sin(ang);
+            const px = -vor.dx * ca - -vor.dy * sa;
+            const py = (-vor.dx * sa + -vor.dy * ca) / elong;
+            const en = 1 + 0.18 * gradNoise(u * 48, v * 48, 48, 48, sP + 5) * nat;
+            const d = (Math.sqrt(px * px + py * py) * en) / rr;
             if (d < 1) {
               pebble = Math.sqrt(1 - d * d);
               pebbleId = vor.id;
@@ -149,8 +155,9 @@ export const sandFamily: FamilyDefinition = {
         c[2] = base[2] * k;
         if (isPeb > 0) {
           const pt = unit(rehash(pebbleId, 4));
-          const pk = (0.65 + 0.6 * pt) * (0.9 + 0.15 * grain);
-          const pc: RGB = [cP[0] * pk * (0.9 + 0.2 * pt), cP[1] * pk, cP[2] * pk * (1.1 - 0.2 * pt)];
+          const hueT = unit(rehash(pebbleId, 7));
+          const pk = (0.55 + 0.75 * pt) * (0.9 + 0.15 * grain) * (0.85 + 0.25 * pebble);
+          const pc: RGB = [cP[0] * pk * (0.9 + 0.25 * hueT), cP[1] * pk * (0.97 + 0.06 * hueT), cP[2] * pk * (1.05 - 0.2 * hueT)];
           c[0] = lerp(c[0], pc[0], isPeb);
           c[1] = lerp(c[1], pc[1], isPeb);
           c[2] = lerp(c[2], pc[2], isPeb);
