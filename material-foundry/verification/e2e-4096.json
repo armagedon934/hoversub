@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "seconds": 66.39,
+  "zipMB": 48.100425720214844,
+  "files": [
+    "lava_rock_seed_1815_basecolor_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_normal_opengl_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_roughness_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_metallic_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_height_16bit_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_ao_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_emissive_4096.png: 4096x4096 crc ok",
+    "lava_rock_seed_1815_orm_4096.png: 4096x4096 crc ok"
+  ],
+  "mainHeapAfterMB": 928.9381923675537,
+  "errors": []
+}
