@@ -36,6 +36,7 @@ export const woodFamily: FamilyDefinition = {
     range('plankVariation', 'Plank color variation', 0, 1, 0.45, 'surface'),
     wearParam('Worn finish & scratches', 0.25),
   ],
+  micro: { albedo: 0.035, height: 0.0015, rough: 0.03 },
   emits: () => false,
   variationKeys: [
     { key: 'plankVariation', amount: 0.2 },

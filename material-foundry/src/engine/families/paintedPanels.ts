@@ -30,6 +30,7 @@ export const paintedPanelsFamily: FamilyDefinition = {
     range('scratches', 'Scratches', 0, 1, 0.3, 'wear'),
     range('dirt', 'Dirt & grime', 0, 1, 0.3, 'wear'),
   ],
+  micro: { albedo: 0.02, height: 0.001, rough: 0.03 },
   emits: () => false,
   variationKeys: [
     { key: 'wear', amount: 0.15 },

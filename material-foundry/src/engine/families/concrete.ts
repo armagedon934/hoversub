@@ -1,6 +1,6 @@
 import { hexToLinear, type RGB } from '../color';
 import { rehash, subSeed, unit } from '../hash';
-import { clamp01, fbm, fbmAniso, gradNoise, lerp, makeVoronoiResult, smoothstep, voronoi } from '../noise';
+import { clamp01, fbm, fbmAniso, gradNoise, lerp, makeNeighborPoints, neighborPoints, smoothstep } from '../noise';
 import { crackField } from '../patterns';
 import { color, crackParams, detailParam, range, reliefParam, roughnessParam, select, styleParam } from '../params';
 import { num, str, type FamilyDefinition } from '../types';
@@ -26,6 +26,7 @@ export const concreteFamily: FamilyDefinition = {
     range('stains', 'Stains & streaks', 0, 1, 0.35, 'wear'),
     ...crackParams(0.15, 0.3),
   ],
+  micro: { albedo: 0.06, height: 0.003, rough: 0.06 },
   emits: () => false,
   variationKeys: [
     { key: 'stains', amount: 0.2 },
@@ -58,7 +59,7 @@ export const concreteFamily: FamilyDefinition = {
     const sSt = subSeed(seed, 'stain');
     const sC = subSeed(seed, 'crack');
     const sF = subSeed(seed, 'form');
-    const vor = makeVoronoiResult();
+    const nb = makeNeighborPoints();
     const oM = styledOctaves(ctx, 2 * s, 6);
     const oF = styledOctaves(ctx, 64, 3);
     const c: RGB = [0, 0, 0];
@@ -116,16 +117,18 @@ export const concreteFamily: FamilyDefinition = {
         // Pores and bug holes (small sharp recesses).
         let pore = 0;
         if (pores > 0 && N >= 128) {
-          voronoi(u, v, 56, 56, sP, 1, vor, false);
-          if (unit(vor.id) < pores * 0.45) {
-            const rr = (0.05 + 0.14 * unit(rehash(vor.id, 2)) ** 2) / 56;
-            const irregular = 1 + 0.35 * gradNoise(u * 160, v * 160, 160, 160, sP + 3);
-            pore = 1 - smoothstep(rr * 0.5, rr, vor.f1 * irregular);
+          const irregular = 1 + 0.35 * gradNoise(u * 160, v * 160, 160, 160, sP + 3);
+          neighborPoints(u, v, 56, 56, sP, 1, nb);
+          for (let q = 0; q < 9; q++) {
+            if (unit(nb.ids[q]) >= pores * 0.45) continue;
+            const rr = (0.05 + 0.14 * unit(rehash(nb.ids[q], 2)) ** 2) / 56;
+            pore = Math.max(pore, 1 - smoothstep(rr * 0.5, rr, Math.hypot(nb.dx[q], nb.dy[q]) * irregular));
           }
-          voronoi(u, v, 16, 16, sP2, 1, vor, false);
-          if (unit(vor.id) < pores * 0.18) {
-            const rr = (0.025 + 0.055 * unit(rehash(vor.id, 2))) / 16;
-            pore = Math.max(pore, 1 - smoothstep(rr * 0.6, rr, vor.f1));
+          neighborPoints(u, v, 16, 16, sP2, 1, nb);
+          for (let q = 0; q < 9; q++) {
+            if (unit(nb.ids[q]) >= pores * 0.18) continue;
+            const rr = (0.025 + 0.055 * unit(rehash(nb.ids[q], 2))) / 16;
+            pore = Math.max(pore, 1 - smoothstep(rr * 0.6, rr, Math.hypot(nb.dx[q], nb.dy[q])));
           }
           pore *= lerp(0.5, 1, nat);
         }
@@ -136,14 +139,22 @@ export const concreteFamily: FamilyDefinition = {
         // Exposed aggregate stones.
         let stone = 0;
         if (agg > 0) {
-          voronoi(u, v, 34, 34, sA, 0.9, vor, false);
-          const sel = unit(vor.id) < 0.3 + agg * 0.65;
-          if (sel) {
-            const rr = (0.28 + 0.22 * unit(rehash(vor.id, 3))) / 34;
-            const edgeN = 1 + 0.25 * gradNoise(u * 64, v * 64, 64, 64, sA + 7) * nat;
-            stone = (1 - smoothstep(rr * 0.75, rr, vor.f1 * edgeN)) * smoothstep(0, 0.6, agg + 0.1);
+          const edgeN = 1 + 0.25 * gradNoise(u * 64, v * 64, 64, 64, sA + 7) * nat;
+          neighborPoints(u, v, 34, 34, sA, 0.9, nb);
+          let stoneId = 0;
+          for (let q = 0; q < 9; q++) {
+            if (unit(nb.ids[q]) >= 0.3 + agg * 0.65) continue;
+            const rr = (0.28 + 0.22 * unit(rehash(nb.ids[q], 3))) / 34;
+            const sv = 1 - smoothstep(rr * 0.75, rr, Math.hypot(nb.dx[q], nb.dy[q]) * edgeN);
+            if (sv > stone) {
+              stone = sv;
+              stoneId = nb.ids[q];
+            }
+          }
+          stone *= smoothstep(0, 0.6, agg + 0.1);
+          {
             if (stone > 0) {
-              const tint = unit(rehash(vor.id, 5));
+              const tint = unit(rehash(stoneId, 5));
               const sc = 0.6 + 0.8 * tint;
               const mixT = stone * Math.min(1, agg * 1.6);
               r0 = lerp(r0, cG[0] * sc, mixT);

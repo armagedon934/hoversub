@@ -7,6 +7,8 @@ import { CancelledError, createFields, makeContext, type Fields } from './fields
 import { computeAO, computeNormals, packMaps, type PackedMaps } from './maps';
 import { getFamily, resolveParams } from './registry';
 import { num, type MaterialSettings } from './types';
+import { gradNoise } from './noise';
+import { subSeed } from './hash';
 
 export type ProgressFn = (stage: string, fraction: number) => void;
 
@@ -58,8 +60,62 @@ export function generateFieldBand(
     offset[1],
   );
   family.generate(ctx, s.params, fields);
+  applyMicroDetail(fields, family.micro ?? DEFAULT_MICRO, num(s.params, 'detail', 0.5), s.seed, size, y0, offset);
   onProgress?.(1);
   return fields;
+}
+
+const DEFAULT_MICRO = { albedo: 0.05, height: 0.003, rough: 0.04 };
+/** Micro-detail octave frequencies (cycles per tile). Each is used only below size / 3, so the
+ * preview resolutions (up to 1024) are unaffected and 2K / 4K / 8K exports gain 1 / 2 / 3 octaves. */
+export const MICRO_FREQS = [384, 768, 1536, 3072];
+
+/**
+ * Resolution-dependent micro detail: periodic gradient-noise grain applied after the family
+ * generator. Height amplitude falls off as 1/frequency so the normal-map slope it adds is similar
+ * at every resolution.
+ */
+export function applyMicroDetail(
+  f: Fields,
+  micro: { albedo: number; height: number; rough: number },
+  detail: number,
+  seed: number,
+  size: number,
+  y0: number,
+  offset: [number, number] = [0, 0],
+): void {
+  const freqs = MICRO_FREQS.filter((fr) => fr <= size / 3);
+  if (!freqs.length || detail <= 0) return;
+  const k = 0.4 + detail;
+  const sd = subSeed(seed, 'micro');
+  for (let y = 0; y < f.rows; y++) {
+    const v = (y0 + y + 0.5) / size + offset[1];
+    for (let x = 0; x < size; x++) {
+      const u = (x + 0.5) / size + offset[0];
+      let m = 0;
+      let mh = 0;
+      // A periodic warp (in lattice units) breaks up the regular zero-crossing grid that a single
+      // gradient-noise octave would otherwise show at 1:1 magnification.
+      const wf = 96;
+      const wx = 0.7 * gradNoise(u * wf, v * wf, wf, wf, sd + 7);
+      const wy = 0.7 * gradNoise(u * wf, v * wf, wf, wf, sd + 11);
+      for (let o = 0; o < freqs.length; o++) {
+        const fr = freqs[o];
+        const n = gradNoise(u * fr + wx * (o + 1), v * fr + wy * (o + 1), fr, fr, sd + o * 101);
+        m += n * (o === 0 ? 1 : 0.7);
+        mh += n * (384 / fr);
+      }
+      const i = y * size + x;
+      const a = 1 + micro.albedo * k * m;
+      f.albedo[i * 3] *= a;
+      f.albedo[i * 3 + 1] *= a;
+      f.albedo[i * 3 + 2] *= a;
+      const h = f.height[i] + micro.height * k * mh;
+      f.height[i] = h < 0 ? 0 : h > 1 ? 1 : h;
+      const r = f.rough[i] + micro.rough * k * m;
+      f.rough[i] = r < 0.02 ? 0.02 : r > 1 ? 1 : r;
+    }
+  }
 }
 
 /** Concatenate row bands (in order) into one complete field set. */

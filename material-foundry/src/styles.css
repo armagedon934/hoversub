@@ -1099,6 +1099,19 @@ input[type='range']::-moz-range-thumb {
   flex-shrink: 0;
 }
 
+.model-export {
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.model-export h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .dialog-foot {
   display: flex;
   align-items: center;

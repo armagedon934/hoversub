@@ -32,6 +32,7 @@ export const stoneWallFamily: FamilyDefinition = {
     ...crackParams(0.2, 0.35),
     range('dirt', 'Dirt in recesses', 0, 1, 0.35, 'wear'),
   ],
+  micro: { albedo: 0.07, height: 0.004, rough: 0.05 },
   emits: () => false,
   variationKeys: [
     { key: 'irregularity', amount: 0.2 },

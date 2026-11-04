@@ -25,13 +25,14 @@ export interface Prefs {
   displacement: boolean;
   displacementScale: number; // multiplier on the material's own relief depth
   tileSize: number; // metres covered by one texture tile in the preview
-  workingRes: 256 | 512 | 1024;
+  workingRes: 256 | 512 | 1024 | 2048;
   normalConvention: 'opengl' | 'directx';
   viewMode: ViewMode;
   inspectMap: InspectMap;
   inspectTiled: boolean;
-  exportRes: 256 | 512 | 1024 | 2048 | 4096;
+  exportRes: 256 | 512 | 1024 | 2048 | 4096 | 8192;
   heightBitDepth: 8 | 16;
+  normalBitDepth: 8 | 16;
   includeOrm: boolean;
   showIntro: boolean;
   seedLocked: boolean;
@@ -55,6 +56,7 @@ export const DEFAULT_PREFS: Prefs = {
   inspectTiled: false,
   exportRes: 1024,
   heightBitDepth: 16,
+  normalBitDepth: 8,
   includeOrm: true,
   showIntro: true,
   seedLocked: false,
@@ -111,12 +113,13 @@ export function saveCurrent(settings: MaterialSettings): void {
 const ENUMS: Partial<Record<keyof Prefs, readonly unknown[]>> = {
   shape: ['sphere', 'wall', 'floor', 'block', 'scene'],
   lighting: ['studio', 'sun', 'overcast', 'dusk'],
-  workingRes: [256, 512, 1024],
+  workingRes: [256, 512, 1024, 2048],
   normalConvention: ['opengl', 'directx'],
   viewMode: ['3d', 'maps'],
   inspectMap: ['basecolor', 'normal', 'roughness', 'metallic', 'height', 'ao', 'emissive', 'orm', 'lit'],
-  exportRes: [256, 512, 1024, 2048, 4096],
+  exportRes: [256, 512, 1024, 2048, 4096, 8192],
   heightBitDepth: [8, 16],
+  normalBitDepth: [8, 16],
 };
 
 const RANGES: Partial<Record<keyof Prefs, [number, number]>> = {

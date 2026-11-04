@@ -5,8 +5,9 @@
 
 import { finishMaterial, generateFieldBand, generateMaterial } from '../engine/generate';
 import { renderSwatch } from '../engine/swatch';
+import { generateStrip } from '../engine/strip';
 import { buildZip, encodeMap } from '../export/exporter';
-import { fieldsTransferables, mapsTransferables, type TaskResult, type WorkerRequestMessage, type WorkerResponseMessage } from './protocol';
+import { fieldsTransferables, mapsTransferables, stripTransferables, type TaskResult, type WorkerRequestMessage, type WorkerResponseMessage } from './protocol';
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -45,6 +46,12 @@ self.onmessage = (e: MessageEvent<WorkerRequestMessage>) => {
         const swatch = renderSwatch(material.maps, { dir: [-0.45, 0.55, 0.7], intensity: 1, emissionStrength: material.emissionStrength });
         result = { kind: 'thumb', material, swatch };
         transfer = [...mapsTransferables(material.maps), swatch.buffer as ArrayBuffer];
+        break;
+      }
+      case 'strip': {
+        const strip = generateStrip(request.settings, request.size, request.y0, request.y1, request.normal16);
+        result = { kind: 'strip', strip };
+        transfer = stripTransferables(strip);
         break;
       }
       case 'encode': {

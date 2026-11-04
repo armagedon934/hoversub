@@ -45,6 +45,7 @@ export const tilesFamily: FamilyDefinition = {
     wearParam('Damage (chips & cracks)', 0.1),
     range('groutDirt', 'Grout dirt', 0, 1, 0.3, 'wear'),
   ],
+  micro: { albedo: 0.015, height: 0.0008, rough: 0.02 },
   emits: () => false,
   variationKeys: [
     { key: 'colorVariation', amount: 0.15 },

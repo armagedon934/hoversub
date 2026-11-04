@@ -6,8 +6,12 @@ import { CancelledError } from '../engine/fields';
 import type { GeneratedMaterial } from '../engine/generate';
 import { serializeSettings } from '../engine/schema';
 import type { MaterialSettings } from '../engine/types';
-import { fileBase, mapFileName, type ExportOptions, type MapId } from '../export/exporter';
-import { buildZipInWorkers, encodeMapInWorker, generateParallel, JobToken, Priority } from '../worker/client';
+import { applicableMaps, buildReadme, fileBase, mapFileName, type ExportOptions, type MapId } from '../export/exporter';
+import { entryFromBytes, zipParts, type ZipEntry } from '../export/zipwriter';
+import { buildGlb, type GlbImage } from '../export/glb';
+import { buildModelMeshes, type HeightGrid, type ModelOptions } from '../preview/modelExport';
+import type { PreviewShape } from './persistence';
+import { buildZipInWorkers, encodeMapInWorker, generateParallel, JobToken, Priority, STREAM_THRESHOLD, streamExportMaps } from '../worker/client';
 import { settingsKey } from './thumbs';
 import { useStore } from './store';
 
@@ -58,7 +62,7 @@ async function materialAt(settings: MaterialSettings, size: number, token: JobTo
 
 function exportOptions(): ExportOptions {
   const p = useStore.getState().prefs;
-  return { normalConvention: p.normalConvention, heightBitDepth: p.heightBitDepth };
+  return { normalConvention: p.normalConvention, heightBitDepth: p.heightBitDepth, normalBitDepth: p.normalBitDepth };
 }
 
 async function run(label: string, body: (token: JobToken, progress: (stage: string, f: number) => void) => Promise<string>): Promise<void> {
@@ -93,6 +97,7 @@ export function exportZip(): Promise<void> {
   const { settings, prefs } = useStore.getState();
   const size = prefs.exportRes;
   const opts = exportOptions();
+  if (size >= STREAM_THRESHOLD) return exportZipStreamed(settings, size, opts, prefs.includeOrm);
   return run(`ZIP · ${size}px`, async (token, progress) => {
     const m = await materialAt(settings, size, token, (s, f) => progress(`${s} (${size}px)`, f * 0.7));
     const z = await buildZipInWorkers(m, opts, prefs.includeOrm, token, (s, f) => progress(s, 0.7 + f * 0.3));
@@ -105,6 +110,16 @@ export function exportSingleMap(map: MapId): Promise<void> {
   const { settings, prefs } = useStore.getState();
   const size = prefs.exportRes;
   const opts = exportOptions();
+  if (size >= STREAM_THRESHOLD) {
+    return run(`${map} · ${size}px`, async (token, progress) => {
+      const r = await streamExportMaps(settings, size, [map], opts, token, progress);
+      const f = r.files.find((x) => x.map === map);
+      if (!f) throw new Error('This material has no emissive map.');
+      const name = mapFileName(r.settings, map, size, opts);
+      downloadBytes(new Blob(f.png.parts as BlobPart[], { type: 'image/png' }), name, 'image/png');
+      return `Downloaded ${name} (${(f.png.length / 1048576).toFixed(1)} MB).`;
+    });
+  }
   return run(`${map} · ${size}px`, async (token, progress) => {
     const m = await materialAt(settings, size, token, (s, f) => progress(`${s} (${size}px)`, f * 0.85));
     if (map === 'emissive' && !m.hasEmissive) throw new Error('This material has no emissive map.');
@@ -113,6 +128,38 @@ export function exportSingleMap(map: MapId): Promise<void> {
     const name = mapFileName(m.settings, map, size, opts);
     downloadBytes(png, name, 'image/png');
     return `Downloaded ${name}.`;
+  });
+}
+
+/** 4K/8K ZIP: strips are generated on the pool and streamed into PNG encoders; the archive is a Blob of parts. */
+function exportZipStreamed(settings: MaterialSettings, size: number, opts: ExportOptions, includeOrm: boolean): Promise<void> {
+  return run(`ZIP · ${size}px`, async (token, progress) => {
+    const maps = applicableMaps(true, includeOrm);
+    const r = await streamExportMaps(settings, size, maps, opts, token, progress);
+    const entries: ZipEntry[] = r.files.map((f) => ({ name: mapFileName(r.settings, f.map, size, opts), parts: f.png.parts, length: f.png.length, crc: f.png.crc }));
+    const enc = new TextEncoder();
+    entries.push(entryFromBytes('settings.json', enc.encode(serializeSettings(r.settings, { resolution: size, normalConvention: opts.normalConvention, heightBitDepth: opts.heightBitDepth }))));
+    entries.push(
+      entryFromBytes(
+        'README.txt',
+        enc.encode(
+          buildReadme({
+            settings: r.settings,
+            size,
+            files: r.files.map((f) => ({ map: f.map, name: mapFileName(r.settings, f.map, size, opts) })),
+            opts,
+            hasEmissive: r.hasEmissive,
+            emissionStrength: r.emissionStrength,
+            reliefDepth: r.reliefDepth,
+            generatedAt: new Date().toISOString(),
+          }),
+        ),
+      ),
+    );
+    const z = zipParts(entries);
+    const name = `${fileBase(r.settings)}_${size}.zip`;
+    downloadBytes(new Blob(z.parts as BlobPart[], { type: 'application/zip' }), name, 'application/zip');
+    return `Downloaded ${name} (${(z.length / 1048576).toFixed(1)} MB, ${entries.length} files).`;
   });
 }
 
@@ -144,4 +191,65 @@ export async function exportPreviewPng(): Promise<void> {
   } catch (e) {
     useStore.getState().toast('error', e instanceof Error ? e.message : String(e));
   }
+}
+
+/**
+ * Export a preview object as a glTF binary (.glb) with the material's textures embedded at the
+ * export resolution (4K/8K textures are streamed). Optionally bakes the height map into the mesh.
+ */
+export function exportModel(shape: PreviewShape, bakeDisplacement: boolean): Promise<void> {
+  const { settings, prefs } = useStore.getState();
+  const size = prefs.exportRes;
+  const tile = prefs.tileSize;
+  const glbOpts: ExportOptions = { normalConvention: 'opengl', heightBitDepth: 16, normalBitDepth: 8 };
+  return run(`GLB · ${shape} · ${size}px`, async (token, progress) => {
+    const want: MapId[] = ['basecolor', 'normal', 'orm', 'emissive'];
+    const images: Partial<Record<MapId, GlbImage>> = {};
+    let emissionStrength = 0;
+    let reliefDepth = 0;
+    let resolved = settings;
+    let heightGrid: HeightGrid | null = null;
+    if (size >= STREAM_THRESHOLD) {
+      const r = await streamExportMaps(settings, size, want, glbOpts, token, (s, f) => progress(s, f * 0.85));
+      for (const f of r.files) images[f.map] = { parts: f.png.parts, length: f.png.length };
+      emissionStrength = r.hasEmissive ? r.emissionStrength : 0;
+      reliefDepth = r.reliefDepth;
+      resolved = r.settings;
+    } else {
+      const m = await materialAt(settings, size, token, (s, f) => progress(`${s} (${size}px)`, f * 0.6));
+      for (const map of want) {
+        if (map === 'emissive' && !m.hasEmissive) continue;
+        progress(`Encoding ${map} texture`, 0.6 + 0.06 * Object.keys(images).length);
+        const png = await encodeMapInWorker(m, map, glbOpts, token, Priority.Background);
+        images[map] = { parts: [png], length: png.length };
+      }
+      emissionStrength = m.hasEmissive ? m.emissionStrength : 0;
+      reliefDepth = m.reliefDepth;
+      resolved = m.settings;
+      heightGrid = { size: m.size, data: m.maps.height16 };
+    }
+    let displacement: ModelOptions['displacement'];
+    if (bakeDisplacement) {
+      if (!heightGrid) {
+        progress('Generating height for displacement (2048px)', 0.86);
+        const hm = await generateParallel(settings, 2048, { priority: Priority.Background, token });
+        heightGrid = { size: hm.size, data: hm.maps.height16 };
+      }
+      displacement = { height: heightGrid, metres: reliefDepth * tile * prefs.displacementScale };
+    }
+    progress('Building mesh', 0.92);
+    const meshes = buildModelMeshes({ shape, tileSize: tile, displacement });
+    const glb = buildGlb(meshes, {
+      name: resolved.name,
+      baseColor: images.basecolor!,
+      normal: images.normal!,
+      orm: images.orm!,
+      emissive: images.emissive ?? null,
+      emissiveStrength: emissionStrength,
+    });
+    const name = `${fileBase(resolved)}_${shape}${bakeDisplacement ? '_displaced' : ''}_${size}.glb`;
+    downloadBytes(new Blob(glb.parts as BlobPart[], { type: 'model/gltf-binary' }), name, 'model/gltf-binary');
+    const tris = meshes.reduce((a, m) => a + m.indices.length / 3, 0);
+    return `Downloaded ${name} (${(glb.length / 1048576).toFixed(1)} MB, ${tris.toLocaleString('en-US')} triangles).`;
+  });
 }

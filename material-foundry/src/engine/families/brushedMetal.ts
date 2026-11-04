@@ -23,6 +23,7 @@ export const brushedMetalFamily: FamilyDefinition = {
     roughnessParam(0.4),
     wearParam('Scratches', 0.3),
   ],
+  micro: { albedo: 0.012, height: 0.0006, rough: 0.035 },
   emits: () => false,
   variationKeys: [
     { key: 'brushStrength', amount: 0.15 },

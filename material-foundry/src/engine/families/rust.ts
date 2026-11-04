@@ -1,6 +1,6 @@
 import { hexToLinear, type RGB } from '../color';
 import { rehash, subSeed, unit } from '../hash';
-import { billow, clamp01, fbm, fbmAniso, lerp, makeVoronoiResult, smoothstep, voronoi } from '../noise';
+import { billow, clamp01, fbm, fbmAniso, lerp, makeNeighborPoints, makeVoronoiResult, neighborPoints, smoothstep, voronoi } from '../noise';
 import { color, detailParam, range, reliefParam, roughnessParam, styleParam } from '../params';
 import { num, str, type FamilyDefinition } from '../types';
 import { roughBias, rowProgress, styledOctaves, tone, writePixel } from './common';
@@ -25,6 +25,7 @@ export const rustFamily: FamilyDefinition = {
     detailParam(0.55),
     roughnessParam(0.5),
   ],
+  micro: { albedo: 0.09, height: 0.005, rough: 0.05 },
   emits: () => false,
   variationKeys: [
     { key: 'coverage', amount: 0.12 },
@@ -55,7 +56,7 @@ export const rustFamily: FamilyDefinition = {
     const sF = subSeed(seed, 'flake');
     const sS = subSeed(seed, 'streak');
     const sMs = subSeed(seed, 'mill');
-    const vor = makeVoronoiResult();
+    const nb = makeNeighborPoints();
     const vorF = makeVoronoiResult();
     const oC = styledOctaves(ctx, 2 * s, 7);
     const oF = styledOctaves(ctx, 24, 4);
@@ -80,11 +81,12 @@ export const rustFamily: FamilyDefinition = {
         // Pitting: concentrated in and around rust patches.
         let pit = 0;
         if (pitting > 0 && N >= 128) {
-          voronoi(u, v, 48, 48, sP, 1, vor, false);
+          neighborPoints(u, v, 48, 48, sP, 1, nb);
           const near = smoothstep(threshold - 0.2, threshold + 0.1, cv);
-          if (unit(vor.id) < pitting * 0.45 * near) {
-            const rr = (0.06 + 0.3 * unit(rehash(vor.id, 2)) ** 2) / 48;
-            pit = 1 - smoothstep(rr * 0.3, rr, vor.f1);
+          for (let q = 0; q < 9; q++) {
+            if (unit(nb.ids[q]) >= pitting * 0.45 * near) continue;
+            const rr = (0.06 + 0.3 * unit(rehash(nb.ids[q], 2)) ** 2) / 48;
+            pit = Math.max(pit, 1 - smoothstep(rr * 0.3, rr, Math.hypot(nb.dx[q], nb.dy[q])));
           }
         }
         // Flaky, lumpy oxide build-up.

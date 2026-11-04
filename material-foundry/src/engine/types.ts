@@ -85,6 +85,11 @@ export interface FamilyDefinition {
    * (fraction of the parameter range).
    */
   variationKeys: { key: string; amount: number }[];
+  /**
+   * Micro-detail amplitudes for high-resolution exports (2K and above): grain in base color,
+   * height (normal map) and roughness, scaled by the material's detail intensity.
+   */
+  micro?: { albedo: number; height: number; rough: number };
 }
 
 export interface PresetDefinition {

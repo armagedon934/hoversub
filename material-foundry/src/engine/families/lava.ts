@@ -25,6 +25,7 @@ export const lavaFamily: FamilyDefinition = {
     detailParam(0.55),
     roughnessParam(0.5),
   ],
+  micro: { albedo: 0.08, height: 0.005, rough: 0.04 },
   emits: (p) => (p.emissionIntensity as number) > 0,
   variationKeys: [
     { key: 'heat', amount: 0.12 },

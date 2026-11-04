@@ -1,6 +1,6 @@
 import { hexToLinear, type RGB } from '../color';
 import { subSeed, unit, rehash } from '../hash';
-import { clamp01, fbm, fbmAniso, lerp, makeVoronoiResult, smoothstep, voronoi } from '../noise';
+import { clamp01, fbm, fbmAniso, lerp, makeNeighborPoints, neighborPoints, smoothstep } from '../noise';
 import { brickCell, makeCell, sdRoundRect, type BrickBond } from '../patterns';
 import { color, detailParam, range, reliefParam, roughnessParam, select, styleParam, wearParam } from '../params';
 import { num, str, type FamilyDefinition } from '../types';
@@ -41,6 +41,7 @@ export const brickFamily: FamilyDefinition = {
     wearParam('Edge wear & chips', 0.35),
     range('grime', 'Grime & streaks', 0, 1, 0.25, 'wear'),
   ],
+  micro: { albedo: 0.07, height: 0.004, rough: 0.05 },
   emits: () => false,
   variationKeys: [
     { key: 'colorVariation', amount: 0.2 },
@@ -83,7 +84,7 @@ export const brickFamily: FamilyDefinition = {
     const sGrime = subSeed(seed, 'grime');
     const sPit = subSeed(seed, 'pits');
     const cell = makeCell();
-    const vor = makeVoronoiResult();
+    const nb = makeNeighborPoints();
     const oEdge = styledOctaves(ctx, 24, 3);
     const oFace = styledOctaves(ctx, 16, 5);
     const oCol = styledOctaves(ctx, 12, 4);
@@ -117,9 +118,13 @@ export const brickFamily: FamilyDefinition = {
         const faceN = fbm(u, v, 16, oFace, sFace);
         let pit = 0;
         if (detail > 0.01 && nat > 0.2 && N >= 256) {
-          voronoi(u, v, pitCells, pitCells, sPit, 1, vor, false);
-          const pr = 0.18 * (unit(vor.id) < 0.35 ? 1 : 0);
-          pit = (1 - smoothstep(0, pr / pitCells, vor.f1)) * detail * nat;
+          neighborPoints(u, v, pitCells, pitCells, sPit, 1, nb);
+          for (let q = 0; q < 9; q++) {
+            if (unit(nb.ids[q]) >= 0.35) continue;
+            const d = Math.hypot(nb.dx[q], nb.dy[q]);
+            pit = Math.max(pit, 1 - smoothstep(0, 0.18 / pitCells, d));
+          }
+          pit *= detail * nat;
         }
         const faceTop = 0.86 + tilt + faceN * 0.05 * (0.4 + detail) - pit * 0.08;
         const mortarN = fbm(u, v, 48, styledOctaves(ctx, 48, 3), sFace + 9);

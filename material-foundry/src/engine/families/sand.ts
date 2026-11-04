@@ -1,6 +1,6 @@
 import { hexToLinear, type RGB } from '../color';
 import { rehash, subSeed, unit } from '../hash';
-import { billow, clamp01, fbm, gradNoise, lerp, makeVoronoiResult, smoothstep, voronoi } from '../noise';
+import { billow, clamp01, fbm, gradNoise, lerp, makeNeighborPoints, makeVoronoiResult, neighborPoints, smoothstep, voronoi } from '../noise';
 import { color, detailParam, range, reliefParam, roughnessParam, select, styleParam } from '../params';
 import { num, str, type FamilyDefinition } from '../types';
 import { mixRGB, roughBias, rowProgress, styledOctaves, tone, writePixel } from './common';
@@ -28,6 +28,7 @@ export const sandFamily: FamilyDefinition = {
     range('moisture', 'Damp patches', 0, 1, 0, 'wear'),
     range('dryCracks', 'Dry mud cracks', 0, 1, 0, 'wear'),
   ],
+  micro: { albedo: 0.09, height: 0.005, rough: 0.04 },
   emits: () => false,
   variationKeys: [
     { key: 'earthMix', amount: 0.15 },
@@ -60,7 +61,7 @@ export const sandFamily: FamilyDefinition = {
     const sP = subSeed(seed, 'pebble');
     const sM = subSeed(seed, 'moist');
     const sC = subSeed(seed, 'cracks');
-    const vor = makeVoronoiResult();
+    const nb = makeNeighborPoints();
     const vorC = makeVoronoiResult();
     const oB = styledOctaves(ctx, 2 * s, 6);
     const oG = styledOctaves(ctx, 64, 3);
@@ -113,20 +114,23 @@ export const sandFamily: FamilyDefinition = {
         let pebble = 0;
         let pebbleId = 0;
         if (stones > 0) {
-          voronoi(u, v, stoneCells, stoneCells, sP, 0.85, vor, false);
-          if (unit(vor.id) < stones * 0.95) {
-            const rr = (0.3 + 0.22 * unit(rehash(vor.id, 2))) / stoneCells;
-            const ang = unit(rehash(vor.id, 5)) * Math.PI;
-            const elong = 0.65 + 0.35 * unit(rehash(vor.id, 6));
+          const en = 1 + 0.18 * gradNoise(u * 48, v * 48, 48, 48, sP + 5) * nat;
+          neighborPoints(u, v, stoneCells, stoneCells, sP, 0.85, nb);
+          for (let q = 0; q < 9; q++) {
+            const id = nb.ids[q];
+            if (unit(id) >= stones * 0.95) continue;
+            const rr = (0.3 + 0.22 * unit(rehash(id, 2))) / stoneCells;
+            const ang = unit(rehash(id, 5)) * Math.PI;
+            const elong = 0.65 + 0.35 * unit(rehash(id, 6));
             const ca = Math.cos(ang);
             const sa = Math.sin(ang);
-            const px = -vor.dx * ca - -vor.dy * sa;
-            const py = (-vor.dx * sa + -vor.dy * ca) / elong;
-            const en = 1 + 0.18 * gradNoise(u * 48, v * 48, 48, 48, sP + 5) * nat;
+            const px = -nb.dx[q] * ca - -nb.dy[q] * sa;
+            const py = (-nb.dx[q] * sa + -nb.dy[q] * ca) / elong;
             const d = (Math.sqrt(px * px + py * py) * en) / rr;
-            if (d < 1) {
+            // Where pebbles overlap, the taller one wins (pebbles sit on top of each other).
+            if (d < 1 && Math.sqrt(1 - d * d) > pebble) {
               pebble = Math.sqrt(1 - d * d);
-              pebbleId = vor.id;
+              pebbleId = id;
             }
           }
         }

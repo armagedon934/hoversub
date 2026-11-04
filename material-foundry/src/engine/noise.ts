@@ -346,3 +346,47 @@ export function segDist(px: number, py: number, ax: number, ay: number, bx: numb
   const qy = apy - aby * t;
   return Math.sqrt(qx * qx + qy * qy);
 }
+
+export interface NeighborPoints {
+  /** Number of valid entries (always 9). */
+  count: number;
+  ids: Uint32Array;
+  /** Offset from the sample to each feature point, in UV units. */
+  dx: Float64Array;
+  dy: Float64Array;
+}
+
+export function makeNeighborPoints(): NeighborPoints {
+  return { count: 0, ids: new Uint32Array(9), dx: new Float64Array(9), dy: new Float64Array(9) };
+}
+
+/**
+ * The 3x3 neighbourhood of periodic Voronoi feature points around (u, v) (same points and ids as
+ * `voronoi`). Scattered round features (pits, pores, pebbles, specks) must test every neighbour,
+ * not only the nearest one; otherwise a feature is clipped by the Voronoi cell border, which shows
+ * up as a straight cut at high resolutions. Any feature with radius below one cell is complete.
+ */
+export function neighborPoints(u: number, v: number, nx: number, ny: number, seed: number, jitter: number, out: NeighborPoints): NeighborPoints {
+  const x = u * nx;
+  const y = v * ny;
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  let k = 0;
+  for (let j = -1; j <= 1; j++) {
+    const cj = yi + j;
+    let wj = cj % ny;
+    if (wj < 0) wj += ny;
+    for (let i = -1; i <= 1; i++) {
+      const ci = xi + i;
+      let wi = ci % nx;
+      if (wi < 0) wi += nx;
+      const h = hash2(wi, wj, seed);
+      out.ids[k] = h;
+      out.dx[k] = (ci + 0.5 + jitter * (unit(h) - 0.5) - x) / nx;
+      out.dy[k] = (cj + 0.5 + jitter * (unit(rehash(h, 1)) - 0.5) - y) / ny;
+      k++;
+    }
+  }
+  out.count = 9;
+  return out;
+}

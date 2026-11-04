@@ -1,12 +1,21 @@
-import { useEffect } from 'react';
-import { Download, FileImage, FileJson, Package, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Box, Download, FileImage, FileJson, Package, X } from 'lucide-react';
 import { applicableMaps, mapFileName, MAP_INFO, type MapId } from '../export/exporter';
 import { getFamily } from '../engine/registry';
-import { cancelExport, exportPreviewPng, exportSettingsJson, exportSingleMap, exportZip, useExport } from '../state/exportController';
+import { cancelExport, exportModel, exportPreviewPng, exportSettingsJson, exportSingleMap, exportZip, useExport } from '../state/exportController';
 import { useStore } from '../state/store';
-import type { Prefs } from '../state/persistence';
+import type { Prefs, PreviewShape } from '../state/persistence';
 
-const RESOLUTIONS: Prefs['exportRes'][] = [256, 512, 1024, 2048, 4096];
+const MODEL_SHAPES: { id: PreviewShape; label: string }[] = [
+  { id: 'sphere', label: 'Sphere' },
+  { id: 'wall', label: 'Wall' },
+  { id: 'floor', label: 'Floor' },
+  { id: 'block', label: 'Block' },
+  { id: 'scene', label: 'Scene' },
+];
+
+const RESOLUTIONS: Prefs['exportRes'][] = [256, 512, 1024, 2048, 4096, 8192];
+const RES_LABEL: Record<number, string> = { 256: '256', 512: '512', 1024: '1K', 2048: '2K', 4096: '4K', 8192: '8K' };
 
 export function ExportDialog() {
   const open = useStore((s) => s.exportOpen);
@@ -16,6 +25,11 @@ export function ExportDialog() {
   const setPrefs = useStore((s) => s.setPrefs);
   const viewMode = prefs.viewMode;
   const ex = useExport();
+  const [modelShape, setModelShape] = useState<PreviewShape>(prefs.shape);
+  const [bake, setBake] = useState(false);
+  useEffect(() => {
+    if (open) setModelShape(useStore.getState().prefs.shape);
+  }, [open]);
   const family = getFamily(settings.family);
   const hasEm = family.emits(settings.params);
 
@@ -27,7 +41,7 @@ export function ExportDialog() {
   }, [open, ex.running, setOpen]);
 
   if (!open) return null;
-  const opts = { normalConvention: prefs.normalConvention, heightBitDepth: prefs.heightBitDepth };
+  const opts = { normalConvention: prefs.normalConvention, heightBitDepth: prefs.heightBitDepth, normalBitDepth: prefs.normalBitDepth };
   const maps: MapId[] = applicableMaps(hasEm, prefs.includeOrm);
   const res = prefs.exportRes;
 
@@ -48,13 +62,15 @@ export function ExportDialog() {
               <div className="seg" role="radiogroup" aria-label="Export resolution" data-testid="export-res">
                 {RESOLUTIONS.map((r) => (
                   <button key={r} className={res === r ? 'on' : ''} onClick={() => setPrefs({ exportRes: r })} role="radio" aria-checked={res === r} disabled={ex.running}>
-                    {r}
+                    {RES_LABEL[r]}
                   </button>
                 ))}
               </div>
               <span className="hint">
                 Every map is regenerated procedurally at {res}×{res}; nothing is upscaled.
-                {res === 4096 ? ' 4096 uses about 1.5 GB of temporary memory and may take a minute.' : ''}
+                {res >= 4096
+                  ? ` ${res === 8192 ? '8K' : '4K'} is generated in strips and streamed into the PNG files, so memory stays low; expect ${res === 8192 ? 'several minutes and a ZIP of a few hundred MB' : 'about a minute'}.`
+                  : ''}
               </span>
             </div>
             <div className="field">
@@ -79,6 +95,18 @@ export function ExportDialog() {
                   8-bit PNG
                 </button>
               </div>
+            </div>
+            <div className="field">
+              <label>Normal map precision</label>
+              <div className="seg" role="radiogroup" aria-label="Normal bit depth" data-testid="export-normal-depth">
+                <button className={prefs.normalBitDepth === 8 ? 'on' : ''} onClick={() => setPrefs({ normalBitDepth: 8 })} disabled={ex.running}>
+                  8-bit
+                </button>
+                <button className={prefs.normalBitDepth === 16 ? 'on' : ''} onClick={() => setPrefs({ normalBitDepth: 16 })} disabled={ex.running}>
+                  16-bit
+                </button>
+              </div>
+              <span className="hint">16-bit removes banding on gentle slopes at 4K/8K; files are twice as large.</span>
             </div>
             <label className="toggle" onClick={() => !ex.running && setPrefs({ includeOrm: !prefs.includeOrm })} data-testid="export-orm">
               <span>Include packed ORM texture (R = AO, G = Roughness, B = Metallic)</span>
@@ -110,6 +138,29 @@ export function ExportDialog() {
               </button>
             </div>
           </div>
+        </div>
+        <div className="model-export" data-testid="model-export">
+          <h3>3D model (.glb)</h3>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
+            <div className="seg" role="radiogroup" aria-label="Model object" data-testid="model-shape">
+              {MODEL_SHAPES.map((s) => (
+                <button key={s.id} className={modelShape === s.id ? 'on' : ''} onClick={() => setModelShape(s.id)} disabled={ex.running} role="radio" aria-checked={modelShape === s.id}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <label className="toggle" style={{ gap: 8 }} onClick={() => !ex.running && setBake(!bake)} data-testid="model-bake">
+              <span className={`switch ${bake ? 'on' : ''}`} />
+              <span>Bake displacement into geometry (high-poly)</span>
+            </label>
+            <button className="btn" onClick={() => exportModel(modelShape, bake)} disabled={ex.running} data-testid="export-glb">
+              <Box size={14} /> Download GLB ({RES_LABEL[res]} textures)
+            </button>
+          </div>
+          <p className="hint" style={{ margin: '6px 0 0' }}>
+            glTF 2.0 binary with the same mesh, UVs and tile size ({prefs.tileSize.toFixed(2)} m) as the preview; base color, OpenGL normal, ORM (occlusion + roughness/metallic) and emissive textures embedded. Opens in
+            Blender, Unity/Unreal importers, Godot, three.js and Windows 3D Viewer.{bake ? ' Displacement uses the preview displacement scale and a densely subdivided mesh.' : ''}
+          </p>
         </div>
         <div className="dialog-foot">
           {ex.running ? (

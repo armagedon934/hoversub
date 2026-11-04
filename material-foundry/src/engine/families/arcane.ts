@@ -126,6 +126,7 @@ export const arcaneFamily: FamilyDefinition = {
     roughnessParam(0.5),
     wearParam('Wear & chips', 0.3),
   ],
+  micro: { albedo: 0.06, height: 0.004, rough: 0.05 },
   emits: (p) => p.inlay === 'glow' && (p.emissionIntensity as number) > 0,
   variationKeys: [
     { key: 'wear', amount: 0.15 },

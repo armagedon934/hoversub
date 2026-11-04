@@ -1,6 +1,6 @@
 import { hexToLinear, type RGB } from '../color';
 import { hash1, imod, rehash, subSeed, unit } from '../hash';
-import { clamp01, fbm, lerp, makeVoronoiResult, ridged, smoothstep, voronoi } from '../noise';
+import { clamp01, fbm, lerp, makeNeighborPoints, neighborPoints, ridged, smoothstep } from '../noise';
 import { color, detailParam, range, reliefParam, roughnessParam, select, styleParam } from '../params';
 import { num, str, type FamilyDefinition } from '../types';
 import { mixRGB, roughBias, rowProgress, styledOctaves, tone, writePixel } from './common';
@@ -25,6 +25,7 @@ export const rockFamily: FamilyDefinition = {
     detailParam(0.6),
     roughnessParam(0.5),
   ],
+  micro: { albedo: 0.07, height: 0.005, rough: 0.05 },
   emits: () => false,
   variationKeys: [
     { key: 'strata', amount: 0.15 },
@@ -55,7 +56,7 @@ export const rockFamily: FamilyDefinition = {
     const sS = subSeed(seed, 'speck');
     const sG = subSeed(seed, 'grain');
     const sL = subSeed(seed, 'layer');
-    const vor = makeVoronoiResult();
+    const nb = makeNeighborPoints();
     const f0 = 2 * s;
     const oBase = styledOctaves(ctx, f0, 7);
     const oGrain = styledOctaves(ctx, 32, 4);
@@ -99,12 +100,15 @@ export const rockFamily: FamilyDefinition = {
         let speck = 0;
         let dark = false;
         if (specks > 0 && N >= 128) {
-          voronoi(u, v, 96, 96, sS, 1, vor, false);
-          const on = unit(vor.id) < specks * 0.7;
-          if (on) {
-            const rr = (0.22 + 0.3 * unit(rehash(vor.id, 2))) / 96;
-            speck = 1 - smoothstep(rr * 0.55, rr, vor.f1);
-            dark = unit(rehash(vor.id, 3)) < 0.45;
+          neighborPoints(u, v, 96, 96, sS, 1, nb);
+          for (let q = 0; q < 9; q++) {
+            if (unit(nb.ids[q]) >= specks * 0.7) continue;
+            const rr = (0.22 + 0.3 * unit(rehash(nb.ids[q], 2))) / 96;
+            const sv = 1 - smoothstep(rr * 0.55, rr, Math.hypot(nb.dx[q], nb.dy[q]));
+            if (sv > speck) {
+              speck = sv;
+              dark = unit(rehash(nb.ids[q], 3)) < 0.45;
+            }
           }
           speck *= nat * 0.7 + 0.3;
         }

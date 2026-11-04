@@ -86,10 +86,14 @@ export function makeContext(
     progress,
     octaves(freq: number, wanted: number): number {
       // Finest feature frequency f * 2^(k-1) should stay below size / 3 cycles per tile.
+      // Above 1024 px one extra octave is allowed per doubling (max +3 at 8192), so 2K-8K exports
+      // gain genuine micro-detail instead of only resolving the same features more smoothly.
       const limit = size / 3;
+      const bonus = size > 1024 ? Math.min(3, Math.floor(Math.log2(size / 1024))) : 0;
+      const target = wanted + (wanted >= 2 ? bonus : 0);
       let k = 0;
       let f = freq;
-      while (k < wanted && f <= limit) {
+      while (k < target && f <= limit) {
         k++;
         f *= 2;
       }

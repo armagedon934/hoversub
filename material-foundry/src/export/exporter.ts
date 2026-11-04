@@ -24,6 +24,8 @@ export const MAP_INFO: Record<MapId, { label: string; colorData: boolean; descri
 export interface ExportOptions {
   normalConvention: NormalConvention;
   heightBitDepth: 8 | 16;
+  /** Normal map precision (default 8). */
+  normalBitDepth?: 8 | 16;
 }
 
 export function fileBase(settings: MaterialSettings): string {
@@ -34,7 +36,7 @@ export function mapFileName(settings: MaterialSettings, map: MapId, size: number
   const base = fileBase(settings);
   switch (map) {
     case 'normal':
-      return `${base}_normal_${opts.normalConvention}_${size}.png`;
+      return `${base}_normal_${opts.normalConvention}${opts.normalBitDepth === 16 ? '_16bit' : ''}_${size}.png`;
     case 'height':
       return `${base}_height_${opts.heightBitDepth}bit_${size}.png`;
     default:
@@ -69,6 +71,14 @@ export function normalRgb(m: PackedMaps, convention: NormalConvention): Uint8Arr
   return rgb;
 }
 
+/** 16-bit RGB normals in the requested convention (DirectX inverts green: 65535 - g). */
+export function normal16Rgb(n16: Uint16Array, convention: NormalConvention): Uint16Array {
+  if (convention === 'opengl') return n16;
+  const out = new Uint16Array(n16);
+  for (let i = 1; i < out.length; i += 3) out[i] = 65535 - out[i];
+  return out;
+}
+
 /** A copy-light subset of the maps holding only the arrays needed to encode `map`. */
 export function mapsSubset(m: PackedMaps, map: MapId): PackedMaps {
   const empty8 = new Uint8Array(0);
@@ -76,6 +86,7 @@ export function mapsSubset(m: PackedMaps, map: MapId): PackedMaps {
     size: m.size,
     baseColor: new Uint8ClampedArray(0),
     normal: new Uint8ClampedArray(0),
+    normal16: new Uint16Array(0),
     roughness: empty8,
     metallic: empty8,
     ao: empty8,
@@ -88,6 +99,7 @@ export function mapsSubset(m: PackedMaps, map: MapId): PackedMaps {
       break;
     case 'normal':
       out.normal = m.normal;
+      out.normal16 = m.normal16;
       break;
     case 'roughness':
       out.roughness = m.roughness;
@@ -124,6 +136,7 @@ export function encodeMap(m: PackedMaps, map: MapId, opts: ExportOptions, level 
       if (!m.emissive) throw new Error('This material has no emissive map.');
       return encodePng(rgbaToRgb(m.emissive), { ...base, colorType: 'rgb', bitDepth: 8, srgb: true });
     case 'normal':
+      if (opts.normalBitDepth === 16) return encodePng(normal16Rgb(m.normal16, opts.normalConvention), { ...base, colorType: 'rgb', bitDepth: 16 });
       return encodePng(normalRgb(m, opts.normalConvention), { ...base, colorType: 'rgb', bitDepth: 8 });
     case 'roughness':
       return encodePng(m.roughness, { ...base, colorType: 'gray', bitDepth: 8 });
@@ -187,7 +200,7 @@ ${fileLines}
 MAP DETAILS
 -----------
 Base Color  : 8-bit sRGB color. Contains no baked lighting, shadows or preview light direction.
-Normal      : 8-bit tangent-space normal, ${conv}
+Normal      : ${r.opts.normalBitDepth === 16 ? '16' : '8'}-bit tangent-space normal, ${conv}
               Derived from the height field with periodic central differences.
               Encoding: channel = (n * 0.5 + 0.5) * 255. Treat as non-color (linear) data.
 Roughness   : 8-bit grayscale, non-color data. Perceptual roughness (0 smooth .. 1 rough).
@@ -224,7 +237,10 @@ Godot: OpenGL normals; ORM texture can be used directly with ORMMaterial3D.
 PRECISION NOTES
 ---------------
 - All maps are lossless PNG. Color maps are 8-bit per channel.
-- Normal map is 8-bit per channel; very gentle slopes are quantized to 1/127 steps.
+- Normal map is ${r.opts.normalBitDepth === 16 ? '16-bit per channel (1/32767 steps)' : '8-bit per channel; very gentle slopes are quantized to 1/127 steps'}.
+${r.size >= 4096 ? `- ${r.size}px exports are generated in strips and streamed to disk. AO compares full-resolution height against
+  neighbourhood averages computed on a 1024 px proxy of the same periodic height field.
+` : ''}
 - Height is ${r.opts.heightBitDepth}-bit as stated above.
 - Fine-detail noise octaves are limited by the Nyquist frequency of the export resolution, so
   higher resolutions contain additional fine detail rather than upscaled pixels.

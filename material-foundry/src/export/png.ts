@@ -58,132 +58,254 @@ function paeth(a: number, b: number, c: number): number {
   return c;
 }
 
-/**
- * Encode raw samples. `samples` holds width*height*channels values: bytes for 8-bit, and
- * 0..65535 integers for 16-bit (written big-endian as PNG requires).
- */
-export function encodePng(samples: ArrayLike<number>, o: PngOptions): Uint8Array {
-  const ch = CHANNELS[o.colorType];
-  const bpp = ch * (o.bitDepth / 8); // bytes per pixel
-  const stride = o.width * bpp;
-  if (samples.length !== o.width * o.height * ch) {
-    throw new Error(`PNG encode: expected ${o.width * o.height * ch} samples, got ${samples.length}`);
+const FILTER_TYPES = 5;
+
+/** Apply PNG filter `t` to one row; returns the score (sum of absolute signed residuals). */
+function filterRow(t: number, raw: Uint8Array, prev: Uint8Array | null, bpp: number, out: Uint8Array, limit: number): number {
+  const stride = raw.length;
+  let score = 0;
+  for (let x = 0; x < stride; x++) {
+    const cur = raw[x];
+    const a = x >= bpp ? raw[x - bpp] : 0;
+    const b = prev ? prev[x] : 0;
+    const c = prev && x >= bpp ? prev[x - bpp] : 0;
+    let val: number;
+    switch (t) {
+      case 0:
+        val = cur;
+        break;
+      case 1:
+        val = cur - a;
+        break;
+      case 2:
+        val = cur - b;
+        break;
+      case 3:
+        val = cur - ((a + b) >> 1);
+        break;
+      default:
+        val = cur - paeth(a, b, c);
+    }
+    val &= 0xff;
+    out[x] = val;
+    score += val < 128 ? val : 256 - val;
+    if (score >= limit) return score;
   }
-  // Serialize to raw bytes.
-  const raw = new Uint8Array(stride * o.height);
-  if (o.bitDepth === 8) {
-    for (let i = 0; i < raw.length; i++) raw[i] = samples[i];
+  return score;
+}
+
+const IDAT_TARGET = 1 << 20;
+
+export interface PngParts {
+  /** The PNG file as consecutive byte parts (header, IDAT chunks, IEND). */
+  parts: Uint8Array[];
+  length: number;
+  /** CRC-32 of the complete file (as needed for ZIP entries). */
+  crc: number;
+}
+
+/**
+ * Streaming PNG encoder: rows are filtered and deflated as they arrive, so an 8192x8192 image never
+ * has to exist in memory uncompressed. Output is a list of parts (IDAT chunks of ~1 MB).
+ *
+ * Compression uses the platform's native CompressionStream('deflate') (zlib format). fflate's
+ * streaming Zlib class was not used here: it produced corrupt streams for some sparse inputs pushed
+ * in many pieces (found by this project's tests); its one-shot zlibSync is fine and is used by
+ * encodePng below.
+ */
+export class PngStreamEncoder {
+  private readonly o: PngOptions;
+  private readonly ch: number;
+  private readonly bpp: number;
+  private readonly stride: number;
+  private prev: Uint8Array | null = null;
+  private rowsDone = 0;
+  private readonly writer: WritableStreamDefaultWriter<BufferSource>;
+  private readonly reading: Promise<void>;
+  private pending: Uint8Array[] = [];
+  private pendingLen = 0;
+  private batch: Uint8Array[] = [];
+  private batchLen = 0;
+  private readonly out: Uint8Array[] = [];
+  private length = 0;
+  private fileCrc = 0xffffffff;
+  private readonly cand: Uint8Array[];
+  private finished = false;
+
+  constructor(o: PngOptions) {
+    this.o = o;
+    this.ch = CHANNELS[o.colorType];
+    this.bpp = this.ch * (o.bitDepth / 8);
+    this.stride = o.width * this.bpp;
+    this.cand = Array.from({ length: FILTER_TYPES }, () => new Uint8Array(this.stride));
+    this.emitHeader();
+    const cs = new CompressionStream('deflate');
+    this.writer = cs.writable.getWriter();
+    const reader = cs.readable.getReader();
+    this.reading = (async () => {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value && value.length) {
+          this.pending.push(value);
+          this.pendingLen += value.length;
+          if (this.pendingLen >= IDAT_TARGET) this.flushIdat();
+        }
+      }
+      if (this.pendingLen > 0) this.flushIdat();
+    })();
+  }
+
+  private emitHeader(): void {
+    const o = this.o;
+    const ihdr = new Uint8Array(13);
+    const dv = new DataView(ihdr.buffer);
+    dv.setUint32(0, o.width);
+    dv.setUint32(4, o.height);
+    ihdr[8] = o.bitDepth;
+    ihdr[9] = TYPE_CODE[o.colorType];
+    this.emit(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+    this.emit(chunk('IHDR', ihdr));
+    if (o.srgb) this.emit(chunk('sRGB', new Uint8Array([0])));
+    if (o.text) for (const [k, v] of Object.entries(o.text)) this.emit(chunk('tEXt', new TextEncoder().encode(`${k}\0${v}`)));
+  }
+
+  private emit(part: Uint8Array): void {
+    this.out.push(part);
+    this.length += part.length;
+    this.fileCrc = crc32(part, 0, part.length, this.fileCrc);
+  }
+
+  private flushIdat(): void {
+    const data = new Uint8Array(this.pendingLen);
+    let off = 0;
+    for (const p of this.pending) {
+      data.set(p, off);
+      off += p.length;
+    }
+    this.pending = [];
+    this.pendingLen = 0;
+    this.emit(chunk('IDAT', data));
+  }
+
+  private async writeBatch(): Promise<void> {
+    if (!this.batchLen) return;
+    const data = new Uint8Array(this.batchLen);
+    let off = 0;
+    for (const b of this.batch) {
+      data.set(b, off);
+      off += b.length;
+    }
+    this.batch = [];
+    this.batchLen = 0;
+    await this.writer.ready;
+    await this.writer.write(data);
+  }
+
+  /** Push `rows` complete rows of samples (bytes for 8-bit, 0..65535 for 16-bit). */
+  async pushRows(samples: ArrayLike<number>, rows: number): Promise<void> {
+    const perRow = this.o.width * this.ch;
+    if (samples.length < perRow * rows) throw new Error('PNG stream: not enough samples');
+    if (this.rowsDone + rows > this.o.height) throw new Error('PNG stream: too many rows');
+    for (let r = 0; r < rows; r++) {
+      const raw = serializeRow(samples, r * perRow, perRow, this.o.bitDepth, this.stride);
+      const line = new Uint8Array(this.stride + 1);
+      writeFilteredLine(raw, this.prev, this.bpp, this.cand, line);
+      this.prev = raw;
+      this.rowsDone++;
+      this.batch.push(line);
+      this.batchLen += line.length;
+      if (this.batchLen >= 1 << 18) await this.writeBatch();
+    }
+  }
+
+  async finish(): Promise<PngParts> {
+    if (this.finished) throw new Error('PNG stream already finished');
+    if (this.rowsDone !== this.o.height) throw new Error(`PNG stream: ${this.rowsDone} of ${this.o.height} rows written`);
+    this.finished = true;
+    await this.writeBatch();
+    await this.writer.close();
+    await this.reading;
+    this.emit(chunk('IEND', new Uint8Array(0)));
+    return { parts: this.out, length: this.length, crc: (this.fileCrc ^ 0xffffffff) >>> 0 };
+  }
+}
+
+function serializeRow(samples: ArrayLike<number>, base: number, perRow: number, bitDepth: number, stride: number): Uint8Array {
+  const raw = new Uint8Array(stride);
+  if (bitDepth === 8) {
+    for (let i = 0; i < perRow; i++) raw[i] = samples[base + i];
   } else {
-    for (let i = 0, j = 0; i < samples.length; i++, j += 2) {
-      const v = samples[i];
+    for (let i = 0, j = 0; i < perRow; i++, j += 2) {
+      const v = samples[base + i];
       raw[j] = (v >>> 8) & 0xff;
       raw[j + 1] = v & 0xff;
     }
   }
-  // Adaptive filtering (per-row heuristic: minimum sum of absolute signed residuals).
-  const filtered = new Uint8Array((stride + 1) * o.height);
-  const cand = [new Uint8Array(stride), new Uint8Array(stride), new Uint8Array(stride), new Uint8Array(stride), new Uint8Array(stride)];
-  for (let y = 0; y < o.height; y++) {
-    const row = y * stride;
-    const prev = y > 0 ? row - stride : -1;
-    let bestType = 0;
-    let bestScore = Infinity;
-    for (let t = 0; t < 5; t++) {
-      const outRow = cand[t];
-      let score = 0;
-      for (let x = 0; x < stride; x++) {
-        const cur = raw[row + x];
-        const a = x >= bpp ? raw[row + x - bpp] : 0;
-        const b = prev >= 0 ? raw[prev + x] : 0;
-        const c = prev >= 0 && x >= bpp ? raw[prev + x - bpp] : 0;
-        let val: number;
-        switch (t) {
-          case 0:
-            val = cur;
-            break;
-          case 1:
-            val = cur - a;
-            break;
-          case 2:
-            val = cur - b;
-            break;
-          case 3:
-            val = cur - ((a + b) >> 1);
-            break;
-          default:
-            val = cur - paeth(a, b, c);
-        }
-        val &= 0xff;
-        outRow[x] = val;
-        score += val < 128 ? val : 256 - val;
-        if (score >= bestScore) break;
-      }
-      if (score < bestScore) {
-        bestScore = score;
-        bestType = t;
-      }
-    }
-    // Recompute the winning row fully (the loop above may have stopped early).
-    const outRow = cand[bestType];
-    for (let x = 0; x < stride; x++) {
-      const cur = raw[row + x];
-      const a = x >= bpp ? raw[row + x - bpp] : 0;
-      const b = prev >= 0 ? raw[prev + x] : 0;
-      const c = prev >= 0 && x >= bpp ? raw[prev + x - bpp] : 0;
-      let val: number;
-      switch (bestType) {
-        case 0:
-          val = cur;
-          break;
-        case 1:
-          val = cur - a;
-          break;
-        case 2:
-          val = cur - b;
-          break;
-        case 3:
-          val = cur - ((a + b) >> 1);
-          break;
-        default:
-          val = cur - paeth(a, b, c);
-      }
-      outRow[x] = val & 0xff;
-    }
-    const o2 = y * (stride + 1);
-    filtered[o2] = bestType;
-    filtered.set(outRow, o2 + 1);
-  }
-  const idat = zlibSync(filtered, { level: (o.level ?? 6) as 6 });
+  return raw;
+}
 
-  const ihdr = new Uint8Array(13);
-  const dv = new DataView(ihdr.buffer);
-  dv.setUint32(0, o.width);
-  dv.setUint32(4, o.height);
-  ihdr[8] = o.bitDepth;
-  ihdr[9] = TYPE_CODE[o.colorType];
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
-
-  const parts: Uint8Array[] = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr)];
-  if (o.srgb) parts.push(chunk('sRGB', new Uint8Array([0])));
-  if (o.text) {
-    for (const [k, v] of Object.entries(o.text)) {
-      const enc = new TextEncoder().encode(`${k}\0${v}`);
-      parts.push(chunk('tEXt', enc));
+/** Choose the best filter for a row (minimum sum of absolute residuals) and write type + data into `line`. */
+function writeFilteredLine(raw: Uint8Array, prev: Uint8Array | null, bpp: number, cand: Uint8Array[], line: Uint8Array): void {
+  let best = 0;
+  let bestScore = Infinity;
+  for (let t = 0; t < FILTER_TYPES; t++) {
+    const sc = filterRow(t, raw, prev, bpp, cand[t], bestScore);
+    if (sc < bestScore) {
+      bestScore = sc;
+      best = t;
     }
   }
-  parts.push(chunk('IDAT', idat));
-  parts.push(chunk('IEND', new Uint8Array(0)));
-  let total = 0;
-  for (const p of parts) total += p.length;
-  const out = new Uint8Array(total);
+  filterRow(best, raw, prev, bpp, cand[best], Infinity);
+  line[0] = best;
+  line.set(cand[best], 1);
+}
+
+/** Concatenate parts into one buffer. */
+export function joinParts(parts: Uint8Array[], length?: number): Uint8Array {
+  const out = new Uint8Array(length ?? parts.reduce((a, p) => a + p.length, 0));
   let off = 0;
   for (const p of parts) {
     out.set(p, off);
     off += p.length;
   }
   return out;
+}
+
+/**
+ * Encode raw samples in one shot (fflate zlibSync). `samples` holds width*height*channels values:
+ * bytes for 8-bit, and 0..65535 integers for 16-bit (written big-endian as PNG requires).
+ */
+export function encodePng(samples: ArrayLike<number>, o: PngOptions): Uint8Array {
+  const ch = CHANNELS[o.colorType];
+  if (samples.length !== o.width * o.height * ch) {
+    throw new Error(`PNG encode: expected ${o.width * o.height * ch} samples, got ${samples.length}`);
+  }
+  const bpp = ch * (o.bitDepth / 8);
+  const stride = o.width * bpp;
+  const perRow = o.width * ch;
+  const filtered = new Uint8Array((stride + 1) * o.height);
+  const cand = Array.from({ length: FILTER_TYPES }, () => new Uint8Array(stride));
+  const line = new Uint8Array(stride + 1);
+  let prev: Uint8Array | null = null;
+  for (let y = 0; y < o.height; y++) {
+    const raw = serializeRow(samples, y * perRow, perRow, o.bitDepth, stride);
+    writeFilteredLine(raw, prev, bpp, cand, line);
+    filtered.set(line, y * (stride + 1));
+    prev = raw;
+  }
+  const ihdr = new Uint8Array(13);
+  const dv = new DataView(ihdr.buffer);
+  dv.setUint32(0, o.width);
+  dv.setUint32(4, o.height);
+  ihdr[8] = o.bitDepth;
+  ihdr[9] = TYPE_CODE[o.colorType];
+  const parts: Uint8Array[] = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr)];
+  if (o.srgb) parts.push(chunk('sRGB', new Uint8Array([0])));
+  if (o.text) for (const [k, v] of Object.entries(o.text)) parts.push(chunk('tEXt', new TextEncoder().encode(`${k}\0${v}`)));
+  parts.push(chunk('IDAT', zlibSync(filtered, { level: (o.level ?? 6) as 6 })));
+  parts.push(chunk('IEND', new Uint8Array(0)));
+  return joinParts(parts);
 }
 
 /** Drop alpha from an RGBA buffer. */

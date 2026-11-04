@@ -249,13 +249,13 @@ export function Controls() {
                 <div className="ctl">
                   <span className="ctl-label">Working (preview) resolution</span>
                   <div className="seg" role="radiogroup" aria-label="Working resolution">
-                    {([256, 512, 1024] as const).map((r) => (
+                    {([256, 512, 1024, 2048] as const).map((r) => (
                       <button key={r} className={workingRes === r ? 'on' : ''} onClick={() => setPrefs({ workingRes: r })} role="radio" aria-checked={workingRes === r}>
                         {r}
                       </button>
                     ))}
                   </div>
-                  <span className="hint">Used for editing and previews only. Exports regenerate natively at the export resolution.</span>
+                  <span className="hint">Used for editing and previews only (2048 is sharper but slower). Exports regenerate natively at the export resolution, up to 8K.</span>
                 </div>
               </Section>
             );
