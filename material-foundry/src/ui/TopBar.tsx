@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
+import { getLocale, onLocaleChange } from '../code/i18n';
 import { CircleHelp, Code2, Download, Heart, Palette, Redo2, Undo2, Upload } from 'lucide-react';
 import { parseSettingsJson } from '../engine/schema';
 import { useStore } from '../state/store';
@@ -16,6 +17,8 @@ export function TopBar() {
   const toast = useStore((s) => s.toast);
   const fileRef = useRef<HTMLInputElement>(null);
   const mode = useAppMode((s) => s.mode);
+  const locale = useSyncExternalStore(onLocaleChange, getLocale);
+  const ru = locale === 'ru';
   const setMode = useAppMode((s) => s.setMode);
 
   const onImport = async (f: File | undefined) => {
@@ -45,7 +48,7 @@ export function TopBar() {
         <span className="brand-mark" aria-hidden />
         Material Foundry
       </div>
-      <div className="mode-switch" role="tablist" aria-label="Choose a tool">
+      <div className="mode-switch" role="tablist" aria-label={ru ? 'Выбор инструмента' : 'Choose a tool'}>
         <button
           role="tab"
           aria-selected={mode === 'materials'}
@@ -53,10 +56,10 @@ export function TopBar() {
           onClick={() => setMode('materials')}
           data-testid="mode-materials"
         >
-          <Palette size={15} /> Materials
+          <Palette size={15} /> {ru ? 'Материалы' : 'Materials'}
         </button>
         <button role="tab" aria-selected={mode === 'code'} className={mode === 'code' ? 'on' : ''} onClick={() => setMode('code')} data-testid="mode-code">
-          <Code2 size={15} /> UNDERSTAND CODE
+          <Code2 size={15} /> {ru ? 'ПОНЯТЬ КОД' : 'UNDERSTAND CODE'}
         </button>
       </div>
       {mode === 'code' ? null : (

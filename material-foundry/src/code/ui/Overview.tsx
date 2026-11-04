@@ -8,12 +8,13 @@ import { fileRole, type ProjectIndex } from '../analysis/project';
 import { getLanguage } from '../languages/registry';
 import { ConfidenceBadge } from './ExplainPanel';
 import { useCode } from './store';
+import { count, tr } from '../i18n';
 
 const PALETTE = ['#e0a24a', '#6aa7e8', '#6cc28a', '#c58ae0', '#e8806a', '#58c3c0', '#d6c35a', '#9aa0aa', '#e57aa8', '#8fb45a'];
 
 function componentOf(path: string): string {
   const parts = path.split('/');
-  if (parts.length === 1) return '(project root)';
+  if (parts.length === 1) return tr('(project root)', '(корень проекта)');
   if ((parts[0] === 'src' || parts[0] === 'app' || parts[0] === 'lib') && parts.length > 2) return `${parts[0]}/${parts[1]}`;
   return parts[0];
 }
@@ -92,16 +93,16 @@ export function ProjectMap({ compact = false }: { compact?: boolean }) {
   return (
     <div className="pmap" data-testid="project-map">
       <div className="pmap-bar">
-        <span className="muted small">Arrows point from a file to the files it uses. Click a file to open it. Hover to see its connections.</span>
+        <span className="muted small">{tr('Arrows point from a file to the files it uses. Click a file to open it. Hover to see its connections.', 'Стрелки идут от файла к файлам, которыми он пользуется. Нажми на файл, чтобы открыть его. Наведи мышь, чтобы увидеть его связи.')}</span>
         {!compact && openPath ? (
           <label className="small">
-            <input type="checkbox" checked={focusOpen} onChange={(e) => setFocusOpen(e.target.checked)} /> Only connections of {openPath.split('/').pop()}
+            <input type="checkbox" checked={focusOpen} onChange={(e) => setFocusOpen(e.target.checked)} /> {tr('Only connections of', 'Только связи файла')} {openPath.split('/').pop()}
           </label>
         ) : null}
       </div>
       {data.nodes.length ? (
         <div className="pmap-scroll" style={compact ? { maxHeight: 360 } : undefined}>
-          <svg width={W} height={H} role="img" aria-label="Map of files and how they depend on each other">
+          <svg width={W} height={H} role="img" aria-label={tr('Map of files and how they depend on each other', 'Карта файлов и их связей')}>
             <defs>
               <marker id="pm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 z" fill="var(--cm-muted)" />
@@ -150,7 +151,7 @@ export function ProjectMap({ compact = false }: { compact?: boolean }) {
           </svg>
         </div>
       ) : (
-        <p className="muted">No connections between files were found{focus ? ' for this file' : ''}. Files may still work together in ways the analysis cannot see (for example, loaded by name while running).</p>
+        <p className="muted">{tr('No connections between files were found. Files may still work together in ways the analysis cannot see (for example, loaded by name while running).', 'Связей между файлами не найдено. Файлы всё равно могут работать вместе так, что анализ этого не видит (например, загружаются по имени во время работы).')}</p>
       )}
       <div className="pmap-legend">
         {comps.map((c) => (
@@ -158,11 +159,11 @@ export function ProjectMap({ compact = false }: { compact?: boolean }) {
             <span className="sw" style={{ background: color(c) }} /> {c}
           </span>
         ))}
-        {data.hidden ? <span className="muted">({data.hidden} less-connected files hidden)</span> : null}
+        {data.hidden ? <span className="muted">({tr('less-connected files hidden', 'скрыто менее связанных файлов')}: {data.hidden})</span> : null}
       </div>
       {!compact && data.lonely.length ? (
         <details className="xb">
-          <summary>Files without detected connections ({data.lonely.length})</summary>
+          <summary>{tr('Files without detected connections', 'Файлы без найденных связей')} ({data.lonely.length})</summary>
           <div className="xb-body pmap-lonely">
             {data.lonely.slice(0, 300).map((p) => (
               <button key={p} className="linklike" onClick={() => void openFile(p)}>
@@ -182,7 +183,7 @@ export function Overview() {
   const summaries = useCode((s) => s.summaries);
   const openFile = useCode((s) => s.openFile);
   const notes = useCode((s) => s.notes);
-  if (!ov || !index) return <div className="ov muted">Reading the project…</div>;
+  if (!ov || !index) return <div className="ov muted">{tr('Reading the project…', 'Читаю проект…')}</div>;
   const entries = new Set(ov.entryPoints.map((e) => e.path));
   return (
     <div className="ov" data-testid="overview">
@@ -201,7 +202,7 @@ export function Overview() {
       ) : null}
       <section className="ov-card ov-summary" data-testid="overview-summary">
         <h3>
-          <HelpCircle size={16} aria-hidden /> In everyday words
+          <HelpCircle size={16} aria-hidden /> {tr('In everyday words', 'Простыми словами')}
         </h3>
         {ov.summary.map((f, i) => (
           <p key={i}>
@@ -210,7 +211,7 @@ export function Overview() {
         ))}
         {ov.readmeIntro ? (
           <blockquote>
-            <div className="muted small">The authors describe it like this (from the read-me):</div>
+            <div className="muted small">{tr('The authors describe it like this (from the read-me):', 'Авторы описывают его так (из файла README):')}</div>
             {ov.readmeIntro}
           </blockquote>
         ) : null}
@@ -218,7 +219,7 @@ export function Overview() {
       <div className="ov-grid">
         <section className="ov-card">
           <h3>
-            <Flag size={16} aria-hidden /> Where it starts
+            <Flag size={16} aria-hidden /> {tr('Where it starts', 'С чего начинается')}
           </h3>
           {ov.entryPoints.length ? (
             <ul>
@@ -232,12 +233,12 @@ export function Overview() {
               ))}
             </ul>
           ) : (
-            <p className="muted">No clear starting point was found. The program may be started by a tool, a web server or a setting outside these files.</p>
+            <p className="muted">{tr('No clear starting point was found. The program may be started by a tool, a web server or a setting outside these files.', 'Явной точки старта не найдено. Программу может запускать инструмент, веб-сервер или настройка вне этих файлов.')}</p>
           )}
         </section>
         <section className="ov-card">
           <h3>
-            <Star size={16} aria-hidden /> The most important files
+            <Star size={16} aria-hidden /> {tr('The most important files', 'Самые важные файлы')}
           </h3>
           <ul>
             {ov.importantFiles.slice(0, 10).map((f) => (
@@ -252,7 +253,7 @@ export function Overview() {
         </section>
         <section className="ov-card wide">
           <h3>
-            <Boxes size={16} aria-hidden /> The main parts and what they do
+            <Boxes size={16} aria-hidden /> {tr('The main parts and what they do', 'Главные части и что они делают')}
           </h3>
           <div className="ov-comps">
             {ov.components.map((c) => (
@@ -270,18 +271,18 @@ export function Overview() {
                       </button>
                     );
                   })}
-                  {c.files.length > 8 ? <span className="muted small">+{c.files.length - 8} more</span> : null}
+                  {c.files.length > 8 ? <span className="muted small">+{c.files.length - 8} {tr('more', 'ещё')}</span> : null}
                 </div>
               </div>
             ))}
           </div>
           {ov.componentLinks.length ? (
             <>
-              <h4>How the parts talk to each other</h4>
+              <h4>{tr('How the parts talk to each other', 'Как части связаны друг с другом')}</h4>
               <ul>
                 {ov.componentLinks.slice(0, 15).map((l) => (
                   <li key={`${l.from}>${l.to}`}>
-                    <b>{l.from}</b> uses <b>{l.to}</b> ({l.count} connection{l.count === 1 ? '' : 's'}) <ConfidenceBadge c="verified" compact />
+                    <b>{l.from}</b> {tr('uses', 'использует')} <b>{l.to}</b> ({count(l.count, ['connection', 'connections'], ['связь', 'связи', 'связей'])}) <ConfidenceBadge c="verified" compact />
                   </li>
                 ))}
               </ul>
@@ -303,31 +304,31 @@ export function Overview() {
               ))}
             </ul>
           ) : (
-            <p className="muted">No settings files found.</p>
+            <p className="muted">{tr('No settings files found.', 'Файлов настроек не найдено.')}</p>
           )}
         </section>
         <section className="ov-card">
           <h3>
-            <Library size={16} aria-hidden /> Outside libraries it needs
+            <Library size={16} aria-hidden /> {tr('Outside libraries it needs', 'Внешние библиотеки, которые ему нужны')}
           </h3>
           {ov.externalLibraries.length ? (
             <ul className="ov-libs">
               {ov.externalLibraries.slice(0, 20).map((l) => (
                 <li key={l.name}>
-                  <code>{l.name}</code> <span className="muted small">used by {l.usedBy} file{l.usedBy === 1 ? '' : 's'}</span>
+                  <code>{l.name}</code> <span className="muted small">{tr('used by', 'используют')} {count(l.usedBy, ['file', 'files'], ['файл', 'файла', 'файлов'])}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">None found — it seems to use only what the language provides.</p>
+            <p className="muted">{tr('None found — it seems to use only what the language provides.', 'Не найдено — похоже, используется только то, что есть в самом языке.')}</p>
           )}
         </section>
         {ov.scripts.length ? (
           <section className="ov-card">
             <h3>
-              <Play size={16} aria-hidden /> Commands the authors defined
+              <Play size={16} aria-hidden /> {tr('Commands the authors defined', 'Команды, которые задали авторы')}
             </h3>
-            <p className="muted small">Listed for information only. This app never runs them.</p>
+            <p className="muted small">{tr('Listed for information only. This app never runs them.', 'Показаны только для сведения. Эта программа их никогда не запускает.')}</p>
             <ul>
               {ov.scripts.slice(0, 12).map((s) => (
                 <li key={s.name}>
@@ -338,21 +339,21 @@ export function Overview() {
           </section>
         ) : null}
         <section className="ov-card">
-          <h3>Languages</h3>
+          <h3>{tr('Languages', 'Языки')}</h3>
           <ul>
             {ov.languages.map((l) => (
               <li key={l.id}>
-                {l.name}: {l.files} file{l.files === 1 ? '' : 's'}, {l.lines.toLocaleString()} lines{' '}
-                <span className="muted small">({getLanguage(l.id).mode === 'syntax-tree' ? 'full structure' : getLanguage(l.id).mode === 'tokens' ? 'word level' : 'plain text'})</span>
+                {l.name}: {count(l.files, ['file', 'files'], ['файл', 'файла', 'файлов'])}, {count(l.lines, ['line', 'lines'], ['строка', 'строки', 'строк'])}{' '}
+                <span className="muted small">({getLanguage(l.id).mode === 'syntax-tree' ? tr('full structure', 'полная структура') : getLanguage(l.id).mode === 'tokens' ? tr('word level', 'по словам') : tr('plain text', 'простой текст')})</span>
               </li>
             ))}
           </ul>
           <p className="muted small">
-            {ov.stats.files} files, {ov.stats.analysed} analysed, {ov.stats.skipped} could not be read as text.
+            {tr(`${ov.stats.files} files, ${ov.stats.analysed} analysed, ${ov.stats.skipped} could not be read as text.`, `Файлов: ${ov.stats.files}, разобрано: ${ov.stats.analysed}, не читаются как текст: ${ov.stats.skipped}.`)}
           </p>
         </section>
         <section className="ov-card wide">
-          <h3>What cannot be known from the files alone</h3>
+          <h3>{tr('What cannot be known from the files alone', 'Что нельзя узнать только по файлам')}</h3>
           <ul>
             {ov.unknowns.map((u, i) => (
               <li key={i}>
@@ -362,7 +363,7 @@ export function Overview() {
           </ul>
         </section>
         <section className="ov-card wide">
-          <h3>Project map</h3>
+          <h3>{tr('Project map', 'Карта проекта')}</h3>
           <ProjectMap compact />
         </section>
       </div>

@@ -7,13 +7,14 @@ import { buildProjectIndex, crossReferences, projectOverview, type ProjectIndex,
 import type { ElementInfo, FileSummary, FlowStep, Range } from '../analysis/types';
 import type { CrossFileInfo, Level } from '../explain/explain';
 import { detectLanguage } from '../languages/registry';
+import { getLocale, setLocale, tr, type Locale } from '../i18n';
 import { SAMPLE_FILES, SAMPLE_NAME } from '../sample/sampleProject';
 import { createStore } from '../workspace/idb';
 import { Workspace } from '../workspace/workspace';
 import { getCodeClient } from '../worker/client';
 import type { LoadResult } from './fileLoading';
 
-export type CodeView = 'welcome' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
+export type CodeView = 'welcome' | 'learn' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
 export type DiagramKind = 'auto' | 'flow' | 'connections' | 'data' | 'files';
 
 export interface Prefs {
@@ -21,18 +22,22 @@ export interface Prefs {
   fontSize: number;
   spacing: boolean;
   level: Level;
+  /** Show the "what to do next" helper. */
+  hints: boolean;
+  locale: Locale;
 }
 
 const PREFS_KEY = 'mf.code.prefs.v1';
 const LEVEL_SESSION_KEY = 'mf.code.level';
 
 function loadPrefs(): Prefs {
-  const d: Prefs = { theme: 'dark', fontSize: 15, spacing: false, level: 2 };
+  const d: Prefs = { theme: 'dark', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale() };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
     if (raw.theme === 'light' || raw.theme === 'dark') d.theme = raw.theme;
     if (typeof raw.fontSize === 'number' && raw.fontSize >= 12 && raw.fontSize <= 24) d.fontSize = raw.fontSize;
     if (typeof raw.spacing === 'boolean') d.spacing = raw.spacing;
+    if (typeof raw.hints === 'boolean') d.hints = raw.hints;
     if ([1, 2, 3, 4, 5].includes(raw.level)) d.level = raw.level;
     const s = Number(sessionStorage.getItem(LEVEL_SESSION_KEY));
     if ([1, 2, 3, 4, 5].includes(s)) d.level = s as Level;
@@ -91,6 +96,10 @@ interface State {
   rootDir: FileSystemDirectoryHandle | null;
   canWriteToDisk: boolean;
   toasts: { id: number; kind: 'info' | 'success' | 'warning' | 'error'; text: string }[];
+  /** Concept to show when the glossary opens. */
+  glossaryConcept: string | null;
+  /** How many elements the user has clicked (for the step-by-step helper). */
+  clicks: number;
 
   init: () => Promise<void>;
   loadProject: (r: LoadResult) => Promise<void>;
@@ -133,7 +142,7 @@ async function analyseAll(paths: string[], set: (p: Partial<State>) => void, get
       /* listed without analysis */
     }
     done++;
-    if (done % 10 === 0 || done === paths.length) set({ progress: done / Math.max(1, paths.length), busy: `Reading the project: ${done} of ${paths.length} files` });
+    if (done % 10 === 0 || done === paths.length) set({ progress: done / Math.max(1, paths.length), busy: tr(`Reading the project: ${done} of ${paths.length} files`, `Читаю проект: ${done} из ${paths.length} файлов`) });
   }
   const files = get().files.map((f) => ({ ...f, languageId: summaries[f.path]?.languageId ?? f.languageId }));
   const index = buildProjectIndex(files.map((f) => ({ path: f.path, size: f.size, languageId: f.languageId, summary: summaries[f.path], skipped: f.skipped })));
@@ -170,6 +179,8 @@ export const useCode = create<State>((set, get) => ({
   rootDir: null,
   canWriteToDisk: false,
   toasts: [],
+  glossaryConcept: null,
+  clicks: 0,
 
   async init() {
     if (get().ready) return;
@@ -180,7 +191,7 @@ export const useCode = create<State>((set, get) => ({
     const restored = await workspace.restoreSession().catch(() => false);
     if (restored) {
       const files = [...workspace.files.values()].map((f) => ({ path: f.path, size: f.size, languageId: detectLanguage(f.path, f.current.slice(0, 2000)).language.id, skipped: f.skipped }));
-      set({ projectName: workspace.name, files, view: 'overview', busy: 'Reading the project…', notes: ['Your previous session was restored from this browser (including your changes and history).'] });
+      set({ projectName: workspace.name, files, view: 'overview', busy: tr('Reading the project…', 'Читаю проект…'), notes: [tr('Your previous session was restored from this browser (including your changes and history).', 'Прошлая работа восстановлена из этого браузера (вместе с изменениями и историей).')] });
       try {
         await analyseAll(files.map((f) => f.path), set, get);
       } finally {
@@ -190,7 +201,7 @@ export const useCode = create<State>((set, get) => ({
   },
 
   async loadProject(r) {
-    set({ busy: 'Opening files…', progress: 0, error: null, selection: null, open: null, openPath: null, highlights: [] });
+    set({ busy: tr('Opening files…', 'Открываю файлы…'), progress: 0, error: null, selection: null, open: null, openPath: null, highlights: [] });
     try {
       await workspace.load(r.name, r.files.map((f) => ({ path: f.path, text: f.text, size: f.size, skipped: f.skipped })));
       const files = r.files.map((f) => ({ path: f.path, size: f.size, languageId: detectLanguage(f.path, f.text.slice(0, 2000)).language.id, skipped: f.skipped }));
@@ -217,7 +228,7 @@ export const useCode = create<State>((set, get) => ({
       set({ openPath: path, open: null, openText: '', view: 'code', selection: null, highlights: [] });
       return;
     }
-    set({ busy: `Reading ${path}…` });
+    set({ busy: tr(`Reading ${path}…`, `Читаю ${path}…`) });
     try {
       const r = await getCodeClient().open(path, f.current, true);
       set({ openPath: path, open: r, openText: f.current, view: 'code', selection: null, highlights: [], fileFlow: null, simplerStep: 0, showExample: false });
@@ -225,7 +236,7 @@ export const useCode = create<State>((set, get) => ({
       else if (sel?.line !== undefined) set({ scrollTo: { line: sel.line, nonce: Date.now() } });
       else set({ scrollTo: { line: 0, nonce: Date.now() } });
     } catch (e) {
-      get().toast('error', `Could not read ${path}: ${e instanceof Error ? e.message : String(e)}`);
+      get().toast('error', tr(`Could not read ${path}: `, `Не удалось прочитать ${path}: `) + (e instanceof Error ? e.message : String(e)));
     } finally {
       set({ busy: null });
     }
@@ -251,7 +262,7 @@ export const useCode = create<State>((set, get) => ({
         };
       }
     }
-    set({ selection: { offset, element: el, cross }, highlights, simplerStep: 0, showExample: false });
+    set({ selection: { offset, element: el, cross }, highlights, simplerStep: 0, showExample: false, clicks: get().clicks + 1 });
   },
 
   clearSelection() {
@@ -292,7 +303,7 @@ export const useCode = create<State>((set, get) => ({
     for (const d of s.element.definitions ?? []) hl.push({ start: d.range.start, end: d.range.end, kind: 'def' });
     set({ highlights: hl });
     const n = (s.element.references ?? []).length;
-    get().toast('info', n ? `${n} place${n === 1 ? '' : 's'} highlighted in this file.` : 'No other uses in this file.');
+    get().toast('info', n ? tr(`${n} place${n === 1 ? '' : 's'} highlighted in this file.`, `В этом файле подсвечено мест: ${n}.`) : tr('No other uses in this file.', 'В этом файле больше нигде не используется.'));
   },
 
   async goToDefinition() {
@@ -312,11 +323,15 @@ export const useCode = create<State>((set, get) => ({
       set({ scrollTo: { line: other.line, nonce: Date.now() } });
       return;
     }
-    get().toast('info', 'Where this is created could not be found in the project. It probably comes from the language itself or from a library.');
+    get().toast('info', tr('Where this is created could not be found in the project. It probably comes from the language itself or from a library.', 'Где это создаётся, в проекте не найдено. Скорее всего, это часть самого языка или библиотеки.'));
   },
 
   setPrefs(p) {
     const prefs = { ...get().prefs, ...p };
+    if (p.locale && p.locale !== getLocale()) {
+      setLocale(p.locale);
+      getCodeClient().setLocale(p.locale);
+    }
     set({ prefs });
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
@@ -365,5 +380,5 @@ export const useCode = create<State>((set, get) => ({
 }));
 
 export function rangeLabel(r: Range): string {
-  return r.line === r.endLine ? `line ${r.line + 1}` : `lines ${r.line + 1}–${r.endLine + 1}`;
+  return r.line === r.endLine ? tr(`line ${r.line + 1}`, `строка ${r.line + 1}`) : tr(`lines ${r.line + 1}–${r.endLine + 1}`, `строки ${r.line + 1}–${r.endLine + 1}`);
 }

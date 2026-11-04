@@ -8,6 +8,7 @@ import { entryFromBytes, zipParts } from '../../export/zipwriter';
 import { countChanges } from '../workspace/diff';
 import { DiffView } from './WhatIf';
 import { useCode, workspace } from './store';
+import { count, tr } from '../i18n';
 
 const enc = new TextEncoder();
 
@@ -76,7 +77,7 @@ export function ChangesView() {
     run(
       async () => {
         const cs = await workspace.undo();
-        if (cs) toast('info', `Undone: ${cs.label}`);
+        if (cs) toast('info', `${tr('Undone', 'Отменено')}: ${cs.label}`);
       },
       () => workspace.history.at(-1)?.edits.map((e) => e.path) ?? workspace.redoStack.at(-1)?.edits.map((e) => e.path) ?? [],
     );
@@ -84,7 +85,7 @@ export function ChangesView() {
     run(
       async () => {
         const cs = await workspace.redo();
-        if (cs) toast('info', `Done again: ${cs.label}`);
+        if (cs) toast('info', `${tr('Done again', 'Возвращено')}: ${cs.label}`);
       },
       () => workspace.redoStack.at(-1)?.edits.map((e) => e.path) ?? workspace.history.at(-1)?.edits.map((e) => e.path) ?? [],
     );
@@ -95,13 +96,13 @@ export function ChangesView() {
     const entries = changed.map((f) => entryFromBytes(f.path, enc.encode(f.current)));
     const { parts } = zipParts(entries);
     download(zipName('changed-files'), parts, 'application/zip');
-    toast('success', `Downloaded ${changed.length} changed file${changed.length === 1 ? '' : 's'}.`);
+    toast('success', `${tr('Downloaded', 'Скачано')}: ${count(changed.length, ['changed file', 'changed files'], ['изменённый файл', 'изменённых файла', 'изменённых файлов'])}.`);
   };
   const downloadAll = () => {
     const entries = [...workspace.files.values()].filter((f) => !f.skipped).map((f) => entryFromBytes(f.path, enc.encode(f.current)));
     const { parts } = zipParts(entries);
     download(zipName('workspace'), parts, 'application/zip');
-    toast('success', 'Downloaded the whole workspace (your current version of every text file).');
+    toast('success', tr('Downloaded the whole workspace (your current version of every text file).', 'Скачана вся рабочая копия (твоя текущая версия каждого текстового файла).'));
   };
   const downloadOriginals = () => {
     const entries = changed.map((f) => entryFromBytes(f.path, enc.encode(f.original)));
@@ -115,19 +116,19 @@ export function ChangesView() {
     const written: string[] = [];
     const problems: string[] = [];
     try {
-      if (!rootDir) throw new Error('The folder is not available for saving. Use Download instead.');
-      if (!(await ensureWrite(rootDir as PermHandle))) throw new Error('Permission to save was not given. Nothing was written.');
+      if (!rootDir) throw new Error(tr('The folder is not available for saving. Use Download instead.', 'Папка недоступна для сохранения. Используй «Скачать».'));
+      if (!(await ensureWrite(rootDir as PermHandle))) throw new Error(tr('Permission to save was not given. Nothing was written.', 'Разрешение на сохранение не дано. Ничего не записано.'));
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupDir = `.understand-code-backups/${stamp}`;
       for (const f of changed) {
         const h = root.get(f.path);
         if (!h) {
-          problems.push(`${f.path}: not opened from this folder`);
+          problems.push(`${f.path}: ${tr('not opened from this folder', 'открыт не из этой папки')}`);
           continue;
         }
         const disk = await (await h.getFile()).text();
         if (disk.replace(/^﻿/, '') !== f.original) {
-          problems.push(`${f.path}: it was changed outside this app after opening, so it was NOT overwritten`);
+          problems.push(`${f.path}: ${tr('it was changed outside this app after opening, so it was NOT overwritten', 'его изменили вне программы после открытия, поэтому он НЕ перезаписан')}`);
           continue;
         }
         await writeFile(rootDir, `${backupDir}/${f.path}`, disk);
@@ -137,8 +138,8 @@ export function ChangesView() {
         written.push(f.path);
       }
       await workspace.markSaved(written);
-      if (written.length) toast('success', `Saved ${written.length} file${written.length === 1 ? '' : 's'}. Copies of the old versions are in the folder ${backupDir}.`);
-      if (problems.length) toast('warning', `Not saved:\n• ${problems.join('\n• ')}`);
+      if (written.length) toast('success', `${tr('Saved', 'Сохранено')}: ${count(written.length, ['file', 'files'], ['файл', 'файла', 'файлов'])}. ${tr('Copies of the old versions are in the folder', 'Копии старых версий лежат в папке')} ${backupDir}.`);
+      if (problems.length) toast('warning', `${tr('Not saved', 'Не сохранено')}:\n• ${problems.join('\n• ')}`);
     } catch (e) {
       toast('error', e instanceof Error ? e.message : String(e));
     } finally {
@@ -150,60 +151,63 @@ export function ChangesView() {
     <div className="chg" data-testid="changes-view">
       <div className="chg-bar">
         <button className="btn" onClick={() => void undo()} disabled={busy || !workspace.canUndo()} data-testid="ws-undo">
-          <Undo2 size={15} /> Undo
+          <Undo2 size={15} /> {tr('Undo', 'Отменить')}
         </button>
         <button className="btn" onClick={() => void redo()} disabled={busy || !workspace.canRedo()} data-testid="ws-redo">
-          <Redo2 size={15} /> Redo
+          <Redo2 size={15} /> {tr('Redo', 'Вернуть')}
         </button>
         <button
           className="btn"
           onClick={() => {
-            workspace.addRestorePoint(`Saved by you`, [...workspace.files.values()].filter((f) => !f.skipped).map((f) => ({ path: f.path, text: f.current })));
+            workspace.addRestorePoint(tr('Saved by you', 'Сохранено тобой'), [...workspace.files.values()].filter((f) => !f.skipped).map((f) => ({ path: f.path, text: f.current })));
             void workspace.persist();
             useCode.setState({ wsVersion: useCode.getState().wsVersion + 1 });
-            toast('success', 'Restore point saved.');
+            toast('success', tr('Restore point saved.', 'Точка восстановления сохранена.'));
           }}
           disabled={busy || !workspace.files.size}
           data-testid="add-restore-point"
         >
-          <History size={15} /> Save a restore point now
+          <History size={15} /> {tr('Save a restore point now', 'Сохранить точку восстановления')}
         </button>
         <span className="spacer" />
         <button className="btn" onClick={downloadAll} disabled={!workspace.files.size} data-testid="download-all">
-          <Download size={15} /> Download all files (ZIP)
+          <Download size={15} /> {tr('Download all files (ZIP)', 'Скачать все файлы (ZIP)')}
         </button>
         <button className="btn" onClick={downloadChanged} disabled={!changed.length} data-testid="download-changed">
-          <HardDriveDownload size={15} /> Download changed files (ZIP)
+          <HardDriveDownload size={15} /> {tr('Download changed files (ZIP)', 'Скачать изменённые файлы (ZIP)')}
         </button>
         {canWrite ? (
           <button className="btn primary" onClick={() => setConfirmSave(true)} disabled={!changed.length || busy} data-testid="save-disk">
-            <Save size={15} /> Save to my folder…
+            <Save size={15} /> {tr('Save to my folder…', 'Сохранить в мою папку…')}
           </button>
         ) : null}
       </div>
       <p className="chg-note">
-        Your original files have <b>not</b> been changed. All edits live in a protected copy inside this app (saved in this browser).{' '}
-        {canWrite ? 'You can write them back to your folder with “Save to my folder”, which keeps backup copies first.' : 'To use them, download the files.'}
+        {tr('Your original files have NOT been changed. All edits live in a protected copy inside this app (saved in this browser).', 'Твои исходные файлы НЕ изменены. Все правки хранятся в защищённой копии внутри программы (в этом браузере).')}{' '}
+        {canWrite ? tr('You can write them back to your folder with “Save to my folder”, which keeps backup copies first.', 'Записать их в папку можно кнопкой «Сохранить в мою папку» — перед этим сохраняются резервные копии.') : tr('To use them, download the files.', 'Чтобы использовать их, скачай файлы.')}
       </p>
 
       {confirmSave ? (
-        <div className="chg-confirm" role="alertdialog" aria-label="Confirm saving to disk">
-          <h3>Write {changed.length} file{changed.length === 1 ? '' : 's'} to your folder?</h3>
+        <div className="chg-confirm" role="alertdialog" aria-label={tr('Confirm saving to disk', 'Подтверждение сохранения на диск')}>
+          <h3>{tr('Write to your folder', 'Записать в твою папку')}: {count(changed.length, ['file', 'files'], ['файл', 'файла', 'файлов'])}?</h3>
           <ul>
             {changed.map((f) => (
               <li key={f.path}>{f.path}</li>
             ))}
           </ul>
-          <p>Before writing, a copy of each current file is saved into a folder called <code>.understand-code-backups</code> inside your project. A file that was changed by another program in the meantime is skipped.</p>
+          <p>
+            {tr('Before writing, a copy of each current file is saved into a folder called', 'Перед записью копия каждого файла сохраняется в папку')} <code>.understand-code-backups</code>{' '}
+            {tr('inside your project. A file that was changed by another program in the meantime is skipped.', 'внутри проекта. Файл, который тем временем изменила другая программа, пропускается.')}
+          </p>
           <div className="wi-buttons">
             <button className="btn" onClick={() => setConfirmSave(false)}>
-              Cancel
+              {tr('Cancel', 'Отмена')}
             </button>
             <button className="btn" onClick={downloadOriginals}>
-              <Download size={14} /> Also download the originals first
+              <Download size={14} /> {tr('Also download the originals first', 'Сначала скачать оригиналы')}
             </button>
             <button className="btn primary" onClick={() => void saveToDisk()} disabled={busy} data-testid="save-disk-confirm">
-              <Save size={14} /> Yes, write the files
+              <Save size={14} /> {tr('Yes, write the files', 'Да, записать файлы')}
             </button>
           </div>
         </div>
@@ -212,9 +216,9 @@ export function ChangesView() {
       <div className="chg-cols">
         <section>
           <h3>
-            <FileDiff size={16} aria-hidden /> Changed files ({changed.length})
+            <FileDiff size={16} aria-hidden /> {tr('Changed files', 'Изменённые файлы')} ({changed.length})
           </h3>
-          {!changed.length ? <p className="muted">Nothing is changed. Use “What if I change this?” in the explanation panel to try a change safely.</p> : null}
+          {!changed.length ? <p className="muted">{tr('Nothing is changed. Use “What if I change this?” in the explanation panel to try a change safely.', 'Ничего не изменено. Чтобы безопасно попробовать изменение, нажми «А что если изменить?» в панели объяснений.')}</p> : null}
           {changed.map((f) => {
             const c = countChanges(f.original, f.current);
             return (
@@ -227,10 +231,10 @@ export function ChangesView() {
                     <span className="plus">+{c.added}</span> <span className="minus">−{c.removed}</span>
                   </span>
                   <button className="btn small" onClick={() => setOpenDiff(openDiff === f.path ? null : f.path)}>
-                    {openDiff === f.path ? 'Hide' : 'Compare'}
+                    {openDiff === f.path ? tr('Hide', 'Скрыть') : tr('Compare', 'Сравнить')}
                   </button>
                   <button className="btn small" onClick={() => void run(() => workspace.revertFile(f.path), () => [f.path])} disabled={busy} data-testid="revert-file">
-                    <RotateCcw size={13} /> Back to original
+                    <RotateCcw size={13} /> {tr('Back to original', 'Вернуть оригинал')}
                   </button>
                 </div>
                 {openDiff === f.path ? <DiffView before={f.original} after={f.current} testId="changes-diff" /> : null}
@@ -240,31 +244,31 @@ export function ChangesView() {
         </section>
         <section>
           <h3>
-            <History size={16} aria-hidden /> History
+            <History size={16} aria-hidden /> {tr('History', 'История')}
           </h3>
-          {!history.length && !workspace.redoStack.length ? <p className="muted">No changes yet.</p> : null}
+          {!history.length && !workspace.redoStack.length ? <p className="muted">{tr('No changes yet.', 'Пока изменений нет.')}</p> : null}
           <ol className="chg-history" data-testid="history">
             {[...workspace.redoStack].map((cs) => (
               <li key={cs.id} className="undone">
-                <span className="muted">{time(cs.time)}</span> {cs.label} <span className="tag">undone — Redo brings it back</span>
+                <span className="muted">{time(cs.time)}</span> {cs.label} <span className="tag">{tr('undone — Redo brings it back', 'отменено — «Вернуть» восстановит')}</span>
               </li>
             ))}
             {history.map((cs, i) => (
               <li key={cs.id}>
-                <span className="muted">{time(cs.time)}</span> {cs.label} {i === 0 ? <span className="tag">latest</span> : null}
+                <span className="muted">{time(cs.time)}</span> {cs.label} {i === 0 ? <span className="tag">{tr('latest', 'последнее')}</span> : null}
               </li>
             ))}
           </ol>
           <h3>
-            <RotateCcw size={16} aria-hidden /> Restore points ({points.length})
+            <RotateCcw size={16} aria-hidden /> {tr('Restore points', 'Точки восстановления')} ({points.length})
           </h3>
-          <p className="muted small">A restore point is saved automatically before every change. Going back to one is itself a change, so it can be undone too.</p>
+          <p className="muted small">{tr('A restore point is saved automatically before every change. Going back to one is itself a change, so it can be undone too.', 'Точка восстановления сохраняется сама перед каждым изменением. Возврат к ней — тоже изменение, его тоже можно отменить.')}</p>
           <ul className="chg-points" data-testid="restore-points">
             {points.map((rp) => (
               <li key={rp.id}>
                 <span className="muted">{time(rp.time)}</span> {rp.label}{' '}
                 <span className="muted small">
-                  ({rp.files.length} file{rp.files.length === 1 ? '' : 's'})
+                  ({count(rp.files.length, ['file', 'files'], ['файл', 'файла', 'файлов'])})
                 </span>{' '}
                 {confirmRestore === rp.id ? (
                   <>
@@ -273,21 +277,21 @@ export function ChangesView() {
                       onClick={() =>
                         void run(async () => {
                           await workspace.restore(rp.id);
-                          toast('success', 'Files restored. You can undo this.');
+                          toast('success', tr('Files restored. You can undo this.', 'Файлы восстановлены. Это тоже можно отменить.'));
                           setConfirmRestore(null);
                         }, () => rp.files.map((f) => f.path))
                       }
                       data-testid="restore-confirm"
                     >
-                      Yes, go back
+                      {tr('Yes, go back', 'Да, вернуться')}
                     </button>
                     <button className="btn small" onClick={() => setConfirmRestore(null)}>
-                      Cancel
+                      {tr('Cancel', 'Отмена')}
                     </button>
                   </>
                 ) : (
                   <button className="btn small" onClick={() => setConfirmRestore(rp.id)} disabled={busy} data-testid="restore-point">
-                    Go back to this point
+                    {tr('Go back to this point', 'Вернуться к этой точке')}
                   </button>
                 )}
               </li>

@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, FileQuestion, FileText, FolderOpen, Files, S
 import { getLanguage } from '../languages/registry';
 import { readDirectoryHandle, readFileList, supportsDirectoryPicker } from './fileLoading';
 import { useCode, workspace, type FileEntry } from './store';
+import { count, tr } from '../i18n';
 
 interface TreeNode {
   name: string;
@@ -52,13 +53,13 @@ function TreeView({ node, depth, expanded, toggle }: { node: TreeNode; depth: nu
                 className={`tree-file${openPath === k.path ? ' on' : ''}${k.file.skipped ? ' skipped' : ''}`}
                 style={{ paddingLeft: 8 + depth * 14 }}
                 onClick={() => void openFile(k.path)}
-                title={k.file.skipped ? k.file.skipped : `${lang.name}${changed ? ' — changed in the workspace' : ''}`}
+                title={k.file.skipped ? k.file.skipped : `${lang.name}${changed ? tr(' — changed in the workspace', ' — изменён в рабочей копии') : ''}`}
                 data-testid="tree-file"
                 data-path={k.path}
               >
                 {k.file.skipped ? <FileQuestion size={13} aria-hidden /> : <FileText size={13} aria-hidden style={{ color: KIND_COLOR[lang.kind] ?? 'inherit' }} />}
                 <span className="tree-name">{k.name}</span>
-                {changed ? <span className="dot-changed" aria-label="changed" /> : null}
+                {changed ? <span className="dot-changed" aria-label={tr('changed', 'изменён')} /> : null}
                 <span className="tree-lang">{k.file.skipped ? '' : lang.id === 'plaintext' || lang.id === 'unknown' ? 'text' : lang.name}</span>
               </button>
             </li>
@@ -86,7 +87,7 @@ interface Hit {
   text: string;
 }
 
-export function OpenButtons({ big = false }: { big?: boolean }) {
+export function OpenButtons({ big = false, example = true }: { big?: boolean; example?: boolean }) {
   const loadProject = useCode((s) => s.loadProject);
   const openExample = useCode((s) => s.openExample);
   const toast = useCode((s) => s.toast);
@@ -98,11 +99,11 @@ export function OpenButtons({ big = false }: { big?: boolean }) {
     if (supportsDirectoryPicker()) {
       try {
         const dir = await (window as unknown as { showDirectoryPicker: (o?: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: 'read' });
-        useCode.setState({ busy: 'Reading the folder…' });
-        const r = await readDirectoryHandle(dir, (n) => useCode.setState({ busy: `Reading the folder: ${n} files…` }));
+        useCode.setState({ busy: tr('Reading the folder…', 'Читаю папку…') });
+        const r = await readDirectoryHandle(dir, (n) => useCode.setState({ busy: tr(`Reading the folder: ${n} files…`, `Читаю папку: файлов ${n}…`) }));
         await loadProject(r);
       } catch (e) {
-        if ((e as DOMException)?.name !== 'AbortError') toast('error', `The folder could not be opened: ${e instanceof Error ? e.message : String(e)}`);
+        if ((e as DOMException)?.name !== 'AbortError') toast('error', tr('The folder could not be opened: ', 'Не удалось открыть папку: ') + (e instanceof Error ? e.message : String(e)));
         useCode.setState({ busy: null });
       }
     } else dirInput.current?.click();
@@ -112,14 +113,16 @@ export function OpenButtons({ big = false }: { big?: boolean }) {
   return (
     <div className={big ? 'open-big' : 'open-row'}>
       <button className={`${cls} primary`} onClick={() => void openFolder()} disabled={!!busy} data-testid="open-folder">
-        <FolderOpen size={big ? 20 : 14} /> Open a folder
+        <FolderOpen size={big ? 20 : 14} /> {tr('Open a folder', 'Открыть папку')}
       </button>
       <button className={cls} onClick={() => fileInput.current?.click()} disabled={!!busy} data-testid="open-files">
-        <Files size={big ? 20 : 14} /> Open files
+        <Files size={big ? 20 : 14} /> {tr('Open files', 'Открыть файлы')}
       </button>
-      <button className={cls} onClick={() => void openExample()} disabled={!!busy} data-testid="open-example">
-        <Sparkles size={big ? 20 : 14} /> Try an example
+      {example ? (
+        <button className={cls} onClick={() => void openExample()} disabled={!!busy} data-testid="open-example">
+        <Sparkles size={big ? 20 : 14} /> {tr('Example', 'Пример')}
       </button>
+      ) : null}
       <input
         ref={dirInput}
         type="file"
@@ -154,7 +157,6 @@ export function Explorer() {
   const projectName = useCode((s) => s.projectName);
   const openFile = useCode((s) => s.openFile);
   const closeProject = useCode((s) => s.closeProject);
-  const view = useCode((s) => s.view);
   const [query, setQuery] = useState('');
   const [inCode, setInCode] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -207,47 +209,47 @@ export function Explorer() {
   }, [needle, inCode, files]);
 
   return (
-    <nav className="ex" aria-label="Files" data-testid="explorer">
+    <nav className="ex" aria-label={tr('Files', 'Файлы')} data-testid="explorer">
       <div className="ex-head">
         <div className="ex-title" title={projectName}>
-          {projectName || 'No project open'}
+          {projectName || tr('No project open', 'Проект не открыт')}
         </div>
         {projectName ? (
           confirmClose ? (
             <span className="ex-confirm">
-              Close and forget changes?{' '}
+              {tr('Close and forget changes?', 'Закрыть и забыть изменения?')}{' '}
               <button className="btn small danger" onClick={() => void closeProject().then(() => setConfirmClose(false))} data-testid="close-project-confirm">
-                Yes
+                {tr('Yes', 'Да')}
               </button>
               <button className="btn small" onClick={() => setConfirmClose(false)}>
-                No
+                {tr('No', 'Нет')}
               </button>
             </span>
           ) : (
-            <button className="icon-btn" onClick={() => setConfirmClose(true)} title="Close this project" aria-label="Close this project" data-testid="close-project">
+            <button className="icon-btn" onClick={() => setConfirmClose(true)} title={tr('Close this project', 'Закрыть проект')} aria-label={tr('Close this project', 'Закрыть проект')} data-testid="close-project">
               <X size={15} />
             </button>
           )
         ) : null}
       </div>
-      {files.length || view === 'glossary' ? <OpenButtons /> : <p className="muted small ex-hint">Open a folder, some files, or the example to begin.</p>}
+      <OpenButtons />
       {files.length ? (
         <>
           <div className="ex-search">
             <label className="search">
               <Search size={14} aria-hidden />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={inCode ? 'Search inside the code' : 'Find a file by name'} aria-label="Search" data-testid="search" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={inCode ? tr('Search inside the code', 'Искать в коде') : tr('Find a file by name', 'Найти файл по имени')} aria-label={tr('Search', 'Поиск')} data-testid="search" />
             </label>
             <label className="small ex-incode">
-              <input type="checkbox" checked={inCode} onChange={(e) => setInCode(e.target.checked)} data-testid="search-in-code" /> Search inside the code
+              <input type="checkbox" checked={inCode} onChange={(e) => setInCode(e.target.checked)} data-testid="search-in-code" /> {tr('Search inside the code', 'Искать внутри кода')}
             </label>
           </div>
           <div className="ex-list">
             {needle ? (
               inCode ? (
                 <ul className="hits" data-testid="search-results">
-                  {needle.length < 2 ? <li className="muted">Type at least 2 letters.</li> : null}
-                  {needle.length >= 2 && !codeHits.length ? <li className="muted">Not found.</li> : null}
+                  {needle.length < 2 ? <li className="muted">{tr('Type at least 2 letters.', 'Напиши хотя бы 2 буквы.')}</li> : null}
+                  {needle.length >= 2 && !codeHits.length ? <li className="muted">{tr('Not found.', 'Не найдено.')}</li> : null}
                   {codeHits.map((h, i) => (
                     <li key={i}>
                       <button onClick={() => void openFile(h.path, { offset: h.offset })}>
@@ -261,7 +263,7 @@ export function Explorer() {
                 </ul>
               ) : (
                 <ul className="hits" data-testid="search-results">
-                  {!nameHits.length ? <li className="muted">No file name matches.</li> : null}
+                  {!nameHits.length ? <li className="muted">{tr('No file name matches.', 'Нет файлов с таким именем.')}</li> : null}
                   {nameHits.map((f) => (
                     <li key={f.path}>
                       <button onClick={() => void openFile(f.path)}>
@@ -276,7 +278,7 @@ export function Explorer() {
             )}
           </div>
           <div className="ex-foot muted small">
-            {files.length} file{files.length === 1 ? '' : 's'} · read only, nothing is run
+            {count(files.length, ['file', 'files'], ['файл', 'файла', 'файлов'])} · {tr('only read, nothing is run', 'только чтение, ничего не запускается')}
           </div>
         </>
       ) : null}

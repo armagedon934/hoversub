@@ -4,12 +4,14 @@
 
 import { CodeEngine } from '../analysis/engine';
 import { configureTreeSitter } from '../languages/treesitter';
+import { setLocale, type Locale } from '../i18n';
 import runtimeUrl from 'web-tree-sitter/tree-sitter.wasm?url';
 
 declare const self: DedicatedWorkerGlobalScope;
 
 export type CodeRequest =
-  | { op: 'init'; grammarBase: string }
+  | { op: 'init'; grammarBase: string; locale: Locale }
+  | { op: 'locale'; locale: Locale }
   | { op: 'open'; path: string; text: string; language?: string; keep: boolean }
   | { op: 'element'; path: string; offset: number }
   | { op: 'flow'; path: string }
@@ -29,7 +31,12 @@ self.onmessage = async (e: MessageEvent<{ id: number; req: CodeRequest }>) => {
           runtime: () => new URL(runtimeUrl, self.location.href).href,
           grammar: (g) => `${req.grammarBase}tree-sitter-${g}.wasm`,
         });
+        setLocale(req.locale, false);
         ready = true;
+        result = true;
+        break;
+      case 'locale':
+        setLocale(req.locale, false);
         result = true;
         break;
       case 'open': {

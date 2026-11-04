@@ -8,6 +8,7 @@
 import type { OpenResult } from '../analysis/engine';
 import type { ElementInfo, FlowStep, SyntaxIssue } from '../analysis/types';
 import { detectLanguage, getLanguage } from '../languages/registry';
+import { getLocale, type Locale } from '../i18n';
 import type { CodeRequest } from './code.worker';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
@@ -36,7 +37,7 @@ class Slot {
       this.pending.clear();
     };
     const grammarBase = new URL('grammars/', document.baseURI).href;
-    this.init = this.call({ op: 'init', grammarBase });
+    this.init = this.call({ op: 'init', grammarBase, locale: getLocale() });
   }
 
   call<T>(req: CodeRequest): Promise<T> {
@@ -111,6 +112,11 @@ export class CodeClient {
     const slot = this.docs.get(path);
     this.docs.delete(path);
     if (slot) await slot.ask({ op: 'close', path });
+  }
+
+  /** Explanations made inside the workers use this language from now on. */
+  setLocale(locale: Locale): void {
+    for (const s of this.slots) void s.ask({ op: 'locale', locale }).catch(() => {});
   }
 
   dispose(): void {

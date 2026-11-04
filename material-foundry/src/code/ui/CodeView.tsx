@@ -8,6 +8,7 @@ import { TOKEN_CLASSES } from '../analysis/types';
 import { LineIndex } from '../analysis/lines';
 import { diffLines } from '../workspace/diff';
 import { useCode, workspace, type Highlight } from './store';
+import { tr } from '../i18n';
 
 const OVERSCAN = 20;
 
@@ -247,7 +248,7 @@ export function CodeView() {
       role="textbox"
       aria-readonly="true"
       aria-multiline="true"
-      aria-label={`Code of ${path}. Use the arrow keys to move from word to word; the explanation updates on the right.`}
+      aria-label={tr(`Code of ${path}. Use the arrow keys to move from word to word; the explanation updates on the right.`, `Код файла ${path}. Стрелками можно переходить от слова к слову; объяснение справа обновляется.`)}
       data-testid="code-view"
       style={{ fontSize: prefs.fontSize, lineHeight: `${lineHeight}px` }}
       onScroll={(e) => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight })}

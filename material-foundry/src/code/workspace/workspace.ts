@@ -3,6 +3,8 @@
 // point never lose information (restoring is itself a change that can be undone). Original files
 // on disk are never touched here — writing to disk is a separate, explicitly confirmed action.
 
+import { tr } from '../i18n';
+
 export interface WsFile {
   path: string;
   /** Text exactly as opened (or as last saved to disk). */
@@ -131,7 +133,7 @@ export class Workspace {
       if (f.current !== e.after) real.push({ path: e.path, before: f.current, after: e.after });
     }
     if (!real.length) throw new Error('This change does not modify anything.');
-    this.addRestorePoint(`Before: ${label}`, real.map((e) => ({ path: e.path, text: e.before })));
+    this.addRestorePoint(`${tr('Before', 'До')}: ${label}`, real.map((e) => ({ path: e.path, text: e.before })));
     for (const e of real) this.files.get(e.path)!.current = e.after;
     const cs: ChangeSet = { id: uid('chg'), time: Date.now(), label, edits: real };
     this.history.push(cs);
@@ -188,14 +190,14 @@ export class Workspace {
     const rp = this.restorePoints.find((r) => r.id === id);
     if (!rp) throw new Error('Restore point not found.');
     const edits = rp.files.filter((f) => this.files.has(f.path)).map((f) => ({ path: f.path, after: f.text }));
-    return this.apply(`Restored "${rp.label.replace(/^Before: /, '')}" to its earlier state`, edits);
+    return this.apply(tr(`Restored "${rp.label.replace(/^(Before|До): /, '')}" to its earlier state`, `Возврат к состоянию до «${rp.label.replace(/^(Before|До): /, '')}»`), edits);
   }
 
   /** Revert one file to the text it had when it was opened. */
   async revertFile(path: string): Promise<ChangeSet> {
     const f = this.files.get(path);
     if (!f) throw new Error('File not found.');
-    return this.apply(`Reverted ${path} to the original`, [{ path, after: f.original }]);
+    return this.apply(tr(`Reverted ${path} to the original`, `${path}: возвращён оригинал`), [{ path, after: f.original }]);
   }
 
   /** After a confirmed save to disk, the saved text becomes the new original. */
@@ -203,7 +205,7 @@ export class Workspace {
     for (const p of paths) {
       const f = this.files.get(p);
       if (f) {
-        this.addRestorePoint(`Original of ${p} before saving to disk`, [{ path: p, text: f.original }]);
+        this.addRestorePoint(tr(`Original of ${p} before saving to disk`, `Оригинал ${p} до сохранения на диск`), [{ path: p, text: f.original }]);
         f.original = f.current;
       }
     }
