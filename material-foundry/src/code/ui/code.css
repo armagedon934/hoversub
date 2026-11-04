@@ -440,6 +440,7 @@
 .cm-tabs {
   position: relative;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
   padding: 6px 8px 0;
@@ -448,11 +449,12 @@
 }
 
 .cm-tabs [role='tab'] {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 34px;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 0;
   border-bottom: 3px solid transparent;
   background: transparent;

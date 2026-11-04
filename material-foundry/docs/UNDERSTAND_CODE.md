@@ -49,7 +49,7 @@ service and no API key involved.
 8. **Changes** lists changed files (compare side by side, *Back to original*), the history (undo/redo), restore
    points, and lets you download the changed files or the whole workspace as a ZIP, or save to the opened folder.
 9. **Ideas A–Z**: all 103 ideas of the built-in knowledge base, each at five levels.
-10. **Reading comfort**: dark/light colours, text size 12–24, roomy line spacing. **Keys** lists the keyboard
+10. **Aa Comfort** (reading comfort): dark/light colours, text size 12–24, roomy line spacing. **Keys** lists the keyboard
     shortcuts (arrow keys move from word to word in the code).
 
 ## Supported languages and what the app really understands

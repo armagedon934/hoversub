@@ -1,0 +1,282 @@
+{
+  "when": "2026-11-04T17:05:38.829Z",
+  "passed": 55,
+  "total": 55,
+  "checks": [
+    {
+      "name": "UNDERSTAND CODE opens from the top bar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Project explainer describes the example",
+      "ok": true,
+      "detail": "A Python project with a web page Likely"
+    },
+    {
+      "name": "Project explainer finds the starting point",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "File opens with language and analysis depth shown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Clicking a variable explains it",
+      "ok": true,
+      "detail": "TAX_RATEConstant"
+    },
+    {
+      "name": "Explanation shows a confidence level",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Five explanation levels give different wording",
+      "ok": true,
+      "detail": "A constant is a box with a lock: you put | A constant is a name for a value that is | A constant is a name bound to a value th | Immutability may be enforced by the lang | Let's work it out together, step by step"
+    },
+    {
+      "name": "Level 5 shows an exercise",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Chosen level is remembered after reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Workspace and project are restored after reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Function definition explained with inputs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Function diagram shows who uses it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Step-by-step flowchart is drawn",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Operator explained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Keyword explained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Bracket explained with its partner highlighted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"I don't understand\" gives a new, simpler explanation each time",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Show me with an example\" shows an example",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Show every use\" highlights the uses",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Where is it made?\" jumps to the definition",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Go to definition across files (main.py → shop/prices.py)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Keyboard: arrows move between words, number keys choose the level",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview shows a before/after diff",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview lists risks",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Nothing changed before confirming",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Apply needs explicit confirmation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Change applied to the workspace copy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Restore point was created first",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Original text kept separately",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Changed lines are marked in the code",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preview warns when a change breaks the code",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Rename preview covers both connected files",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Changes view lists changed files",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Undo reverts the last change (rename)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Redo re-applies it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Ctrl+Z undoes in the code module",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Restore point brings back the earlier state",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Workspace can be downloaded as a ZIP",
+      "ok": true,
+      "detail": "tiny-shop_example_-workspace.zip"
+    },
+    {
+      "name": "Project map draws the files",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Glossary explains ideas offline",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Light theme and bigger text",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Comfort panel closes when clicking elsewhere",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Grammars are spread over several analysis workers",
+      "ok": true,
+      "detail": "3 workers for 18 grammars"
+    },
+    {
+      "name": "Page stays alive 15 s after loading every grammar (Chromium compiler memory)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "All 28 sample files detected correctly",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Binary file listed but not opened as text",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Opening a script never runs it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SQL, PowerShell, Kotlin, Lua and unknown files are explainable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Search inside the code finds matches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Large file (24,000 lines) opens and only visible lines are drawn",
+      "ok": true,
+      "detail": "5007 ms, 54 line elements"
+    },
+    {
+      "name": "Clicking deep inside a large file works",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Keeps working with the network switched off",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No request ever left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No errors in the page",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Switching back to Materials shows the material studio",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

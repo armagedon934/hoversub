@@ -3,7 +3,7 @@
 // screenshots to verification/code/ and a report to verification/e2e-code-report.json.
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Page } from '@playwright/test';
 import { SAMPLES } from '../tests/codeSamples';
@@ -44,6 +44,7 @@ async function clickText(page: Page, line: number, text: string) {
 }
 
 async function main() {
+  rmSync(SHOTS, { recursive: true, force: true });
   mkdirSync(SHOTS, { recursive: true });
   const server = await startServer();
   const browser = await chromium.launch();
@@ -249,9 +250,12 @@ async function main() {
     await page.getByTestId('view-code').click();
     check('Light theme and bigger text', (await page.locator('.cm.theme-light').count()) === 1 && (await code(page, 's.prefs.fontSize')) === 17);
     await shot(page, '10-light-theme');
+    check('Comfort panel closes when clicking elsewhere', (await page.locator('.popover').count()) === 0);
+    await page.getByTestId('reading-settings').click();
     await page.getByTestId('font-smaller').click();
     await page.getByTestId('font-smaller').click();
     await page.getByTestId('theme-dark').click();
+    await page.keyboard.press('Escape');
 
     // ---- opening many languages, unknown and binary files, without running anything
     await page.getByTestId('close-project').click();

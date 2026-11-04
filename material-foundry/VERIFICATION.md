@@ -160,3 +160,57 @@ axis, gentle ring wander and knots that deflect the grain); arcane borders glowi
 now); polka-dot concrete pores and aggregate; uniform granite specks (now mixed dark/light grains); confetti-like
 gravel (rotated, irregular pebbles); concrete presets that looked alike (stronger formwork, distinct tones);
 weathered knots rendered as dark dots.
+
+## 6. UNDERSTAND CODE (third iteration)
+
+All commands below were run in the test container (4 cores, Chromium 141 headless shell from Playwright 1.56.1).
+
+### Unit tests — 124 in total, all passing (`npm test`, 10 files)
+
+70 of them are new and cover the code module:
+
+* `tests/code-languages.test.ts` (39): detection by extension, file name, shebang and content (incl. `.h` C vs C++,
+  unknown → plain text, binary detection); every language opens with the expected analysis depth, valid samples
+  report no syntax problems and a word can be explained (28 sample files, one per language/format); functions are
+  found in every full-structure language; Swift/Lua word-level symbols; invalid Python/JS/Lua report problems
+  without crashing; empty and Unicode files; a 24,000-line file opens in a few seconds, and a file above
+  3,000,000 characters falls back to plain text.
+* `tests/code-explain.test.ts` (14): scope-aware definitions/references (a variable with the same name in another
+  function is not linked), functions (parameters, defaults, return values, docstring, flow), brackets with partners,
+  operators with both sides, keywords; five different explanation levels for six element types; "I don't
+  understand" gives a different wording each time; name-based links are never marked *Verified*; go-to-definition
+  data; the example project's dependency graph, entry point and overview; import resolution for TS/Python/C/HTML;
+  knowledge base integrity (103 ideas × 5 levels) and that **every concept produced by clicking every character of
+  all 28 samples** exists; a static scan that `src/code` contains no network calls; opening a file with side
+  effects does not execute it.
+* `tests/code-workspace.test.ts` (17): diff (minimal changes, side by side, 60,000-line worst case under 5 s);
+  proposals (value change, invalid input refused, cross-file rename only across imports with warnings for
+  unrelated same-name code, keywords/invalid names refused, local rename stays in its function, switching a Python
+  line off adds `pass` and still parses, a breaking edit is detected by the syntax check, stale selections refused);
+  workspace (restore point before every change, originals untouched, undo/redo, restore and revert are undoable,
+  save keeps the old original, session persistence and corrupt storage ignored).
+
+### Browser end-to-end — `npm run e2e:code` (55 checks, all passing)
+
+Every request that does not go to the local preview server is aborted for the whole session; the report confirms
+no request was attempted. Report: `verification/e2e-code-report.json`; screenshots: `verification/code/`.
+
+Covered: opening the module from the top bar and returning to Materials; the example project's explanation and
+starting point; clicking a variable, function, operator, keyword and bracket; the five levels (all different,
+remembered after a reload together with the workspace); level-5 exercise; flowchart and function diagrams;
+"I don't understand" and "Show me with an example"; show every use; go to definition within a file and across
+files; keyboard navigation and level keys; the what-if flow (preview diff, risks, nothing changed before
+confirming, apply disabled until the acknowledgement, restore point created, original kept, changed lines marked),
+detection of a breaking edit, a cross-file rename; undo/redo (buttons and Ctrl+Z), going back to a restore point,
+ZIP download; project map; glossary; light theme and text size; opening 30 files at once (28 languages and formats
+detected correctly, a PNG listed but not opened, a script containing `alert()` opened without running it); search
+inside the code; a 24,000-line file (about 5 s to open, only ~54 line elements in the page) and clicking deep
+inside it; working with the network switched off; no page or console errors.
+
+**Problem found and fixed during this run:** after all grammars had been used, the tab crashed a few seconds later
+with `V8 process OOM (Zone)` in Chromium's log. Testing every grammar alone (15 s wait each) showed that only the
+Tree-sitter **Swift** grammar triggers it; the other 18 grammars passed individually. Swift now uses the word-level
+analyser, and grammars are additionally spread over a pool of analysis workers (at most 7 per worker; 3 workers
+for all 18). The e2e checks that the page stays alive 15 s after loading every grammar.
+
+The material studio suite (`npm run e2e`) was re-run on the same build: **39 passed, 0 failed**.

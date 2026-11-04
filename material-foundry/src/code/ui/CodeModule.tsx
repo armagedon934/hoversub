@@ -129,6 +129,19 @@ export default function CodeModule() {
     w.__mf = { ...(w.__mf ?? {}), code: useCode, workspace, codeClient: getCodeClient() };
   }, [init]);
 
+  // Close the small pop-up panels when clicking anywhere else.
+  useEffect(() => {
+    if (!showSettings && !showKeys) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('.popover') || t.closest('[data-testid=reading-settings]') || t.closest('[data-testid=show-shortcuts]')) return;
+      setShowSettings(false);
+      setShowKeys(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [showSettings, showKeys]);
+
   // Keyboard shortcuts (ignored while typing in a field or when a dialog is open).
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
@@ -213,8 +226,8 @@ export default function CodeModule() {
           <button className="btn small ghost" onClick={() => setShowKeys((v) => !v)} aria-expanded={showKeys} data-testid="show-shortcuts">
             <Keyboard size={14} /> Keys
           </button>
-          <button className="btn small ghost" onClick={() => setShowSettings((v) => !v)} aria-expanded={showSettings} data-testid="reading-settings">
-            Aa Reading comfort
+          <button className="btn small ghost" onClick={() => setShowSettings((v) => !v)} aria-expanded={showSettings} data-testid="reading-settings" title="Reading comfort: colours, text size, line spacing">
+            Aa Comfort
           </button>
           {showSettings ? <Settings onClose={() => setShowSettings(false)} /> : null}
           {showKeys ? (
