@@ -4,7 +4,7 @@
 //
 // Usage: npx tsx scripts/e2e.ts
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Page, type Browser } from '@playwright/test';
 import { unzipSync } from 'fflate';
@@ -25,7 +25,7 @@ function check(name: string, ok: boolean, detail = '') {
 }
 
 async function startServer(): Promise<ChildProcess> {
-  const p = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+  const p = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch(URL);
@@ -59,7 +59,8 @@ async function shot(page: Page, name: string) {
 }
 
 async function main() {
-  rmSync(SHOTS, { recursive: true, force: true });
+  // Only this suite's own outputs are removed (other verification scripts write here too).
+  if (existsSync(SHOTS)) for (const f of readdirSync(SHOTS)) if (/^(0\d|1[0-8])-/.test(f)) rmSync(join(SHOTS, f));
   rmSync(DL, { recursive: true, force: true });
   mkdirSync(SHOTS, { recursive: true });
   mkdirSync(DL, { recursive: true });
@@ -265,7 +266,7 @@ async function main() {
     await page.click('[data-preset="molten_crust"]');
     await waitReady(page);
     await page.click('[data-testid="open-export"]');
-    await page.click('[data-testid="export-res"] button:has-text("2048")');
+    await page.click('[data-testid="export-res"] button:has-text("2K")');
     await shot(page, '15-export-dialog');
     // Measure main-thread responsiveness while the 2048 export runs.
     await page.evaluate(`(() => {
@@ -329,7 +330,7 @@ async function main() {
     writeFileSync(join(DL, 'exported-settings.json'), settingsJson);
 
     // Cancel a long export.
-    await page.click('[data-testid="export-res"] button:has-text("1024")');
+    await page.click('[data-testid="export-res"] button:has-text("1K")');
     await page.evaluate(() => (window as any).__mf.store.getState().setParam('heat', 0.5));
     await page.click('[data-testid="export-zip"]');
     await page.waitForSelector('[data-testid="export-progress"]');
@@ -425,4 +426,3 @@ main().catch((e) => {
   console.error(e);
   process.exitCode = 1;
 });
-void existsSync;

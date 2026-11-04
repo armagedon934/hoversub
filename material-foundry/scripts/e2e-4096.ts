@@ -12,7 +12,7 @@ const LABEL = SIZE === 8192 ? '8K' : '4K';
 const URL = `http://localhost:${PORT}/`;
 const OUT = 'verification';
 mkdirSync(join(OUT, 'downloads'), { recursive: true });
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
 for (let i = 0; i < 60; i++) {
   try {
     if ((await fetch(URL)).ok) break;

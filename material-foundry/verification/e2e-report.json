@@ -1,12 +1,12 @@
 {
-  "date": "2026-10-21T15:42:36.755Z",
+  "date": "2026-11-04T15:23:38.374Z",
   "passed": 39,
   "failed": 0,
   "checks": [
     {
       "name": "First run opens directly into a generated material",
       "ok": true,
-      "detail": "8.4 s to first full material (software WebGL, shared CPU)"
+      "detail": "4.9 s to first full material (software WebGL, shared CPU)"
     },
     {
       "name": "Workflow introduction is shown on first run",
@@ -76,7 +76,7 @@
     {
       "name": "Randomize seed changes the seed",
       "ok": true,
-      "detail": "seed 77072"
+      "detail": "seed 14595"
     },
     {
       "name": "Seed lock keeps the seed when switching presets",
@@ -131,12 +131,12 @@
     {
       "name": "High-resolution (2048) ZIP export completes",
       "ok": true,
-      "detail": "14.8 s"
+      "detail": "11.0 s"
     },
     {
       "name": "Interface keeps rendering frames during the 2048 export",
       "ok": true,
-      "detail": "frame gaps p95 19 ms, max 150 ms over 869 frames"
+      "detail": "frame gaps p95 18 ms, max 66 ms over 660 frames"
     },
     {
       "name": "ZIP contains the expected files",
@@ -181,7 +181,7 @@
     {
       "name": "Invalid settings JSON shows a helpful error",
       "ok": true,
-      "detail": "Downloaded lava_rock_seed_1815_normal_opengl_1024.png.Imported “Imported Lava”.Could not import “bad.json”: This file uses settings schema v7, but this version of Material Foundry only understands up to v1."
+      "detail": "Downloaded lava_rock_seed_1815_preview.png.Downloaded lava_rock_seed_1815_normal_opengl_1024.png.Imported “Imported Lava”.Could not import “bad.json”: This file uses settings schema v7, but this version of Material Foundry only understands up to v1."
     },
     {
       "name": "Key controls are visible and unclipped at 1366x768",

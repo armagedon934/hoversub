@@ -5,8 +5,10 @@ import { join } from 'node:path';
 import { generateMaterial } from '../src/engine/generate';
 import { PRESETS } from '../src/engine/presets';
 import { renderSwatch } from '../src/engine/swatch';
-import { buildZip } from '../src/export/exporter';
-import { encodePng, rgbaToRgb } from '../src/export/png';
+import { buildZip, encodeMap } from '../src/export/exporter';
+import { buildGlb } from '../src/export/glb';
+import { buildModelMeshes } from '../src/preview/modelExport';
+import { encodePng, joinParts, rgbaToRgb } from '../src/export/png';
 import { settingsFromPreset } from '../src/state/store';
 
 const size = Number(process.argv[2] ?? 512);
@@ -30,6 +32,19 @@ for (const id of ids) {
   });
   writeFileSync(join(out, z.name), z.data);
   console.log(`${z.name}  ${(z.data.length / 1048576).toFixed(2)} MB  ${(performance.now() - t0).toFixed(0)} ms`);
+}
+
+// Example 3D model: Castle Ashlar on the bevelled block (glTF binary with embedded textures).
+{
+  const g = generateMaterial({ size, settings: settingsFromPreset(PRESETS.find((p) => p.id === 'castle_ashlar')!) });
+  const opts = { normalConvention: 'opengl', heightBitDepth: 16, normalBitDepth: 8 } as const;
+  const img = (m: 'basecolor' | 'normal' | 'orm') => {
+    const png = encodeMap(g.maps, m, opts);
+    return { parts: [png], length: png.length };
+  };
+  const glb = buildGlb(buildModelMeshes({ shape: 'block', tileSize: 1 }), { name: g.settings.name, baseColor: img('basecolor'), normal: img('normal'), orm: img('orm') });
+  writeFileSync(join(out, `stone_wall_seed_1042_block_${size}.glb`), joinParts(glb.parts, glb.length));
+  console.log(`stone_wall_seed_1042_block_${size}.glb  ${(glb.length / 1048576).toFixed(2)} MB`);
 }
 
 // Contact sheet: lit swatch of every preset (128 px each).

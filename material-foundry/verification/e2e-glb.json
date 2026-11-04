@@ -1,0 +1,179 @@
+[
+  {
+    "file": "rusted_metal_seed_1312_block_1024.glb",
+    "exportSeconds": 4.024,
+    "sizeMB": 3.12,
+    "validator": {
+      "errors": 0,
+      "warnings": 1,
+      "infos": 0,
+      "messages": [
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations."
+      ]
+    },
+    "threeGLTFLoader": {
+      "meshes": 1,
+      "tris": 2028,
+      "decodedMaps": [
+        "aoMap:1024",
+        "map:1024",
+        "metalnessMap:1024",
+        "normalMap:1024",
+        "roughnessMap:1024"
+      ],
+      "renderedMaps": [
+        "aoMap:1024",
+        "map:1024",
+        "metalnessMap:1024",
+        "normalMap:1024",
+        "roughnessMap:1024"
+      ],
+      "renderCap": null
+    },
+    "screenshot": "20-glb-corroded_plate-block-1K.png"
+  },
+  {
+    "file": "stone_wall_seed_1042_wall_displaced_2048.glb",
+    "exportSeconds": 15.267,
+    "sizeMB": 16.21,
+    "validator": {
+      "errors": 0,
+      "warnings": 1,
+      "infos": 0,
+      "messages": [
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations."
+      ]
+    },
+    "threeGLTFLoader": {
+      "meshes": 1,
+      "tris": 240000,
+      "decodedMaps": [
+        "aoMap:2048",
+        "map:2048",
+        "metalnessMap:2048",
+        "normalMap:2048",
+        "roughnessMap:2048"
+      ],
+      "renderedMaps": [
+        "aoMap:2048",
+        "map:2048",
+        "metalnessMap:2048",
+        "normalMap:2048",
+        "roughnessMap:2048"
+      ],
+      "renderCap": null
+    },
+    "screenshot": "20-glb-castle_ashlar-wall-2K-displaced.png"
+  },
+  {
+    "file": "lava_rock_seed_1815_sphere_4096.glb",
+    "exportSeconds": 19.963,
+    "sizeMB": 46.49,
+    "validator": {
+      "errors": 0,
+      "warnings": 1,
+      "infos": 0,
+      "messages": [
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations."
+      ]
+    },
+    "threeGLTFLoader": {
+      "meshes": 1,
+      "tris": 16128,
+      "decodedMaps": [
+        "aoMap:4096",
+        "emissiveMap:4096",
+        "map:4096",
+        "metalnessMap:4096",
+        "normalMap:4096",
+        "roughnessMap:4096"
+      ],
+      "renderedMaps": [
+        "aoMap:4096",
+        "emissiveMap:4096",
+        "map:4096",
+        "metalnessMap:4096",
+        "normalMap:4096",
+        "roughnessMap:4096"
+      ],
+      "renderCap": null
+    },
+    "screenshot": "20-glb-molten_crust-sphere-4K.png"
+  },
+  {
+    "file": "brick_wall_seed_913_scene_1024.glb",
+    "exportSeconds": 3.124,
+    "sizeMB": 2.29,
+    "validator": {
+      "errors": 0,
+      "warnings": 6,
+      "infos": 0,
+      "messages": [
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations."
+      ]
+    },
+    "threeGLTFLoader": {
+      "meshes": 6,
+      "tris": 4190,
+      "decodedMaps": [
+        "aoMap:1024",
+        "map:1024",
+        "metalnessMap:1024",
+        "normalMap:1024",
+        "roughnessMap:1024"
+      ],
+      "renderedMaps": [
+        "aoMap:1024",
+        "map:1024",
+        "metalnessMap:1024",
+        "normalMap:1024",
+        "roughnessMap:1024"
+      ],
+      "renderCap": null
+    },
+    "screenshot": "20-glb-weathered_brick-scene-1K.png"
+  },
+  {
+    "file": "arcane_stone_seed_1111_block_8192.glb",
+    "exportSeconds": 69.382,
+    "sizeMB": 120.27,
+    "validator": {
+      "errors": 0,
+      "warnings": 1,
+      "infos": 0,
+      "messages": [
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations."
+      ]
+    },
+    "threeGLTFLoader": {
+      "meshes": 1,
+      "tris": 2028,
+      "decodedMaps": [
+        "aoMap:8192",
+        "emissiveMap:8192",
+        "map:8192",
+        "metalnessMap:8192",
+        "normalMap:8192",
+        "roughnessMap:8192"
+      ],
+      "renderedMaps": [
+        "aoMap:2048",
+        "emissiveMap:2048",
+        "map:2048",
+        "metalnessMap:2048",
+        "normalMap:2048",
+        "roughnessMap:2048"
+      ],
+      "renderCap": 2048
+    },
+    "screenshot": "20-glb-glowing_runes-block-8K.png"
+  },
+  {
+    "consoleErrors": []
+  }
+]

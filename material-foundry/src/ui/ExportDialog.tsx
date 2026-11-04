@@ -69,7 +69,7 @@ export function ExportDialog() {
               <span className="hint">
                 Every map is regenerated procedurally at {res}×{res}; nothing is upscaled.
                 {res >= 4096
-                  ? ` ${res === 8192 ? '8K' : '4K'} is generated in strips and streamed into the PNG files, so memory stays low; expect ${res === 8192 ? 'several minutes and a ZIP of a few hundred MB' : 'about a minute'}.`
+                  ? ` ${res === 8192 ? '8K' : '4K'} is generated in strips and streamed into the PNG files, so memory stays low; expect ${res === 8192 ? 'one to a few minutes and a ZIP of a few hundred MB' : 'under a minute'}.`
                   : ''}
               </span>
             </div>
@@ -158,8 +158,8 @@ export function ExportDialog() {
             </button>
           </div>
           <p className="hint" style={{ margin: '6px 0 0' }}>
-            glTF 2.0 binary with the same mesh, UVs and tile size ({prefs.tileSize.toFixed(2)} m) as the preview; base color, OpenGL normal, ORM (occlusion + roughness/metallic) and emissive textures embedded. Opens in
-            Blender, Unity/Unreal importers, Godot, three.js and Windows 3D Viewer.{bake ? ' Displacement uses the preview displacement scale and a densely subdivided mesh.' : ''}
+            glTF 2.0 with the preview's mesh, UVs and {prefs.tileSize.toFixed(2)} m tiles; base color, normal, ORM and emissive textures embedded. Opens in Blender, Godot, Unity, Unreal and three.js.
+            {bake ? ' Baked relief uses the preview displacement scale.' : ''}
           </p>
         </div>
         <div className="dialog-foot">

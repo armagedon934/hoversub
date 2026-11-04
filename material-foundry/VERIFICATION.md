@@ -62,8 +62,8 @@ PASS  Inspector switches between all generated maps  — 8 enabled map views
 PASS  Inspector zoom and texel readout work
 PASS  Inspector "Export map" downloads the viewed map  — stone_wall_seed_1042_basecolor_512.png
 PASS  Favorites persist across reloads; Current material persists across reloads
-PASS  High-resolution (2048) ZIP export completes  — 14.8 s
-PASS  Interface keeps rendering frames during the 2048 export  — frame gaps p95 19 ms, max 150 ms over 869 frames
+PASS  High-resolution (2048) ZIP export completes  — 11.0 s
+PASS  Interface keeps rendering frames during the 2048 export  — frame gaps p95 18 ms, max 66 ms over 660 frames
 PASS  ZIP contains the expected files (8 maps + README.txt + settings.json)
 PASS  Exported PNGs are 2048x2048 with valid encoding (height 16-bit, others 8-bit)
 PASS  ORM channels are R=AO, G=Roughness, B=Metallic
@@ -80,12 +80,69 @@ PASS  No console errors during the whole session
 A bug found by this run and fixed: at 1366 px the Map Inspector's map selector and zoom toolbar overlapped (a
 click was intercepted). They now share one wrapping toolbar.
 
-### 4096 export — `npx tsx scripts/e2e-4096.ts`
+### 4096 export (first iteration, in-memory path) — `npx tsx scripts/e2e-4096.ts`
 
 `verification/e2e-4096.json`: the Molten Lava Crust 4096 ZIP export completed in **66 s** in the browser with no
 console errors; all eight PNGs decoded as 4096×4096 with valid CRCs (ZIP 48 MB). A single-threaded Node run of the
-same material peaked at **1.25 GB RSS** (generation 81 s). 4096 is therefore offered, labelled as slow and
-memory-heavy; 2048 is recommended for ordinary machines.
+same material peaked at **1.25 GB RSS** (generation 81 s). This was the first iteration; 4K and 8K now use the
+streaming pipeline described in section 3b.
+
+## 3b. 8K textures and GLB models (second iteration)
+
+### Unit tests — now 54, all passing (`npm test`, 7 files)
+
+New tests in `tests/stream.test.ts` and `tests/glb.test.ts`:
+
+* the strip-based 4K/8K pipeline produces **byte-identical** base color, normal (8- and 16-bit, OpenGL and DirectX),
+  roughness, metallic, height (8- and 16-bit) and emissive PNGs compared with whole-image generation; AO/ORM differ
+  by at most 1 level; ZIP CRCs reported by the stream are correct; out-of-order strips are rejected;
+* 16-bit normals are unit length and agree with the 8-bit normals;
+* the streaming PNG encoder round-trips sparse data that **broke fflate's streaming deflate** (bug found during this
+  work: fflate's `Zlib` stream produced corrupt output for some sparse inputs pushed in pieces; the one-shot
+  `zlibSync` used for ≤2K exports was re-checked and is correct, so earlier exports were valid). 4K/8K streams now
+  use the platform's native `CompressionStream`;
+* the stored-ZIP writer produces archives read correctly by an independent unzipper;
+* GLB files for all five preview objects are structurally valid (aligned buffer views, index ranges, accessors),
+  embed the exported PNGs byte for byte, add `KHR_materials_emissive_strength` when needed, convert UVs to glTF
+  orientation with the preview's metre scale, and baking displacement yields a >100 000-triangle mesh with relief
+  bounded by the displacement depth.
+
+### 8K ZIP in the browser — `npx tsx scripts/e2e-4096.ts 8192`
+
+`verification/e2e-8192.json`: Molten Lava Crust at 8192×8192 exported through the real UI in **79 s**; ZIP 277 MB;
+all eight PNGs decode as 8192×8192 with valid CRCs; no console errors; the page's JS heap stayed at ~100 MB during the
+export. Python `zipfile.testzip()` reports no CRC errors; Pillow reads the height map as 16-bit (`I;16`, 55 160
+distinct levels) and decoded normals have length 0.994–1.007. The 4K ZIP took 20 s (previously 66 s with the
+in-memory path, whose main-thread heap reached ~930 MB).
+
+Bug found by inspecting 8K crops at 1:1 and fixed: scattered round features (rust pits, concrete pores and aggregate,
+granite specks, brick pits, pebbles) were clipped by Voronoi cell borders — a straight cut visible only at high
+resolution. They now test all nine neighbouring cells.
+
+### GLB models — `npm run e2e:glb`
+
+`verification/e2e-glb.json`; each model is exported from the export dialog, validated with the **Khronos
+glTF-Validator** (`gltf-validator` 2.0.0-dev.3.10), then loaded with three.js' `GLTFLoader` in a separate page and
+rendered (`verification/screenshots/20-glb-*.png`):
+
+| Model | Textures | Export | Size | Validator | Triangles |
+| --- | --- | --- | --- | --- | --- |
+| Corroded Steel Plate, block | 1K | 4.0 s | 3.1 MB | 0 errors | 2 028 |
+| Castle Ashlar, wall, **baked displacement** | 2K | 15.3 s | 16.2 MB | 0 errors | 240 000 |
+| Molten Lava Crust, sphere (emissive) | 4K | 20.0 s | 46.5 MB | 0 errors | 16 128 |
+| Weathered Old Brick, scene (6 meshes) | 1K | 3.1 s | 2.3 MB | 0 errors | 4 190 |
+| Glowing Rune Slabs, block (emissive) | **8K** | 69.4 s | 120.3 MB | 0 errors | 2 028 |
+
+The only validator warning is `MESH_PRIMITIVE_GENERATED_TANGENT_SPACE` (no tangents stored; viewers generate
+MikkTSpace tangents, as for Blender's default glTF export). For the 8K model, `GLTFLoader` decoded all six 8192 px
+texture slots; because the test container renders with software WebGL (SwiftShader, no GPU), the viewer
+downscaled the textures to 2048 px for the screenshot only.
+
+A layout issue found in the 1366×768 screenshot and fixed: with the new 3D-model section the export dialog was taller
+than the window, pushing the *Download ZIP* button partly out of view; the dialog footer is now sticky
+(`verification/screenshots/19-export-dialog-8k.png`).
+
+The main browser suite (`npm run e2e`) was re-run after these changes: **39 passed, 0 failed**, no console errors.
 
 ## 4. Independent PNG check (Python Pillow)
 

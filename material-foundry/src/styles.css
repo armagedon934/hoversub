@@ -1040,7 +1040,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .dialog-body {
-  padding: 16px 18px;
+  padding: 12px 18px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
@@ -1058,7 +1058,7 @@ input[type='range']::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .field > label {
@@ -1100,7 +1100,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .model-export {
-  padding: 12px 18px 14px;
+  padding: 10px 18px 10px;
   border-top: 1px solid var(--line);
 }
 
@@ -1113,6 +1113,10 @@ input[type='range']::-moz-range-thumb {
 }
 
 .dialog-foot {
+  position: sticky;
+  bottom: 0;
+  background: var(--panel);
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 10px;
