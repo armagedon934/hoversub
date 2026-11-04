@@ -31,8 +31,30 @@ function treeSitterGrammars(): Plugin {
   };
 }
 
+/** Python (Pyodide) runtime files, served at /pyodide/ and copied into the build: Python runs offline. */
+const PYODIDE_FILES = ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'];
+const PYODIDE_DIR = resolve(__dirname, 'node_modules/pyodide');
+const TYPES: Record<string, string> = { mjs: 'text/javascript', wasm: 'application/wasm', zip: 'application/zip', json: 'application/json' };
+
+function pyodideFiles(): Plugin {
+  return {
+    name: 'pyodide-files',
+    configureServer(server) {
+      server.middlewares.use('/pyodide/', (req, res, next) => {
+        const name = (req.url ?? '').split('?')[0].replace(/^\//, '');
+        if (!PYODIDE_FILES.includes(name)) return next();
+        res.setHeader('Content-Type', TYPES[name.split('.').pop()!] ?? 'application/octet-stream');
+        res.end(readFileSync(resolve(PYODIDE_DIR, name)));
+      });
+    },
+    generateBundle() {
+      for (const f of PYODIDE_FILES) this.emitFile({ type: 'asset', fileName: `pyodide/${f}`, source: readFileSync(resolve(PYODIDE_DIR, f)) });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), treeSitterGrammars()],
+  plugins: [react(), treeSitterGrammars(), pyodideFiles()],
   base: './',
   worker: { format: 'es' },
   build: {
