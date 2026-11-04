@@ -28,7 +28,13 @@ service and no API key involved. (An AI model running on your own computer can o
 * **Mini-Unity** — write real Unity C# MonoBehaviour scripts and watch them drive a small 2D world: 9 levels
   (Start/Debug.Log → Update/transform/deltaTime → Input → triggers/CompareTag/Destroy → GetAxis → Rigidbody2D jump →
   Instantiate → timer → final), Inspector with the script's public fields, Console with `Debug.Log`, keyboard and
-  touch controls, hints and solutions; a sandbox for any Workshop script. Every level's solution is played
+  touch controls, hints and solutions; a sandbox for any Workshop script. **All 27 Unity recipes run in the sandbox
+  and are checked by behaviour** (`tests/unity-recipes.test.ts`): coroutines with `WaitForSeconds`, `Invoke`,
+  rotation and mirroring, mouse input and `ScreenToWorldPoint`, `Physics2D.OverlapCircle`/`Raycast`,
+  `Debug.DrawRay`, `GameObject.FindWithTag`, `CharacterController`, `Animator`, `AudioSource`, `SpriteRenderer`,
+  `Time.timeScale`, `SceneManager.LoadScene`, `PlayerPrefs`, UI text and sliders, delayed `Destroy`, trigger
+  enter/stay/exit. Scripts go onto the object their class name suggests; empty Inspector fields are filled with
+  sensible objects and each choice is written to the Console. Every level's solution is played
   automatically by the tests.
 * **Courses** — *C# for Unity* (16 lessons; every example runs for real in the replay; tasks are checked by running
   the learner's code and comparing the output) and *Unreal Engine C++* (4 reading lessons compared with Unity).

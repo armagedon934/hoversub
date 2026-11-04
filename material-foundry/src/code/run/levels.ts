@@ -629,34 +629,48 @@ export function asLevel(level: MiniLevel, locale: 'ru' | 'en'): Level {
   return { ...level, starter: starterOf(level, locale) };
 }
 
-/** A free-play world for any script from the Workshop: ground, platforms, coins, an enemy, a flag. */
+/** A free-play world for any script from the Workshop: ground, platforms, coins, an enemy, a flag.
+ *  The script goes onto the object its name suggests (an enemy script onto the enemy, a platform script
+ *  onto a platform…), and empty Inspector fields are filled with sensible objects (written to the Console). */
 export function sandboxLevel(code: string, name: string): Level {
-  const physics = /Rigidbody2D/.test(code);
+  const cls = /class\s+(\w+)\s*:\s*MonoBehaviour/.exec(code)?.[1] ?? '';
+  const hero = /Player|Hero|Character/i.test(cls);
+  const attach = hero ? undefined : /Enemy|Patrol|Chase|Guard|Monster/i.test(cls) ? 'Enemy' : /Platform|Elevator|Lift/i.test(cls) ? 'Platform' : /Spawn/i.test(cls) ? 'Spawner' : /Camera/i.test(cls) ? 'MainCamera' : undefined;
+  const physics = !attach && /Rigidbody2D/.test(code) && !/CharacterController/.test(code);
   const prefabFields: Record<string, 'bulletPrefab'> = {};
-  for (const m of code.matchAll(/public\s+(?:GameObject|Rigidbody2D|Transform)\s+(\w*(?:[Pp]refab|[Bb]ullet)\w*)\s*;/g)) prefabFields[m[1]] = 'bulletPrefab';
-  const coins: ObjSpec[] = [4, 6, 8, 10, 12].map((x, i) => ({ name: `Coin${i + 1}`, tag: 'Coin', sprite: 'coin', x, y: physics ? (i % 2 ? 3.2 : 1.6) : 3 + (i % 2) }));
+  if (/Shoot|Gun|Weapon|Fire/i.test(cls) || /bulletPrefab/.test(code))
+    for (const m of code.matchAll(/public\s+(?:GameObject|Rigidbody2D)\s+(\w*(?:[Bb]ullet)\w*)\s*;/g)) prefabFields[m[1]] = 'bulletPrefab';
+  const low = physics || /CharacterController/.test(code);
+  const coins: ObjSpec[] = [4, 6, 8, 10, 12].map((x, i) => ({ name: `Coin${i + 1}`, tag: 'Coin', sprite: 'coin', x, y: low ? (i % 2 ? 3.2 : 1.6) : 3 + (i % 2) }));
   return {
     id: 'sandbox',
     icon: '🧪',
     title: T(`Sandbox: ${name}`, `Песочница: ${name}`),
-    task: T('Free play: try your script. Arrow keys / WASD / Space control the hero.', 'Свободная игра: попробуй свой скрипт. Стрелки / WASD / пробел управляют героем.'),
-    learn: T('Mini-Unity supports a part of Unity: Start, Update, transform, Input, Time, Rigidbody2D, triggers, Instantiate, Destroy, Debug.Log.', 'Мини-Unity понимает часть Unity: Start, Update, transform, Input, Time, Rigidbody2D, триггеры, Instantiate, Destroy, Debug.Log.'),
-    hint: T('Things Mini-Unity does not know are reported honestly — they work in the real Unity.', 'То, чего Мини-Unity не знает, она честно сообщит — в настоящей Unity это работает.'),
+    task: T('Free play: try your script. Arrow keys / WASD / Space / mouse control the game.', 'Свободная игра: попробуй свой скрипт. Стрелки / WASD / пробел / мышь управляют игрой.'),
+    learn: T(
+      attach ? `The script is on the object "${attach}" (like putting it on that object in Unity).` : 'Mini-Unity supports a big part of Unity: Start, Update, transform, Input (keys and mouse), Time, Rigidbody2D, triggers, coroutines, Instantiate, Destroy, Physics2D, Debug.Log.',
+      attach ? `Скрипт висит на объекте «${attach}» (как будто ты повесил его на этот объект в Unity).` : 'Мини-Unity понимает большую часть Unity: Start, Update, transform, Input (клавиши и мышь), Time, Rigidbody2D, триггеры, корутины, Instantiate, Destroy, Physics2D, Debug.Log.',
+    ),
+    hint: T('Empty Inspector fields are filled automatically — see the Console. Things Mini-Unity does not know are reported honestly.', 'Пустые поля Inspector заполняются сами — смотри Console. То, чего Мини-Unity не знает, она честно сообщит.'),
     width: 16,
     height: 9,
-    player: { x: 2, y: physics ? 1.5 : 3, rigidbody: physics },
+    player: { x: 2, y: low ? 1.5 : 3, rigidbody: physics },
     objects: [
       ...ground(16),
-      { name: 'Platform', tag: 'Ground', sprite: 'platform', x: 7, y: 2.6, w: 2, h: 0.4 },
+      { name: 'Platform', tag: 'Platform', sprite: 'platform', x: 7, y: 2.6, w: 2, h: 0.4 },
       { name: 'Platform', tag: 'Ground', sprite: 'platform', x: 11, y: 2.6, w: 2, h: 0.4 },
       ...coins,
       { name: 'Enemy', tag: 'Enemy', sprite: 'enemy', x: 9, y: 1.5, patrol: { dx: 3, dy: 0, speed: 1.2 }, danger: true },
       { name: 'Finish', tag: 'Finish', sprite: 'flag', x: 15, y: 1.5 },
+      { name: 'Spawner', tag: 'Spawner', sprite: 'none', x: 8, y: 8, w: 0.1, h: 0.1 },
+      { name: 'Main Camera', tag: 'MainCamera', sprite: 'none', x: 8, y: 4.5, w: 0.1, h: 0.1 },
     ],
     goal: { type: 'free' },
     starter: code,
     solution: code,
     demo: [],
     inspector: prefabFields,
+    attach,
+    autoInspector: true,
   };
 }

@@ -1,6 +1,6 @@
 {
-  "when": "2026-11-04T19:55:53.007Z",
-  "passed": 49,
+  "when": "2026-11-04T22:01:53.488Z",
+  "passed": 51,
   "failed": 0,
   "dialogs": 0,
   "checks": [
@@ -151,6 +151,16 @@
     },
     {
       "name": "A Unity script from the Workshop plays in the Mini-Unity sandbox",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recipe in the sandbox: empty Inspector fields are filled and written to the Console",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recipe in the sandbox: a mouse click fires a bullet (GetMouseButtonDown, Instantiate, velocity)",
       "ok": true,
       "detail": ""
     },

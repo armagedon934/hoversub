@@ -60,8 +60,14 @@ function drawObj(ctx: CanvasRenderingContext2D, o: GameObj, s: number, H: number
   const y = H - o.y * s;
   const w = o.w * s;
   const h = o.h * s;
+  if (o.hidden || o.sprite === 'point' || o.sprite === 'none') return;
   ctx.save();
   ctx.translate(x, y);
+  // Unity rotation is counter-clockwise; the canvas y axis points down.
+  if (o.rot) ctx.rotate((-o.rot * Math.PI) / 180);
+  const mx = ((o.sx ?? 1) < 0 ? -1 : 1) * (o.flipX ? -1 : 1);
+  const my = (o.sy ?? 1) < 0 ? -1 : 1;
+  if (mx !== 1 || my !== 1) ctx.scale(mx, my);
   switch (o.sprite) {
     case 'hero': {
       ctx.fillStyle = '#4f9cff';
@@ -187,13 +193,49 @@ function draw(canvas: HTMLCanvasElement, w: UnityWorld, light: boolean) {
     ctx.stroke();
   }
   for (const o of w.objects) if (o.alive && o !== w.player) drawObj(ctx, o, s, cssH, w.time);
-  drawObj(ctx, w.player, s, cssH, w.time);
+  if (w.player.alive) drawObj(ctx, w.player, s, cssH, w.time);
+  // Debug.DrawRay / DrawLine (visible like in the Scene view).
+  for (const r of w.rays) {
+    ctx.strokeStyle = { red: '#ff4d4f', green: '#3ecf8e', blue: '#4f9cff', yellow: '#ffcc33', white: '#ffffff', cyan: '#22d3ee', magenta: '#e879f9' }[r.color] ?? '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(r.x1 * s, cssH - r.y1 * s);
+    ctx.lineTo(r.x2 * s, cssH - r.y2 * s);
+    ctx.stroke();
+  }
+  // UI: texts and sliders from the script (scoreText.text = …, slider.value = …).
+  let uy = Math.max(30, s * 0.8);
+  for (const u of w.ui) {
+    if (u.slider) {
+      const bw = Math.min(200, cssW * 0.3);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(cssW - bw - 12, uy - 12, bw, 14);
+      ctx.fillStyle = '#3ecf8e';
+      ctx.fillRect(cssW - bw - 12, uy - 12, (bw * Math.max(0, Math.min(1, u.slider.value / (u.slider.max || 1)))), 14);
+    } else if (u.text) {
+      ctx.font = `bold ${Math.max(13, s * 0.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.fillStyle = light ? '#1f2124' : '#ffffff';
+      ctx.fillText(u.text, cssW - 12, uy);
+      ctx.textAlign = 'left';
+    }
+    uy += Math.max(20, s * 0.55);
+  }
+  if (w.timeScale === 0) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, cssW, cssH);
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.max(16, s * 0.6)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Time.timeScale = 0', cssW / 2, cssH / 2);
+    ctx.textAlign = 'left';
+  }
   ctx.fillStyle = light ? '#334' : '#cbd5e1';
   ctx.font = `${Math.max(11, s * 0.28)}px ui-monospace, monospace`;
   ctx.fillText(`x ${w.player.x.toFixed(2)}  y ${w.player.y.toFixed(2)}  t ${w.time.toFixed(1)}s`, 8, Math.max(14, s * 0.35));
 }
 
-const KEY_NAMES: Record<string, string> = { ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight', ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ' ': ' ', Spacebar: ' ', Enter: 'Enter', Escape: 'Escape' };
+const KEY_NAMES: Record<string, string> = { ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight', ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ' ': ' ', Spacebar: ' ', Enter: 'Enter', Escape: 'Escape', Control: 'Control', Shift: 'Shift', Tab: 'Tab' };
 function keyOf(e: KeyboardEvent | React.KeyboardEvent): string | null {
   if (KEY_NAMES[e.key]) return KEY_NAMES[e.key];
   if (/^[a-zA-Z0-9]$/.test(e.key)) return e.key.toLowerCase();
@@ -308,6 +350,9 @@ export function MiniUnity() {
       return;
     }
     setPhase('playing');
+    // Local automation hook for the browser tests (nothing leaves the page).
+    const hook = window as unknown as { __mf?: Record<string, unknown> };
+    hook.__mf = { ...(hook.__mf ?? {}), unityWorld: w };
     canvasRef.current?.parentElement?.focus();
     let last = performance.now();
     let acc = 0;
@@ -323,7 +368,7 @@ export function MiniUnity() {
       if (canvasRef.current) draw(canvasRef.current, w, theme === 'light');
       if (++n % 6 === 0 || r.status !== 'playing') {
         setLogs([...w.logs.slice(-60)]);
-        setInsp(w.inspector());
+        setInsp([...w.inspector(), ...Object.entries(w.anim).map(([k, v]) => ({ name: `Animator · ${k}`, value: v }))]);
       }
       if (r.status === 'playing') {
         raf.current = requestAnimationFrame(loop);
@@ -482,7 +527,33 @@ export function MiniUnity() {
             </span>
           </div>
           <div className="mu-stage" tabIndex={0} onKeyDown={keyDown} onKeyUp={keyUp} onBlur={() => worldRef.current?.keys.clear()} aria-label={tr('Game. Click here and use the arrow keys and Space.', 'Игра. Нажми сюда и используй стрелки и пробел.')} data-testid="mu-stage">
-            <canvas ref={canvasRef} className="mu-canvas" />
+            <canvas
+              ref={canvasRef}
+              className="mu-canvas"
+              onPointerMove={(e) => {
+                const w = worldRef.current;
+                const c = canvasRef.current;
+                if (!w || !c) return;
+                const r = c.getBoundingClientRect();
+                const sc = r.width / w.level.width;
+                w.mouse = { x: (e.clientX - r.left) / sc, y: (r.bottom - e.clientY) / sc };
+              }}
+              onPointerDown={(e) => {
+                const w = worldRef.current;
+                if (!w || phase !== 'playing') return;
+                const b = e.button === 2 ? 1 : e.button === 1 ? 2 : 0;
+                w.mouseDown.add(b);
+                w.mousePressed.add(b);
+              }}
+              onPointerUp={(e) => {
+                const w = worldRef.current;
+                if (!w) return;
+                const b = e.button === 2 ? 1 : e.button === 1 ? 2 : 0;
+                w.mouseDown.delete(b);
+                w.mouseReleased.add(b);
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+            />
             {phase === 'won' ? (
               <div className="mu-overlay won" data-testid="mu-won">
                 <b>🏆 {message}</b>

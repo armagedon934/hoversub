@@ -294,3 +294,19 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
   folder, starts the installed program with `--smoke-test`, uninstalls it and uploads the installer as an artifact.
 * **Portable package** rebuilt (9.8 MB, now with Pyodide): unpacked and started with `serve.py`; Python ran in the
   Workshop from the served files. The servers now also send `.zip` and `.woff` with the right types.
+
+## 9. Mini-Unity runs every Unity recipe (sixth iteration)
+
+* **Unit tests: 262, all passing** (16 files). New `tests/unity-recipes.test.ts` (15): every MonoBehaviour recipe
+  from "I want…" starts in the sandbox without errors, and **each one is checked by what it does**: the 2D walk
+  moves the hero; the platformer's ground check and layer are filled in automatically and the hero jumps only from
+  the ground; the CharacterController walk stays grounded; rotation is 90°/s; look-at-mouse turns to 90° when the
+  mouse is above; the camera follow moves the camera; the moving platform goes back and forth; a coin adds exactly
+  one point (OnTriggerEnter2D once); Space fires a bullet flying right that is removed after 3 s; the enemy chase
+  gets closer and the patrol walks and mirrors; the spawner creates one object every 2 s; the countdown counts,
+  Escape sets `Time.timeScale = 0`; the coroutine blinks with `WaitForSeconds` and ends; Animator parameters are
+  set; the raycast sees a coin and draws its ray; `Destroy(gameObject, 2)` waits two seconds. All earlier tests
+  (lessons, 9 Mini-Unity levels, courses) still pass.
+* **Browser e2e `npm run e2e:workshop`: 51/51**: the "shoot" recipe from "I want…" opens in the sandbox, the empty
+  Inspector fields are filled and written to the Console, and a real mouse click on the game fires a bullet.
+  `e2e:code` 68/68, materials 39/39, `e2e:desktop` 13/13 on the same build.

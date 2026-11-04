@@ -148,7 +148,7 @@ export interface TraceStep {
   output: number;
 }
 
-export type Ev = { t: 'step'; node: SyntaxNode; kind: TraceStep['kind']; say: string } | { t: 'input'; prompt: string };
+export type Ev = { t: 'step'; node: SyntaxNode; kind: TraceStep['kind']; say: string } | { t: 'input'; prompt: string } | { t: 'wait'; value: V; node: SyntaxNode };
 
 type Gen<T> = Generator<Ev, T, string | undefined>;
 
@@ -164,7 +164,20 @@ export interface Host {
   get?(target: HostV, name: string, line: number): V | typeof NOT_FOUND;
   set?(target: HostV, name: string, value: V, line: number): boolean;
   method?(target: HostV, name: string, args: V[], line: number): V | typeof NOT_FOUND;
+  /** A static call on a type the program does not define (e.g. GameObject.FindWithTag, Physics2D.Raycast). */
+  static?(type: string, name: string, args: V[], line: number): V | typeof NOT_FOUND;
+  /** "new X(…)" for a type the program does not define (e.g. new WaitForSeconds(1f)). */
+  create?(type: string, args: V[], line: number): V | typeof NOT_FOUND;
   log?(text: string): void;
+}
+
+/** A coroutine that was asked for but not started yet: IEnumerator methods do not run when called. */
+export interface CoroutineRef {
+  method: SyntaxNode;
+  cls: ClassInfo;
+  self: ObjV | null;
+  args: V[];
+  line: number;
 }
 
 export const NOT_FOUND = Symbol('not-found');
@@ -647,6 +660,18 @@ export class CsProgram {
             if (!(e instanceof BreakSig)) throw e;
           }
         }
+        return;
+      }
+      case 'yield_statement': {
+        // "yield break" ends the coroutine; "yield return X" pauses it (X = new WaitForSeconds(…), null = next frame).
+        if (/^yield\s+break/.test(n.text)) {
+          yield this.step(n, 'return', tr('yield break: the coroutine ends.', 'yield break: корутина заканчивается.'));
+          throw new ReturnSig(undefined);
+        }
+        const e = named(n)[0];
+        const v = e ? yield* this.eval(e, scope, self, cls) : null;
+        yield this.step(n, 'line', tr(`Pause the coroutine (${e ? e.text : 'null'}); the game goes on meanwhile.`, `Пауза корутины (${e ? e.text : 'null'}); игра тем временем продолжается.`));
+        yield { t: 'wait', value: v, node: n };
         return;
       }
       case 'return_statement': {
@@ -1427,7 +1452,11 @@ export class CsProgram {
     }
   }
 
-  *invokeMethod(m: SyntaxNode, cls: ClassInfo, self: ObjV | null, args: V[], line: number): Gen<V> {
+  *invokeMethod(m: SyntaxNode, cls: ClassInfo, self: ObjV | null, args: V[], line: number, runCoroutine = false): Gen<V> {
+    if (!runCoroutine && /^(System\.Collections\.)?IEnumerator$/.test(m.childForFieldName('returns')?.text ?? m.childForFieldName('type')?.text ?? '')) {
+      const ref: CoroutineRef = { method: m, cls, self, args, line };
+      return { k: 'host', kind: 'coroutine', ref };
+    }
     if (this.stack.length > this.limits.maxDepth) throw new CsError(tr('Too many calls inside each other (stack overflow) — probably a method that calls itself forever.', 'Слишком много вызовов друг в друге (переполнение стека) — скорее всего, метод бесконечно вызывает сам себя.'), line, 'limit', 'StackOverflowException');
     const name = m.childForFieldName('name')?.text ?? '?';
     const scope = new Scope(null, true);
@@ -1461,6 +1490,8 @@ export class CsProgram {
       }
       const r = yield* this.builtinStatic(target.name, name, args, line);
       if (r !== NOT_FOUND) return r as V;
+      const hs = this.host.static ? this.host.static(target.name, fullName, args, line) : NOT_FOUND;
+      if (hs !== NOT_FOUND) return hs as V;
       throw new CsError(tr(`"${target.name}" has no method "${name}".`, `У «${target.name}» нет метода «${name}».`), line, 'runtime', 'CS0117');
     }
     if (typeof target === 'object' && target.k === 'obj') {
@@ -1523,6 +1554,10 @@ export class CsProgram {
     if (base === 'StringBuilder') return { k: 'list', items: [], elem: 'string' };
     if (/Exception$/.test(base)) return this.makeException(base, csText(args[0] ?? ''));
     const k = this.classes.get(base);
+    if (!k && this.host.create) {
+      const h = this.host.create(base, args, line);
+      if (h !== NOT_FOUND) return h as V;
+    }
     if (!k) throw new CsError(tr(`There is no class "${base}". Create it with: class ${base} { … }`, `Класса «${base}» нет. Создай его так: class ${base} { … }`), line, 'runtime', 'CS0246');
     const obj = yield* this.instantiate(k, args, line);
     if (init)
@@ -1654,6 +1689,30 @@ export class CsProgram {
       }
       case 'Mathf.Sign':
         return a(0) >= 0 ? 1 : -1;
+      case 'Mathf.PingPong': {
+        const len = a(1);
+        const t = ((a(0) % (2 * len)) + 2 * len) % (2 * len);
+        return Math.fround(len - Math.abs(t - len));
+      }
+      case 'Mathf.Repeat':
+        return Math.fround(((a(0) % a(1)) + a(1)) % a(1));
+      case 'Math.Atan2':
+      case 'Mathf.Atan2':
+        return Math.atan2(a(0), a(1));
+      case 'Math.Atan':
+      case 'Mathf.Atan':
+        return Math.atan(a(0));
+      case 'Math.Tan':
+      case 'Mathf.Tan':
+        return Math.tan(a(0));
+      case 'Mathf.Approximately':
+        return Math.abs(a(0) - a(1)) < 1e-5;
+      case 'Mathf.DeltaAngle': {
+        let d = (a(1) - a(0)) % 360;
+        if (d > 180) d -= 360;
+        if (d < -180) d += 360;
+        return d;
+      }
       case 'Random.Range': {
         const lo = a(0);
         const hi = a(1);
@@ -1968,6 +2027,8 @@ function kindOf(v: V): string {
 }
 
 function coerce(v: V, type: string): V {
+  // Unity objects turn into true/false (bool onGround = Physics2D.OverlapCircle(…)).
+  if (type === 'bool' && (v === null || (typeof v === 'object' && v?.k === 'host'))) return v !== null;
   if (typeof v !== 'number') return v;
   if (INT_TYPES.has(type)) return Math.trunc(v);
   if (type === 'float') return Math.fround(v);
@@ -1994,6 +2055,9 @@ function num(v: V, line: number): number {
 
 function truthy(v: V, line: number): boolean {
   if (typeof v === 'boolean') return v;
+  // Unity objects can be used as conditions: if (hit.collider) / if (target).
+  if (typeof v === 'object' && v?.k === 'host') return true;
+  if (v === null) return false;
   throw new CsError(tr(`A condition must be true or false, but it is ${shown(v).text}. Did you mean == instead of = ?`, `Условие должно быть true или false, а получилось ${shown(v).text}. Может, нужно == вместо = ?`), line, 'runtime', 'CS0029');
 }
 

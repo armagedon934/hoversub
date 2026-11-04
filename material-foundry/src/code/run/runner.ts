@@ -124,6 +124,8 @@ export class CsRun {
           break;
         }
         const ev = r.value;
+        if (ev.t === 'wait')
+          throw new CsError(tr('"yield return" works only inside a Unity coroutine (StartCoroutine) — try the script in Mini-Unity.', '«yield return» работает только внутри корутины Unity (StartCoroutine) — попробуй скрипт в Мини-Unity.'), ev.node.startPosition.row, 'unsupported');
         if (ev.t === 'input') {
           st.status = 'input';
           st.prompt = ev.prompt;

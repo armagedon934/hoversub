@@ -282,6 +282,26 @@ async function main() {
     check('A Unity script from the Workshop plays in the Mini-Unity sandbox', true);
     await page.getByTestId('mu-stop').click();
 
+    // A recipe from "I want…" plays in the sandbox: auto-filled Inspector, mouse click shoots.
+    await page.getByTestId('view-workshop').click();
+    await page.getByTestId('ws-want').click();
+    await page.getByTestId('ws-recipe-search').fill('стрелять пулями');
+    await page.getByTestId('ws-recipe').first().locator('.ws-recipe-head').click();
+    await page.getByTestId('ws-recipe-newfile').click();
+    await page.getByTestId('ws-run').click();
+    await page.getByTestId('mu-level-sandbox').waitFor();
+    await page.getByTestId('mu-play').click();
+    await page.waitForFunction(() => /firePoint ←/.test(document.querySelector('[data-testid="mu-console"]')?.textContent ?? ''));
+    check('Recipe in the sandbox: empty Inspector fields are filled and written to the Console', true);
+    const box = (await page.locator('.mu-canvas').boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.4);
+    await page.waitForFunction(() => ((window as any).__mf.unityWorld.objects as { name: string; alive: boolean; vx: number }[]).some((o) => /Bullet/.test(o.name) && o.alive && o.vx > 5), null, { timeout: 5000 }).then(
+      () => check('Recipe in the sandbox: a mouse click fires a bullet (GetMouseButtonDown, Instantiate, velocity)', true),
+      () => check('Recipe in the sandbox: a mouse click fires a bullet (GetMouseButtonDown, Instantiate, velocity)', false),
+    );
+    await shot(page, '09b-recipe-shoot-sandbox');
+    await page.getByTestId('mu-stop').click();
+
     // ------------------------------------------------------------------ Error translator
     await page.getByTestId('view-errors').click();
     await page.getByTestId('et-example').click();
