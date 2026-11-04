@@ -8,7 +8,7 @@ import type { ElementInfo, FileSummary, FlowStep, Range } from '../analysis/type
 import type { CrossFileInfo, Level } from '../explain/explain';
 import { detectLanguage } from '../languages/registry';
 import { getLocale, setLocale, tr, type Locale } from '../i18n';
-import { SAMPLE_FILES, SAMPLE_NAME } from '../sample/sampleProject';
+import { SAMPLE_NAME, SAMPLE_NAME_RU, sampleFiles } from '../sample/sampleProject';
 import { createStore } from '../workspace/idb';
 import { Workspace } from '../workspace/workspace';
 import { getCodeClient } from '../worker/client';
@@ -218,7 +218,8 @@ export const useCode = create<State>((set, get) => ({
   },
 
   async openExample() {
-    await get().loadProject({ name: SAMPLE_NAME, files: SAMPLE_FILES.map((f) => ({ ...f, size: f.text.length })), handles: new Map(), notes: [] });
+    const ru = getLocale() === 'ru';
+    await get().loadProject({ name: ru ? SAMPLE_NAME_RU : SAMPLE_NAME, files: sampleFiles(ru ? 'ru' : 'en').map((f) => ({ ...f, size: f.text.length })), handles: new Map(), notes: [] });
   },
 
   async openFile(path, sel) {

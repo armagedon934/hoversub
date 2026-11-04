@@ -4,6 +4,7 @@
 // manifest contents and resolved paths are "verified"; guesses from names and conventions are
 // "likely" or "assumption".
 
+import { tr } from '../i18n';
 import { baseName, extensionOf, getLanguage } from '../languages/registry';
 import type { Confidence, Fact, FileSummary, ImportInfo, SymbolDef, SymbolRef } from './types';
 
@@ -208,51 +209,56 @@ export interface FileRole {
   confidence: Confidence;
 }
 
-const FOLDER_ROLES: [RegExp, string, string][] = [
-  [/(^|\/)(tests?|__tests__|spec|specs)(\/|$)/i, 'Tests', 'automatic checks that the code works as expected'],
-  [/(^|\/)(components?|widgets?)(\/|$)/i, 'User-interface pieces', 'reusable parts of the screen (buttons, panels, forms)'],
-  [/(^|\/)(pages?|views?|screens?|templates?)(\/|$)/i, 'Screens / pages', 'the screens or pages people see'],
-  [/(^|\/)(routes?|api|controllers?|handlers?|endpoints?)(\/|$)/i, 'Request handling', 'code that answers requests (for example from a browser or another program)'],
-  [/(^|\/)(models?|entities|schemas?|types?)(\/|$)/i, 'Data models', 'descriptions of the kinds of data the program works with'],
-  [/(^|\/)(services?|providers?|stores?|state)(\/|$)/i, 'Services / state', 'shared logic and stored information used by other parts'],
-  [/(^|\/)(utils?|helpers?|lib|common|shared|core)(\/|$)/i, 'Helpers', 'small reusable tools used by other files'],
-  [/(^|\/)(styles?|css|scss|themes?)(\/|$)/i, 'Styling', 'how things look (colours, sizes, layout)'],
-  [/(^|\/)(assets?|static|public|images?|img|media|fonts?)(\/|$)/i, 'Assets', 'pictures, fonts and other files that are shown or downloaded as they are'],
-  [/(^|\/)(config|configs|settings|conf)(\/|$)/i, 'Settings', 'configuration that changes how the program behaves'],
-  [/(^|\/)(scripts?|tools?|bin)(\/|$)/i, 'Scripts / tools', 'helper programs for developers (building, testing, deploying)'],
-  [/(^|\/)(docs?|documentation)(\/|$)/i, 'Documentation', 'explanations written for people'],
-  [/(^|\/)(migrations?|db|database|sql)(\/|$)/i, 'Database', 'database structure and changes'],
-  [/(^|\/)(workers?|jobs?|tasks?)(\/|$)/i, 'Background work', 'work that runs in the background'],
-  [/(^|\/)(web|www|frontend|client|ui|site)(\/|$)/i, 'Web / user interface', 'the part people see and click (web pages, screens)'],
-  [/(^|\/)(server|backend|api-server)(\/|$)/i, 'Server side', 'the part that runs on a server and answers requests'],
-  [/(^|\/)(data|datasets?|fixtures|seeds?)(\/|$)/i, 'Data', 'data files, examples or database contents'],
-  [/(^|\/)(i18n|locales?|lang|translations?)(\/|$)/i, 'Translations', 'texts in different languages'],
+const FOLDER_ROLES_RAW: [RegExp, string, string, string, string][] = [
+  [/(^|\/)(tests?|__tests__|spec|specs)(\/|$)/i, 'Tests', 'automatic checks that the code works as expected', 'Тесты', 'автоматические проверки, что код работает как надо'],
+  [/(^|\/)(components?|widgets?)(\/|$)/i, 'User-interface pieces', 'reusable parts of the screen (buttons, panels, forms)', 'Части интерфейса', 'повторно используемые части экрана (кнопки, панели, формы)'],
+  [/(^|\/)(pages?|views?|screens?|templates?)(\/|$)/i, 'Screens / pages', 'the screens or pages people see', 'Экраны / страницы', 'экраны или страницы, которые видит человек'],
+  [/(^|\/)(routes?|api|controllers?|handlers?|endpoints?)(\/|$)/i, 'Request handling', 'code that answers requests (for example from a browser or another program)', 'Обработка запросов', 'код, который отвечает на запросы (например, от браузера или другой программы)'],
+  [/(^|\/)(models?|entities|schemas?|types?)(\/|$)/i, 'Data models', 'descriptions of the kinds of data the program works with', 'Модели данных', 'описания видов данных, с которыми работает программа'],
+  [/(^|\/)(services?|providers?|stores?|state|managers?)(\/|$)/i, 'Services / state', 'shared logic and stored information used by other parts', 'Сервисы / состояние', 'общая логика и хранимые данные, которыми пользуются другие части'],
+  [/(^|\/)(utils?|helpers?|lib|common|shared|core)(\/|$)/i, 'Helpers', 'small reusable tools used by other files', 'Помощники', 'небольшие инструменты, которыми пользуются другие файлы'],
+  [/(^|\/)(styles?|css|scss|themes?)(\/|$)/i, 'Styling', 'how things look (colours, sizes, layout)', 'Оформление', 'как всё выглядит (цвета, размеры, расположение)'],
+  [/(^|\/)(assets?|static|public|images?|img|media|fonts?|textures?|sprites?|audio|sounds?)(\/|$)/i, 'Assets', 'pictures, sounds, fonts and other files that are shown or played as they are', 'Ресурсы', 'картинки, звуки, шрифты и другие файлы, которые показываются или проигрываются как есть'],
+  [/(^|\/)(config|configs|settings|conf)(\/|$)/i, 'Settings', 'configuration that changes how the program behaves', 'Настройки', 'конфигурация, которая меняет поведение программы'],
+  [/(^|\/)(scripts?|tools?|bin)(\/|$)/i, 'Scripts / tools', 'helper programs or (in Unity) the game\'s C# scripts', 'Скрипты / инструменты', 'вспомогательные программы или (в Unity) C#-скрипты игры'],
+  [/(^|\/)(docs?|documentation)(\/|$)/i, 'Documentation', 'explanations written for people', 'Документация', 'объяснения, написанные для людей'],
+  [/(^|\/)(migrations?|db|database|sql)(\/|$)/i, 'Database', 'database structure and changes', 'База данных', 'структура базы данных и её изменения'],
+  [/(^|\/)(workers?|jobs?|tasks?)(\/|$)/i, 'Background work', 'work that runs in the background', 'Фоновая работа', 'работа, которая идёт в фоне'],
+  [/(^|\/)(web|www|frontend|client|ui|site)(\/|$)/i, 'Web / user interface', 'the part people see and click (web pages, screens)', 'Веб / интерфейс', 'то, что человек видит и нажимает (страницы, экраны)'],
+  [/(^|\/)(server|backend|api-server)(\/|$)/i, 'Server side', 'the part that runs on a server and answers requests', 'Серверная часть', 'часть, которая работает на сервере и отвечает на запросы'],
+  [/(^|\/)(data|datasets?|fixtures|seeds?)(\/|$)/i, 'Data', 'data files, examples or database contents', 'Данные', 'файлы с данными, примеры или содержимое базы'],
+  [/(^|\/)(i18n|locales?|lang|translations?)(\/|$)/i, 'Translations', 'texts in different languages', 'Переводы', 'тексты на разных языках'],
+  [/(^|\/)(Source|Plugins)(\/|$)/, 'Engine code', 'C++ source code of an Unreal Engine game or plugin', 'Код для движка', 'исходный код C++ игры или плагина Unreal Engine'],
+  [/(^|\/)(Scenes?|Prefabs?|Levels?|Maps)(\/|$)/, 'Levels / scenes', 'game levels, scenes and ready-made objects (prefabs)', 'Уровни / сцены', 'игровые уровни, сцены и готовые объекты (префабы)'],
 ];
+
+const FOLDER_ROLES = { find: (pred: (r: [RegExp, string, string]) => boolean) => FOLDER_ROLES_RAW.map((r) => [r[0], tr(r[1], r[3]), tr(r[2], r[4])] as [RegExp, string, string]).find(pred) };
+
 
 export function fileRole(path: string, summary: FileSummary | undefined, index: ProjectIndex | null, entries: Set<string>): FileRole {
   const name = baseName(path).toLowerCase();
   const lang = getLanguage(summary?.languageId ?? 'unknown');
-  if (entries.has(path)) return { role: 'Starting point', explanation: 'This is (probably) where the program starts running.', confidence: 'likely' };
-  if (/^readme/.test(name)) return { role: 'Read-me', explanation: 'The introduction to the project, written by its authors.', confidence: 'verified' };
-  if (/^(license|licence|copying)/.test(name)) return { role: 'License', explanation: 'The legal terms for using and sharing this code.', confidence: 'verified' };
+  if (entries.has(path)) return { role: tr('Starting point', 'Точка старта'), explanation: tr('This is (probably) where the program starts running.', 'Скорее всего, отсюда программа начинает работу.'), confidence: 'likely' };
+  if (/^readme/.test(name)) return { role: tr('Read-me', 'README'), explanation: tr('The introduction to the project, written by its authors.', 'Введение в проект от его авторов.'), confidence: 'verified' };
+  if (/^(license|licence|copying)/.test(name)) return { role: tr('License', 'Лицензия'), explanation: tr('The legal terms for using and sharing this code.', 'Юридические условия использования и распространения кода.'), confidence: 'verified' };
   if (/^(package\.json|pyproject\.toml|cargo\.toml|go\.mod|pom\.xml|build\.gradle(\.kts)?|composer\.json|gemfile|package\.swift|.*\.csproj|requirements.*\.txt|setup\.py|cmakelists\.txt)$/.test(name))
-    return { role: 'Project manifest', explanation: 'Describes the project: its name, the libraries it needs, and the commands to build or run it.', confidence: 'verified' };
-  if (/(^|[._-])(test|spec)s?([._-]|$)|^test_/.test(name) || /(^|\/)(tests?|__tests__)\//.test(path)) return { role: 'Test', explanation: 'Automatic checks that verify other code works correctly.', confidence: 'likely' };
-  if (/lock(\.json|\.yaml)?$|\.lock$/.test(name)) return { role: 'Lock file', explanation: 'An automatically generated list of exact library versions. People normally do not edit it.', confidence: 'verified' };
-  if (/^\.env/.test(name)) return { role: 'Secret settings', explanation: 'Settings for the environment (addresses, passwords, keys). Be careful: it may contain secrets.', confidence: 'likely' };
+    return { role: tr('Project manifest', 'Описание проекта'), explanation: tr('Describes the project: its name, the libraries it needs, and the commands to build or run it.', 'Описывает проект: имя, нужные библиотеки и команды сборки или запуска.'), confidence: 'verified' };
+  if (/(^|[._-])(test|spec)s?([._-]|$)|^test_/.test(name) || /(^|\/)(tests?|__tests__)\//.test(path)) return { role: tr('Test', 'Тест'), explanation: tr('Automatic checks that verify other code works correctly.', 'Автоматические проверки, что другой код работает правильно.'), confidence: 'likely' };
+  if (/lock(\.json|\.yaml)?$|\.lock$/.test(name)) return { role: tr('Lock file', 'Файл версий'), explanation: tr('An automatically generated list of exact library versions. People normally do not edit it.', 'Автоматический список точных версий библиотек. Обычно его не редактируют вручную.'), confidence: 'verified' };
+  if (/^\.env/.test(name)) return { role: tr('Secret settings', 'Секретные настройки'), explanation: tr('Settings for the environment (addresses, passwords, keys). Be careful: it may contain secrets.', 'Настройки окружения (адреса, пароли, ключи). Осторожно: тут могут быть секреты.'), confidence: 'likely' };
   if (/(config|rc)(\.[a-z]+)?$|^\.[a-z]+rc$|\.config\.(js|ts|mjs|cjs)$|^tsconfig|^vite\.config|^webpack|^babel|^eslint|^prettier/.test(name))
-    return { role: 'Tool settings', explanation: 'Settings for a development tool (how to build, check or format the code).', confidence: 'likely' };
-  if (name === 'dockerfile' || name.endsWith('.dockerfile') || /^docker-compose/.test(name)) return { role: 'Container recipe', explanation: 'Instructions for packaging the application to run anywhere.', confidence: 'verified' };
-  if (lang.kind === 'style') return { role: 'Styling', explanation: 'Controls how things look: colours, sizes, spacing, layout.', confidence: 'verified' };
-  if (lang.kind === 'markup') return { role: 'Page structure', explanation: 'Describes what is on a page (text, buttons, images).', confidence: 'verified' };
-  if (lang.kind === 'docs') return { role: 'Documentation', explanation: 'Text written for people, not for the computer.', confidence: 'verified' };
-  if (lang.kind === 'data') return { role: 'Data / settings', explanation: 'Stores data or settings; it contains no instructions.', confidence: 'verified' };
-  for (const [re, role, what] of FOLDER_ROLES) if (re.test(path)) return { role, explanation: `Its folder name suggests it contains ${what}.`, confidence: 'assumption' };
+    return { role: tr('Tool settings', 'Настройки инструмента'), explanation: tr('Settings for a development tool (how to build, check or format the code).', 'Настройки инструмента разработки (как собирать, проверять или форматировать код).'), confidence: 'likely' };
+  if (name === 'dockerfile' || name.endsWith('.dockerfile') || /^docker-compose/.test(name)) return { role: tr('Container recipe', 'Рецепт контейнера'), explanation: tr('Instructions for packaging the application to run anywhere.', 'Инструкции, как упаковать приложение, чтобы оно запускалось где угодно.'), confidence: 'verified' };
+  if (lang.kind === 'style') return { role: tr('Styling', 'Оформление'), explanation: tr('Controls how things look: colours, sizes, spacing, layout.', 'Отвечает за вид: цвета, размеры, отступы, расположение.'), confidence: 'verified' };
+  if (lang.kind === 'markup') return { role: tr('Page structure', 'Структура страницы'), explanation: tr('Describes what is on a page (text, buttons, images).', 'Описывает, что есть на странице (текст, кнопки, картинки).'), confidence: 'verified' };
+  if (lang.kind === 'docs') return { role: tr('Documentation', 'Документация'), explanation: tr('Text written for people, not for the computer.', 'Текст для людей, а не для компьютера.'), confidence: 'verified' };
+  if (lang.kind === 'data') return { role: tr('Data / settings', 'Данные / настройки'), explanation: tr('Stores data or settings; it contains no instructions.', 'Хранит данные или настройки; инструкций в нём нет.'), confidence: 'verified' };
+  for (const r of FOLDER_ROLES_RAW) if (r[0].test(path)) return { role: tr(r[1], r[3]), explanation: tr(`Its folder name suggests it contains ${r[2]}.`, `Судя по имени папки, здесь ${r[4]}.`), confidence: 'assumption' };
   const used = index?.importedBy.get(path)?.length ?? 0;
-  if (used >= 3) return { role: 'Shared building block', explanation: `Used by ${used} other files, so it is an important shared part.`, confidence: 'verified' };
-  if (summary && summary.symbols.some((s) => s.kind === 'class')) return { role: 'Code (classes)', explanation: 'Program code that defines classes (blueprints for objects).', confidence: 'verified' };
-  if (summary && summary.symbols.some((s) => s.kind === 'function' || s.kind === 'method')) return { role: 'Code (functions)', explanation: 'Program code that defines functions (reusable steps).', confidence: 'verified' };
-  return { role: lang.kind === 'code' || lang.kind === 'script' ? 'Code' : 'File', explanation: lang.about, confidence: 'likely' };
+  if (used >= 3) return { role: tr('Shared building block', 'Общий кирпичик'), explanation: tr(`Used by ${used} other files, so it is an important shared part.`, `Его используют другие файлы (${used}), значит это важная общая часть.`), confidence: 'verified' };
+  if (summary && summary.symbols.some((s) => s.kind === 'class')) return { role: tr('Code (classes)', 'Код (классы)'), explanation: tr('Program code that defines classes (blueprints for objects).', 'Программный код с классами (чертежами объектов).'), confidence: 'verified' };
+  if (summary && summary.symbols.some((s) => s.kind === 'function' || s.kind === 'method')) return { role: tr('Code (functions)', 'Код (функции)'), explanation: tr('Program code that defines functions (reusable steps).', 'Программный код с функциями (повторно используемыми шагами).'), confidence: 'verified' };
+  return { role: lang.kind === 'code' || lang.kind === 'script' ? tr('Code', 'Код') : tr('File', 'Файл'), explanation: lang.about, confidence: 'likely' };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -316,9 +322,11 @@ const FRAMEWORK_HINTS: [string, string][] = [
   ['rails', 'Ruby on Rails (a web framework)'],
 ];
 
+const ROOT_LABEL = () => tr('(project root)', '(корень проекта)');
+
 function componentOf(path: string): string {
   const parts = path.split('/');
-  if (parts.length === 1) return '(project root)';
+  if (parts.length === 1) return ROOT_LABEL();
   if ((parts[0] === 'src' || parts[0] === 'app' || parts[0] === 'lib') && parts.length > 2) return `${parts[0]}/${parts[1]}`;
   return parts[0];
 }
@@ -331,7 +339,7 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
   const entryPoints: EntryPoint[] = [];
   const scripts: { name: string; command: string }[] = [];
   let name = folderName;
-  let kind: Fact = { text: 'A software project', confidence: 'assumption' };
+  let kind: Fact = { text: tr('A software project', 'Программный проект'), confidence: 'assumption' };
   const frameworks: string[] = [];
   const has = (p: string) => index.paths.has(p);
 
@@ -341,35 +349,40 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
     try {
       const pkg = JSON.parse(readText(pkgPath) ?? '{}');
       if (typeof pkg.name === 'string') name = pkg.name;
-      if (typeof pkg.description === 'string' && pkg.description) summary.push({ text: `The project describes itself as: "${pkg.description}"`, confidence: 'verified' });
+      if (typeof pkg.description === 'string' && pkg.description) summary.push({ text: tr(`The project describes itself as: "${pkg.description}"`, `Проект описывает себя так: «${pkg.description}»`), confidence: 'verified' });
       const deps = Object.keys({ ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) });
       for (const [k, label] of FRAMEWORK_HINTS) if (deps.some((d) => d === k || d.startsWith(`${k}-`) || d === `@${k}/core`)) frameworks.push(label);
       for (const [k, v] of Object.entries(pkg.scripts ?? {})) if (typeof v === 'string') scripts.push({ name: k, command: v });
       const main = typeof pkg.main === 'string' ? joinPath(dirname(pkgPath), pkg.main) : null;
-      if (main && has(main)) entryPoints.push({ path: main, reason: 'package.json names it as "main" (the file other programs load first).', confidence: 'verified' });
+      if (main && has(main)) entryPoints.push({ path: main, reason: tr('package.json names it as "main" (the file other programs load first).', 'package.json называет его «main» (файл, который загружают первым).'), confidence: 'verified' });
       const start = pkg.scripts?.start ?? pkg.scripts?.dev;
       if (typeof start === 'string') {
         const m = /(?:node|ts-node|tsx|deno run|bun)\s+([\w./-]+\.(?:m?js|ts|tsx))/.exec(start);
-        if (m && has(joinPath(dirname(pkgPath), m[1]))) entryPoints.push({ path: joinPath(dirname(pkgPath), m[1]), reason: `The start command "${start}" runs it.`, confidence: 'verified' });
+        if (m && has(joinPath(dirname(pkgPath), m[1]))) entryPoints.push({ path: joinPath(dirname(pkgPath), m[1]), reason: tr(`The start command "${start}" runs it.`, `Его запускает команда старта «${start}».`), confidence: 'verified' });
       }
-      kind = { text: frameworks.length ? `A JavaScript/TypeScript project using ${frameworks.join(', ')}` : 'A JavaScript/TypeScript (Node.js) project', confidence: 'likely' };
+      kind = { text: frameworks.length ? tr(`A JavaScript/TypeScript project using ${frameworks.join(', ')}`, `Проект на JavaScript/TypeScript с использованием ${frameworks.join(', ')}`) : tr('A JavaScript/TypeScript (Node.js) project', 'Проект на JavaScript/TypeScript (Node.js)'), confidence: 'likely' };
     } catch {
-      unknowns.push(`${pkgPath} could not be read as valid JSON.`);
+      unknowns.push(tr(`${pkgPath} could not be read as valid JSON.`, `${pkgPath} не удалось прочитать как корректный JSON.`));
     }
   }
   const pyManifest = files.find((f) => /(^|\/)(pyproject\.toml|requirements[^/]*\.txt|setup\.py|Pipfile)$/.test(f.path));
   if (pyManifest) {
     const txt = (readText(pyManifest.path) ?? '').toLowerCase();
     for (const [k, label] of FRAMEWORK_HINTS) if (new RegExp(`(^|[\\s"'=])${k}([\\s<>=~!"'\\[]|$)`, 'm').test(txt) && !frameworks.includes(label)) frameworks.push(label);
-    if (!pkgPath) kind = { text: frameworks.length ? `A Python project using ${frameworks.join(', ')}` : 'A Python project', confidence: 'likely' };
+    if (!pkgPath) kind = { text: frameworks.length ? tr(`A Python project using ${frameworks.join(', ')}`, `Проект на Python с использованием ${frameworks.join(', ')}`) : tr('A Python project', 'Проект на Python'), confidence: 'likely' };
   }
-  if (has('Cargo.toml') && !pkgPath) kind = { text: 'A Rust project (built with Cargo)', confidence: 'verified' };
-  if (has('go.mod') && !pkgPath) kind = { text: 'A Go project', confidence: 'verified' };
-  if ((has('pom.xml') || has('build.gradle') || has('build.gradle.kts')) && !pkgPath) kind = { text: 'A Java/Kotlin project (built with Maven or Gradle)', confidence: 'verified' };
-  if (files.some((f) => f.path.endsWith('.csproj') || f.path.endsWith('.sln')) && !pkgPath) kind = { text: 'A C#/.NET project', confidence: 'verified' };
-  if (has('composer.json') && !pkgPath) kind = { text: 'A PHP project', confidence: 'verified' };
-  if (has('Gemfile') && !pkgPath) kind = { text: 'A Ruby project', confidence: 'verified' };
-  if (has('CMakeLists.txt') || (has('Makefile') && files.some((f) => /\.(c|cpp|cc|h|hpp)$/.test(f.path)))) if (!pkgPath) kind = { text: 'A C/C++ project', confidence: 'likely' };
+  if (has('Cargo.toml') && !pkgPath) kind = { text: tr('A Rust project (built with Cargo)', 'Проект на Rust (сборка через Cargo)'), confidence: 'verified' };
+  if (has('go.mod') && !pkgPath) kind = { text: tr('A Go project', 'Проект на Go'), confidence: 'verified' };
+  if ((has('pom.xml') || has('build.gradle') || has('build.gradle.kts')) && !pkgPath) kind = { text: tr('A Java/Kotlin project (built with Maven or Gradle)', 'Проект на Java/Kotlin (сборка через Maven или Gradle)'), confidence: 'verified' };
+  if (files.some((f) => f.path.endsWith('.csproj') || f.path.endsWith('.sln')) && !pkgPath) kind = { text: tr('A C#/.NET project', 'Проект на C#/.NET'), confidence: 'verified' };
+  if (has('composer.json') && !pkgPath) kind = { text: tr('A PHP project', 'Проект на PHP'), confidence: 'verified' };
+  if (has('Gemfile') && !pkgPath) kind = { text: tr('A Ruby project', 'Проект на Ruby'), confidence: 'verified' };
+  if (has('CMakeLists.txt') || (has('Makefile') && files.some((f) => /\.(c|cpp|cc|h|hpp)$/.test(f.path)))) if (!pkgPath) kind = { text: tr('A C/C++ project', 'Проект на C/C++'), confidence: 'likely' };
+  // Game engines.
+  const isUnity = files.some((f) => /(^|\/)ProjectSettings\/ProjectVersion\.txt$/.test(f.path)) || (files.some((f) => /(^|\/)Assets\//.test(f.path)) && files.some((f) => f.languageId === 'csharp' && /\bMonoBehaviour\b/.test(readText(f.path) ?? '')));
+  const isUnreal = files.some((f) => /\.uproject$/.test(f.path)) || files.some((f) => /\.(h|cpp)$/.test(f.path) && /\bUCLASS\s*\(/.test(readText(f.path) ?? ''));
+  if (isUnity) kind = { text: tr('A Unity game project (C# scripts)', 'Игровой проект на Unity (скрипты на C#)'), confidence: 'likely' };
+  if (isUnreal) kind = { text: tr('An Unreal Engine game project (C++)', 'Игровой проект на Unreal Engine (C++)'), confidence: 'likely' };
 
   if (kind.confidence === 'assumption') {
     // No manifest: describe the project by its main programming language.
@@ -380,24 +393,24 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
     }
     const main = [...codeLangs.entries()].sort((a, b) => b[1] - a[1])[0];
     const hasWeb = files.some((f) => f.languageId === 'html');
-    if (main) kind = { text: `A ${main[0]} project${hasWeb && main[0] !== 'JavaScript' ? ' with a web page' : ''}`, confidence: 'likely' };
+    if (main) kind = { text: tr(`A ${main[0]} project${hasWeb && main[0] !== 'JavaScript' ? ' with a web page' : ''}`, `Проект на ${main[0]}${hasWeb && main[0] !== 'JavaScript' ? ' с веб-страницей' : ''}`), confidence: 'likely' };
   }
   // Entry points from code.
   for (const f of analysed) {
     for (const h of f.summary!.hints) {
-      if (h.startsWith('entry:python-main')) entryPoints.push({ path: f.path, reason: 'It contains `if __name__ == "__main__":`, which runs when the file is started directly.', confidence: 'verified' });
+      if (h.startsWith('entry:python-main')) entryPoints.push({ path: f.path, reason: tr('It contains `if __name__ == "__main__":`, which runs when the file is started directly.', 'В нём есть `if __name__ == "__main__":` — этот блок выполняется, когда файл запускают напрямую.'), confidence: 'verified' });
       else if (h.startsWith('entry:main-function') && /^(c|cpp|go|rust|java|csharp|kotlin|swift)$/.test(f.languageId))
-        entryPoints.push({ path: f.path, reason: 'It defines a function called "main", where programs in this language start.', confidence: 'verified' });
+        entryPoints.push({ path: f.path, reason: tr('It defines a function called "main", where programs in this language start.', 'В нём есть функция «main» — с неё начинаются программы на этом языке.'), confidence: 'verified' });
     }
   }
   const conventional: [RegExp, string][] = [
-    [/^(src\/)?(main|app|index|server|manage|run|__main__)\.(py|js|ts|mjs|go|rs)$/, 'Its file name is a common name for the starting file.'],
-    [/^index\.html?$/, 'index.html is the page a browser opens first.'],
-    [/^src\/main\.(tsx|ts|jsx|js)$/, 'src/main is the usual starting file of a web app built with Vite.'],
-    [/^(Program|Main)\.cs$/, 'Program.cs is the usual starting file of a C# app.'],
+    [/^(src\/)?(main|app|index|server|manage|run|__main__)\.(py|js|ts|mjs|go|rs)$/, tr('Its file name is a common name for the starting file.', 'Так обычно называют стартовый файл.')],
+    [/^index\.html?$/, tr('index.html is the page a browser opens first.', 'index.html — страница, которую браузер открывает первой.')],
+    [/^src\/main\.(tsx|ts|jsx|js)$/, tr('src/main is the usual starting file of a web app built with Vite.', 'src/main — обычный стартовый файл веб-приложения на Vite.')],
+    [/^(Program|Main)\.cs$/, tr('Program.cs is the usual starting file of a C# app.', 'Program.cs — обычный стартовый файл программы на C#.')],
   ];
   for (const f of files) for (const [re, why] of conventional) if (re.test(f.path) && !entryPoints.some((e) => e.path === f.path)) entryPoints.push({ path: f.path, reason: why, confidence: 'likely' });
-  if (!entryPoints.length) unknowns.push('No clear starting point was found. The program may be a library (used by other programs) or start in a way that needs running it to find out.');
+  if (!entryPoints.length) unknowns.push(isUnity || isUnreal ? tr('Game engines start the game themselves: there is no main file. Look for Start/Update (Unity) or BeginPlay/Tick (Unreal) methods.', 'Игровые движки запускают игру сами: главного файла нет. Ищи методы Start/Update (Unity) или BeginPlay/Tick (Unreal).') : tr('No clear starting point was found. The program may be a library (used by other programs) or start in a way that needs running it to find out.', 'Явной точки старта не найдено. Возможно, это библиотека (её используют другие программы) или она запускается так, что это видно только при запуске.'));
 
   // Languages.
   const langMap = new Map<string, { files: number; lines: number }>();
@@ -420,9 +433,9 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
       .find((p) => p && !/^(#|!\[|\[!\[|<|```|\||-{3,}|={3,})/.test(p) && p.length > 30);
     if (para) {
       readmeIntro = para.replace(/\s+/g, ' ').slice(0, 400);
-      summary.push({ text: `The authors' read-me says: "${readmeIntro}${para.length > 400 ? '…' : ''}"`, confidence: 'verified' });
+      summary.push({ text: tr(`The authors' read-me says: "${readmeIntro}${para.length > 400 ? '…' : ''}"`, `В README авторы пишут: «${readmeIntro}${para.length > 400 ? '…' : ''}»`), confidence: 'verified' });
     }
-  } else unknowns.push('There is no README file, so the authors did not leave an introduction.');
+  } else unknowns.push(tr('There is no README file, so the authors did not leave an introduction.', 'Файла README нет, поэтому авторы не оставили введения.'));
 
   // Components.
   const compMap = new Map<string, string[]>();
@@ -442,8 +455,8 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
       return {
         folder,
         files: list,
-        role: role ? role[1] : folder === '(project root)' ? 'Top-level files' : 'Code',
-        explanation: role ? `By its name, this folder contains ${role[2]}.` : folder === '(project root)' ? 'Files directly in the main folder: usually settings, the read-me and starting files.' : `A group of ${list.length} files, mostly ${mainLanguage}.`,
+        role: role ? role[1] : folder === ROOT_LABEL() ? tr('Top-level files', 'Файлы верхнего уровня') : tr('Code', 'Код'),
+        explanation: role ? tr(`By its name, this folder contains ${role[2]}.`, `Судя по имени, в этой папке — ${role[2]}.`) : folder === ROOT_LABEL() ? tr('Files directly in the main folder: usually settings, the read-me and starting files.', 'Файлы прямо в главной папке: обычно настройки, README и стартовые файлы.') : tr(`A group of ${list.length} files, mostly ${mainLanguage}.`, `Группа файлов (${list.length}), в основном на ${mainLanguage}.`),
         confidence: (role ? 'assumption' : 'likely') as Confidence,
         mainLanguage,
       };
@@ -469,14 +482,14 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
     if (!e.reasons.includes(r)) e.reasons.push(r);
     score.set(p, e);
   };
-  for (const e of entryPoints) add(e.path, 10, 'starting point');
-  for (const [p, by] of index.importedBy) add(p, by.length * 2, `used by ${by.length} file${by.length === 1 ? '' : 's'}`);
-  if (readme) add(readme.path, 6, 'introduction for people');
-  if (pkgPath) add(pkgPath, 6, 'project manifest');
-  for (const f of files) if (/(^|\/)(pyproject\.toml|Cargo\.toml|go\.mod|pom\.xml|composer\.json|Gemfile)$/.test(f.path)) add(f.path, 5, 'project manifest');
+  for (const e of entryPoints) add(e.path, 10, tr('starting point', 'точка старта'));
+  for (const [p, by] of index.importedBy) add(p, by.length * 2, tr(`used by ${by.length} file${by.length === 1 ? '' : 's'}`, `его используют файлов: ${by.length}`));
+  if (readme) add(readme.path, 6, tr('introduction for people', 'введение для людей'));
+  if (pkgPath) add(pkgPath, 6, tr('project manifest', 'описание проекта'));
+  for (const f of files) if (/(^|\/)(pyproject\.toml|Cargo\.toml|go\.mod|pom\.xml|composer\.json|Gemfile)$/.test(f.path)) add(f.path, 5, tr('project manifest', 'описание проекта'));
   for (const f of analysed) {
     const defs = f.summary!.symbols.filter((s) => s.kind === 'function' || s.kind === 'class' || s.kind === 'method').length;
-    if (defs >= 8) add(f.path, Math.min(6, defs / 4), `${defs} functions/classes`);
+    if (defs >= 8) add(f.path, Math.min(6, defs / 4), tr(`${defs} functions/classes`, `функций/классов: ${defs}`));
   }
   const importantFiles = [...score.entries()]
     .sort((a, b) => b[1].s - a[1].s)
@@ -495,18 +508,18 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
   // Everyday summary.
   const totalLines = files.reduce((a, f) => a + (f.summary?.lineCount ?? 0), 0);
   summary.unshift({ text: `${kind.text}.`, confidence: kind.confidence });
-  if (frameworks.length) summary.push({ text: `It builds on: ${frameworks.join('; ')}.`, confidence: 'verified' });
+  if (frameworks.length) summary.push({ text: tr(`It builds on: ${frameworks.join('; ')}.`, `Опирается на: ${frameworks.join('; ')}.`), confidence: 'verified' });
   summary.push({
-    text: `It has ${files.length} files (${totalLines.toLocaleString('en-US')} lines). Most of it is written in ${languages
-      .slice(0, 3)
-      .map((l) => l.name)
-      .join(', ')}.`,
+    text: tr(
+      `It has ${files.length} files (${totalLines.toLocaleString('en-US')} lines). Most of it is written in ${languages.slice(0, 3).map((l) => l.name).join(', ')}.`,
+      `В нём файлов: ${files.length} (строк: ${totalLines.toLocaleString('ru-RU')}). В основном написан на ${languages.slice(0, 3).map((l) => l.name).join(', ')}.`,
+    ),
     confidence: 'verified',
   });
-  if (entryPoints.length) summary.push({ text: `It probably starts in ${entryPoints[0].path}.`, confidence: entryPoints[0].confidence === 'verified' ? 'likely' : entryPoints[0].confidence });
-  if (externalLibraries.length) summary.push({ text: `It uses ${externalLibraries.length} outside librar${externalLibraries.length === 1 ? 'y' : 'ies'} (ready-made code written by others), for example ${externalLibraries.slice(0, 3).map((e) => e.name).join(', ')}.`, confidence: 'verified' });
-  if (index.edges.length) summary.push({ text: `Its files are connected by ${index.edges.length} "import" links (one file using another).`, confidence: 'verified' });
-  unknowns.push('What the program actually does when it runs can only be guessed from its code: Understand Code never runs the project.');
+  if (entryPoints.length) summary.push({ text: tr(`It probably starts in ${entryPoints[0].path}.`, `Скорее всего, он начинается в ${entryPoints[0].path}.`), confidence: entryPoints[0].confidence === 'verified' ? 'likely' : entryPoints[0].confidence });
+  if (externalLibraries.length) summary.push({ text: tr(`It uses ${externalLibraries.length} outside librar${externalLibraries.length === 1 ? 'y' : 'ies'} (ready-made code written by others), for example ${externalLibraries.slice(0, 3).map((e) => e.name).join(', ')}.`, `Использует внешние библиотеки (готовый код других людей): ${externalLibraries.length}, например ${externalLibraries.slice(0, 3).map((e) => e.name).join(', ')}.`), confidence: 'verified' });
+  if (index.edges.length) summary.push({ text: tr(`Its files are connected by ${index.edges.length} "import" links (one file using another).`, `Его файлы связаны подключениями (один файл использует другой): ${index.edges.length}.`), confidence: 'verified' });
+  unknowns.push(tr('What the program actually does when it runs can only be guessed from its code: Understand Code never runs the project.', 'Что программа на самом деле делает при запуске, можно только предположить по коду: «Понять код» никогда не запускает проект.'));
   const skipped = files.filter((f) => f.skipped).length;
   return {
     name,

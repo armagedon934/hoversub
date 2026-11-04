@@ -214,3 +214,27 @@ analyser, and grammars are additionally spread over a pool of analysis workers (
 for all 18). The e2e checks that the page stays alive 15 s after loading every grammar.
 
 The material studio suite (`npm run e2e`) was re-run on the same build: **39 passed, 0 failed**.
+
+## 7. Learning, Russian interface, C/C++/C#, portable package (fourth iteration)
+
+* **Unit tests: 170, all passing** (`npm test`, 12 files). New:
+  * `tests/learn.test.ts` (39): every lesson in every language — animation markers point at real lines, games
+    are consistent (the "find the mistake" edit applies, "put in order" lines exist, output questions match),
+    no marker leaks into the visible code, and **the C, C++, Python and JavaScript programs are compiled
+    (`gcc -std=c11 -Wall -Werror`, `g++ -std=c++17 -Wall -Werror`) or run (python3, node) and print exactly what
+    the animation shows**. C# versions are checked structurally only (no C# compiler available).
+  * `tests/code-i18n.test.ts` (7): all 129 ideas, every keyword (general and per-language) and every operator
+    have Russian text; explanations at all five levels for every character of the 28 language samples contain
+    no left-over English sentence; what-if proposals and the project overview are Russian; recognition of C/C++
+    pointers, addresses, `->`, `::`, preprocessor, memory, destructors, references, `virtual`; C# properties,
+    events, nullable types, LINQ; Unity callbacks and library calls; Unity and Unreal projects.
+  * This test found a real crash (explaining a bracket from the word-level analyser without bracket details);
+    fixed.
+* **Browser e2e `npm run e2e:code`: 68/68** (adds the guide's next-step button, the step-by-step player for real
+  code, a complete C# lesson with animation, all four game types, XP/stars saved, next lesson, and switching the
+  whole interface to Russian). Screenshots `verification/code/12-…15-…`. No request left the computer.
+* **Materials e2e `npm run e2e`: 39/39** on the same build.
+* **Portable package** `release/MaterialFoundry-portable.zip`: unpacked and started with `Start-Linux.sh`
+  (`serve.py`): `index.html` served as `text/html`, grammars as `application/wasm`, files outside the app folder
+  are refused, the server listens on 127.0.0.1 only. The Windows launcher (PowerShell `TcpListener` server) could
+  not be executed here — downloading PowerShell into the container was not permitted — so it is untested.

@@ -1,7 +1,7 @@
 {
-  "when": "2026-11-04T17:05:38.829Z",
-  "passed": 55,
-  "total": 55,
+  "when": "2026-11-04T18:04:01.951Z",
+  "passed": 68,
+  "total": 68,
   "checks": [
     {
       "name": "UNDERSTAND CODE opens from the top bar",
@@ -209,7 +209,7 @@
       "detail": ""
     },
     {
-      "name": "Comfort panel closes when clicking elsewhere",
+      "name": "Settings panel closes when clicking elsewhere",
       "ok": true,
       "detail": ""
     },
@@ -251,7 +251,7 @@
     {
       "name": "Large file (24,000 lines) opens and only visible lines are drawn",
       "ok": true,
-      "detail": "5007 ms, 54 line elements"
+      "detail": "4916 ms, 49 line elements"
     },
     {
       "name": "Clicking deep inside a large file works",
@@ -262,6 +262,71 @@
       "name": "Keeps working with the network switched off",
       "ok": true,
       "detail": ""
+    },
+    {
+      "name": "Guide offers the next step (open the main file)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Guide then says: click a word",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Show me step by step\" walks through the lines of a function",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Animation shows the changed box (health = 70)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Animation shows the program output on the \"screen\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 1: right answer is confirmed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 2: a wrong answer is answered kindly, with another try",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 3: \"find the mistake\" by tapping the wrong symbol",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 4: \"put the lines in order\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Lesson completed: stars and XP are saved",
+      "ok": true,
+      "detail": "xp 55, stars 2"
+    },
+    {
+      "name": "\"Next lesson\" opens the next lesson",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Russian interface: tabs and lessons switch to Russian",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Russian explanations",
+      "ok": true,
+      "detail": "Функция — это именованный набор шагов, который можно использовать снова и снова. Она может получать входные данные и возвращать результат."
     },
     {
       "name": "No request ever left this computer",

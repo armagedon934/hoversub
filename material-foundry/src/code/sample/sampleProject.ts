@@ -197,3 +197,49 @@ SELECT name, price FROM products WHERE price > 2 ORDER BY price;
 `,
   },
 ];
+
+// Russian version: the same code, with comments, descriptions and the README in Russian.
+const RU_README = `# Маленький магазин
+
+Очень маленький пример магазина. Он складывает цены в корзине, применяет скидку
+и налог и показывает итог на веб-странице. Он нужен, чтобы тренироваться читать код.
+
+## Как он устроен
+
+- \`main.py\` запускает программу и печатает чек.
+- \`shop/cart.py\` хранит список товаров и считает итог.
+- \`shop/prices.py\` превращает числа в красиво записанные цены.
+- \`settings.yaml\` хранит налог и валюту.
+- \`web/\` — версия для веб-страницы (HTML, CSS и JavaScript).
+- \`data/products.sql\` создаёт таблицу товаров в базе данных.
+`;
+
+const RU_REPLACE: [string, string][] = [
+  ['"""Start the tiny shop: fill a cart and print a receipt."""', '"""Запуск магазина: наполнить корзину и напечатать чек."""'],
+  ['"""Show every product and the final total."""', '"""Показать каждый товар и итоговую сумму."""'],
+  ['"""The shop package: shopping cart and price helpers."""', '"""Пакет shop: корзина и помощники для цен."""'],
+  ['"""A shopping cart that remembers products and calculates the total price."""', '"""Корзина, которая помнит товары и считает итоговую цену."""'],
+  ['"""Holds the products a customer wants to buy."""', '"""Хранит товары, которые покупатель хочет купить."""'],
+  ['"""Put one product into the cart."""', '"""Положить один товар в корзину."""'],
+  ['"""Add up all prices, before discount and tax."""', '"""Сложить все цены, до скидки и налога."""'],
+  ['"""Subtotal minus the discount, plus tax."""', '"""Сумма минус скидка, плюс налог."""'],
+  ['"""Turn numbers into prices people can read."""', '"""Превратить числа в цены, понятные людям."""'],
+  ['"""Round to cents and add the currency, e.g. 12.5 -> "12.50 EUR"."""', '"""Округлить до копеек и добавить валюту, например 12.5 -> "12.50 EUR"."""'],
+  ['# Settings for the tiny shop', '# Настройки маленького магазина'],
+  ['// Makes the "Calculate total" button work.', '// Заставляет работать кнопку «Calculate total» (посчитать итог).'],
+  ['/* How the page looks */', '/* Как выглядит страница */'],
+  ['-- The products table and a few example rows.', '-- Таблица товаров и несколько строк для примера.'],
+];
+
+/** The example project in the interface language. */
+export function sampleFiles(locale: 'ru' | 'en'): { path: string; text: string }[] {
+  if (locale !== 'ru') return SAMPLE_FILES;
+  return SAMPLE_FILES.map((f) => {
+    if (f.path === 'README.md') return { path: f.path, text: RU_README };
+    let text = f.text;
+    for (const [en, ru] of RU_REPLACE) text = text.split(en).join(ru);
+    return { path: f.path, text };
+  });
+}
+
+export const SAMPLE_NAME_RU = 'маленький-магазин (пример)';

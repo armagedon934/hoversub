@@ -27,6 +27,8 @@ import {
   type SyntaxIssue,
 } from './types';
 import { keywordConcept, keywordMeaning, operatorCategory } from '../knowledge/keywords';
+import { DICT_TYPES, LIST_TYPES, UNREAL_MACROS, VECTOR_TYPES, engineCallback, libraryMeaning } from '../knowledge/library';
+import { tr } from '../i18n';
 
 const S = (s: string) => new Set(s.split(/\s+/).filter(Boolean));
 
@@ -333,7 +335,7 @@ export function analyzeTree(tree: Tree, text: string, path: string, languageId: 
       if (n.endIndex > n.startIndex) hl.push(n.startIndex, n.endIndex, TOKEN_CLASSES.indexOf(classifyLeaf(n)));
     }
     if (n.isError || n.isMissing) {
-      issues.push({ range: R(n), message: n.isMissing ? `Something is missing here: "${n.type}" was expected.` : 'The code here does not follow the rules of the language (syntax error).' });
+      issues.push({ range: R(n), message: n.isMissing ? tr(`Something is missing here: "${n.type}" was expected.`, `Здесь чего-то не хватает: ожидалось «${n.type}».`) : tr('The code here does not follow the rules of the language (syntax error).', 'Код здесь не соответствует правилам языка (синтаксическая ошибка).') });
     }
     if (FUNC_DEFS.has(t) || ANON_FUNCS.has(t)) scopes.push([n.startIndex, n.endIndex]);
     // Definitions.
@@ -672,9 +674,9 @@ function describeBracket(n: SyntaxNode, lines: LineIndex): BracketInfo {
   let encloses = '';
   if (construct === 'call-arguments') {
     const f = owner?.childForFieldName('function') ?? owner?.childForFieldName('name') ?? owner?.childForFieldName('method');
-    encloses = `the information given to "${short(f?.text ?? 'the function', 40)}" when it is called`;
+    encloses = tr(`the information given to "${short(f?.text ?? 'the function', 40)}" when it is called`, `данные, которые передают в «${short(f?.text ?? 'функцию', 40)}» при вызове`);
   } else if (construct === 'parameters') {
-    encloses = `the inputs that the function "${owner ? functionName(owner) : ''}" expects`;
+    encloses = tr(`the inputs that the function "${owner ? functionName(owner) : ''}" expects`, `входы, которые ждёт функция «${owner ? functionName(owner) : ''}»`);
   } else if (construct === 'block' || construct === 'class-body') {
     if (owner && (FUNC_DEFS.has(owner.type) || ANON_FUNCS.has(owner.type))) {
       construct = 'function-body';
@@ -684,27 +686,27 @@ function describeBracket(n: SyntaxNode, lines: LineIndex): BracketInfo {
       encloses = `the contents of "${className(owner)}"`;
     } else if (owner && /if|else/.test(owner.type)) {
       construct = 'if-body';
-      encloses = 'the steps that run only when the condition is true';
+      encloses = tr('the steps that run only when the condition is true', 'шаги, которые выполняются, только если условие верно');
     } else if (owner && /for|while|loop|do/.test(owner.type)) {
       construct = 'loop-body';
-      encloses = 'the steps that repeat in the loop';
+      encloses = tr('the steps that repeat in the loop', 'шаги, которые повторяются в цикле');
     } else if (owner && /try|catch|except|finally/.test(owner.type)) {
       construct = 'try-body';
-      encloses = 'steps protected against errors (or that handle an error)';
+      encloses = tr('steps protected against errors (or that handle an error)', 'шаги, защищённые от ошибок (или обработка ошибки)');
     } else if (owner && /switch|case|match|when/.test(owner.type)) {
       construct = 'switch-body';
-      encloses = 'the different cases to choose from';
+      encloses = tr('the different cases to choose from', 'разные варианты для выбора');
     } else if (owner?.type === 'rule_set') {
       construct = 'css-block';
-      encloses = `the style rules for "${short(owner.namedChild(0)?.text ?? '', 30)}"`;
-    } else encloses = 'a group of lines that belong together';
-  } else if (construct === 'list') encloses = 'a list of values';
-  else if (construct === 'object') encloses = 'a group of named values (an object)';
-  else if (construct === 'index') encloses = 'which item to pick from a list or table';
-  else if (construct === 'grouping') encloses = parent.type.includes('condition') || owner?.type.includes('if') ? 'the condition that is checked' : 'a part of a calculation that should be worked out first';
-  else if (construct === 'template') encloses = 'a value inserted into text';
-  else if (construct === 'type-arguments') encloses = 'type information (what kind of data is used)';
-  else if (construct === 'tuple') encloses = 'a small fixed group of values';
+      encloses = tr(`the style rules for "${short(owner.namedChild(0)?.text ?? '', 30)}"`, `правила оформления для «${short(owner.namedChild(0)?.text ?? '', 30)}»`);
+    } else encloses = tr('a group of lines that belong together', 'группа строк, которые относятся друг к другу');
+  } else if (construct === 'list') encloses = tr('a list of values', 'список значений');
+  else if (construct === 'object') encloses = tr('a group of named values (an object)', 'группа именованных значений (объект)');
+  else if (construct === 'index') encloses = tr('which item to pick from a list or table', 'какой элемент взять из списка или таблицы');
+  else if (construct === 'grouping') encloses = parent.type.includes('condition') || owner?.type.includes('if') ? tr('the condition that is checked', 'проверяемое условие') : tr('a part of a calculation that should be worked out first', 'часть вычисления, которую нужно посчитать первой');
+  else if (construct === 'template') encloses = tr('a value inserted into text', 'значение, вставленное в текст');
+  else if (construct === 'type-arguments') encloses = tr('type information (what kind of data is used)', 'сведения о типе (какие данные используются)');
+  else if (construct === 'tuple') encloses = tr('a small fixed group of values', 'маленькая фиксированная группа значений');
   const open = isOpen ? n : partner;
   const close = isOpen ? partner : n;
   return { char: ch, partner: partner ? R(partner) : null, encloses, construct, openRange: open ? R(open) : R(n), closeRange: close ? R(close) : null };
@@ -791,26 +793,26 @@ export function buildFlow(block: SyntaxNode, lines: LineIndex, depth = 0): FlowS
         const altBody = alt.type === 'else_clause' || alt.type === 'else' ? bodyOf(alt) ?? alt.namedChild(0) ?? alt : alt;
         branches.push({ label: 'otherwise', steps: altBody ? buildFlow(altBody, lines, depth + 1) : [] });
       }
-      steps.push({ kind: 'if', text: `Check: ${short(cond?.text ?? textLine, 60)}`, line, branches });
+      steps.push({ kind: 'if', text: `${tr('Check', 'Проверка')}: ${short(cond?.text ?? textLine, 60)}`, line, branches });
     } else if (/(for|while|loop|foreach|do)_?(statement|expression|in_statement|loop)?$/.test(t) && /for|while|loop|do/.test(t)) {
       const b = bodyOf(c);
-      steps.push({ kind: 'loop', text: `Repeat: ${textLine.replace(/[{:]\s*$/, '')}`, line, branches: b && depth < 3 ? [{ label: 'each time', steps: buildFlow(b, lines, depth + 1) }] : undefined });
+      steps.push({ kind: 'loop', text: `${tr('Repeat', 'Повтор')}: ${textLine.replace(/[{:]\s*$/, '')}`, line, branches: b && depth < 3 ? [{ label: tr('each time', 'каждый раз'), steps: buildFlow(b, lines, depth + 1) }] : undefined });
     } else if (/return/.test(t) || (t === 'jump_expression' && c.text.startsWith('return')) || (t === 'control_transfer_statement' && c.text.startsWith('return'))) {
-      steps.push({ kind: 'return', text: `Give back: ${short(c.text.replace(/^return\b\s*/, ''), 60) || '(nothing)'}`, line });
+      steps.push({ kind: 'return', text: `${tr('Give back', 'Вернуть')}: ${short(c.text.replace(/^return\b\s*/, ''), 60) || tr('(nothing)', '(ничего)')}`, line });
     } else if (/try/.test(t)) {
-      steps.push({ kind: 'try', text: 'Try the following, and handle errors if they happen', line, branches: bodyOf(c) && depth < 3 ? [{ label: 'try', steps: buildFlow(bodyOf(c)!, lines, depth + 1) }] : undefined });
+      steps.push({ kind: 'try', text: tr('Try the following, and handle errors if they happen', 'Попробовать следующее и обработать ошибки, если будут'), line, branches: bodyOf(c) && depth < 3 ? [{ label: tr('try', 'попытка'), steps: buildFlow(bodyOf(c)!, lines, depth + 1) }] : undefined });
     } else if (/switch|match|when|case_statement/.test(t)) {
-      steps.push({ kind: 'switch', text: `Choose between cases: ${textLine}`, line });
+      steps.push({ kind: 'switch', text: `${tr('Choose between cases', 'Выбор варианта')}: ${textLine}`, line });
     } else if (DECLARATORS.has(t) || ASSIGNS.has(t) || /declaration$|assignment/.test(t) || (t === 'expression_statement' && c.namedChild(0) && ASSIGNS.has(c.namedChild(0)!.type))) {
-      steps.push({ kind: 'assign', text: `Store: ${textLine}`, line });
+      steps.push({ kind: 'assign', text: `${tr('Store', 'Запомнить')}: ${textLine}`, line });
     } else if (t === 'expression_statement' && c.namedChild(0) && CALLS.has(c.namedChild(0)!.type)) {
       steps.push({ kind: 'call', text: `Run: ${textLine}`, line });
     } else if (FUNC_DEFS.has(t)) {
-      steps.push({ kind: 'other', text: `Define function ${functionName(c)}`, line });
+      steps.push({ kind: 'other', text: `${tr('Define function', 'Создать функцию')} ${functionName(c)}`, line });
     } else if (CLASS_DEFS.has(t)) {
-      steps.push({ kind: 'other', text: `Define ${className(c)}`, line });
+      steps.push({ kind: 'other', text: `${tr('Define', 'Создать')} ${className(c)}`, line });
     } else if (IMPORT_NODES.has(t)) {
-      steps.push({ kind: 'other', text: `Bring in: ${textLine}`, line });
+      steps.push({ kind: 'other', text: `${tr('Bring in', 'Подключить')}: ${textLine}`, line });
     } else if (CALLS.has(t)) {
       steps.push({ kind: 'call', text: `Run: ${textLine}`, line });
     } else {
@@ -820,10 +822,10 @@ export function buildFlow(block: SyntaxNode, lines: LineIndex, depth = 0): FlowS
   return steps;
 }
 
-const LITERAL_TYPES: [RegExp, string][] = [
-  [/string|template|char|heredoc|encapsed|attribute_value/, 'text (a string)'],
-  [/float|real|decimal/, 'a decimal number'],
-  [/int|number|integer|hex|octal|binary/, 'a whole number'],
+const LITERAL_TYPES: [RegExp, () => string][] = [
+  [/string|template|char|heredoc|encapsed|attribute_value/, () => tr('text (a string)', 'текст (строка)')],
+  [/float|real|decimal/, () => tr('a decimal number', 'дробное число')],
+  [/int|number|integer|hex|octal|binary/, () => tr('a whole number', 'целое число')],
 ];
 
 export function elementAt(tree: Tree, text: string, offset: number, languageId: string, summary: FileSummary): ElementInfo {
@@ -865,55 +867,55 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
     facts,
     issues: summary.issues.filter((i) => i.range.line >= R(stmt).line - 1 && i.range.line <= R(stmt).endLine + 1).slice(0, 5),
   };
-  if (fnNode) context.push(`inside the function "${functionName(fnNode)}"`);
-  if (clsNode) context.push(`inside "${className(clsNode)}"`);
+  if (fnNode) context.push(tr(`inside the function "${functionName(fnNode)}"`, `внутри функции «${functionName(fnNode)}»`));
+  if (clsNode) context.push(tr(`inside "${className(clsNode)}"`, `внутри «${className(clsNode)}»`));
   // Where we are in markup, style sheets and settings files.
   for (let a: SyntaxNode | null = n.parent, k = 0; a && k < 12 && context.length < 4; a = a.parent, k++) {
     if (a.type === 'element' || a.type === 'script_element' || a.type === 'style_element') {
       const tag = a.namedChild(0)?.namedChildren.find((c) => c?.type === 'tag_name')?.text;
-      if (tag) context.push(`inside the <${tag}> element`);
+      if (tag) context.push(tr(`inside the <${tag}> element`, `внутри элемента <${tag}>`));
     } else if (a.type === 'rule_set') {
       const sel = a.namedChildren.find((c) => c?.type === 'selectors')?.text;
-      if (sel) context.push(`inside the style rule for "${short(sel, 60)}"`);
+      if (sel) context.push(tr(`inside the style rule for "${short(sel, 60)}"`, `внутри правила оформления для «${short(sel, 60)}»`));
     } else if (a.type === 'table' || a.type === 'table_array_element') {
       const head = a.namedChildren.find((c) => c && /key/.test(c.type))?.text;
-      if (head) context.push(`in the settings section [${head}]`);
+      if (head) context.push(tr(`in the settings section [${head}]`, `в разделе настроек [${head}]`));
     } else if (a.type === 'pair' && a.parent?.type === 'object' && a !== n.parent) {
       const key = a.childForFieldName('key')?.text;
-      if (key) context.push(`inside the setting ${key}`);
+      if (key) context.push(tr(`inside the setting ${key}`, `внутри настройки ${key}`));
     }
   }
   const t = n.type;
 
   if (COMMENTS.has(t)) {
     Object.assign(info, { kind: 'comment' as ElementKind, concept: 'comment' });
-    facts.push({ text: 'This is a comment: the computer ignores it. It is a note written for people.', confidence: 'verified' });
+    facts.push({ text: tr('This is a comment: the computer ignores it. It is a note written for people.', 'Это комментарий: компьютер его пропускает. Это заметка для людей.'), confidence: 'verified' });
     return info;
   }
   if (STRINGS.has(t) || t === 'quoted_attribute_value') {
     if (languageId === 'json' && n.parent?.type === 'pair' && n.parent.childForFieldName('key')?.id === n.id) {
       Object.assign(info, { kind: 'json-key' as ElementKind, concept: 'json-key', symbolName: stringValue(n) });
-      facts.push({ text: `"${stringValue(n)}" is the name of a setting/value in this data file.`, confidence: 'verified' });
+      facts.push({ text: tr(`"${stringValue(n)}" is the name of a setting/value in this data file.`, `«${stringValue(n)}» — имя настройки/значения в этом файле данных.`), confidence: 'verified' });
       return info;
     }
     const isDoc = n.parent?.type === 'expression_statement' && n.parent.parent && BLOCKS.has(n.parent.parent.type) && n.parent.parent.namedChild(0)?.id === n.parent.id;
-    Object.assign(info, { kind: 'string' as ElementKind, concept: isDoc ? 'docstring' : t === 'template_string' ? 'template-string' : 'string', literal: { value: short(stringValue(n), 120), type: 'text (a string)' } });
-    facts.push({ text: `This is a piece of text: ${short(n.text, 60)}.`, confidence: 'verified' });
+    Object.assign(info, { kind: 'string' as ElementKind, concept: isDoc ? 'docstring' : t === 'template_string' ? 'template-string' : 'string', literal: { value: short(stringValue(n), 120), type: tr('text (a string)', 'текст (строка)') } });
+    facts.push({ text: `${tr('This is a piece of text', 'Это кусочек текста')}: ${short(n.text, 60)}.`, confidence: 'verified' });
     return info;
   }
   const leafClass = classifyLeaf(n);
   if (leafClass === 'number' && n.childCount === 0) {
-    const ty = LITERAL_TYPES.find(([re]) => re.test(t))?.[1] ?? (/\./.test(n.text) ? 'a decimal number' : 'a whole number');
+    const ty = LITERAL_TYPES.find(([re]) => re.test(t))?.[1]() ?? (/\./.test(n.text) ? tr('a decimal number', 'дробное число') : tr('a whole number', 'целое число'));
     Object.assign(info, { kind: 'number' as ElementKind, concept: 'number', literal: { value: n.text, type: ty } });
-    facts.push({ text: `This is a fixed number written directly in the code: ${n.text}.`, confidence: 'verified' });
+    facts.push({ text: `${tr('This is a fixed number written directly in the code', 'Это постоянное число, записанное прямо в коде')}: ${n.text}.`, confidence: 'verified' });
     return info;
   }
   if (leafClass === 'constant' && (/^(true|false|True|False|TRUE|FALSE|YES|NO)$/.test(n.text) || t === 'true' || t === 'false')) {
-    Object.assign(info, { kind: 'boolean' as ElementKind, concept: 'boolean', literal: { value: n.text, type: 'yes/no value (boolean)' } });
+    Object.assign(info, { kind: 'boolean' as ElementKind, concept: 'boolean', literal: { value: n.text, type: tr('yes/no value (boolean)', 'значение да/нет (логическое)') } });
     return info;
   }
   if (/^(null|nil|None|undefined|NULL|nullptr)$/.test(n.text) && (n.childCount === 0)) {
-    Object.assign(info, { kind: 'null' as ElementKind, concept: 'null', literal: { value: n.text, type: 'nothing / empty' } });
+    Object.assign(info, { kind: 'null' as ElementKind, concept: 'null', literal: { value: n.text, type: tr('nothing / empty', 'ничего / пусто') } });
     return info;
   }
   if (!n.isNamed) {
@@ -923,20 +925,32 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
       Object.assign(info, { kind: 'bracket' as ElementKind, concept: `bracket-${b.construct}`, bracket: b });
       facts.push(
         b.partner
-          ? { text: `Its partner is on line ${b.partner.line + 1}. Together they mark ${b.encloses}.`, confidence: 'verified' }
-          : { text: 'No matching partner bracket was found. The code is probably incomplete or broken here.', confidence: 'verified' },
+          ? { text: tr(`Its partner is on line ${b.partner.line + 1}. Together they mark ${b.encloses}.`, `Пара — на строке ${b.partner.line + 1}. Вместе они обозначают: ${b.encloses}.`), confidence: 'verified' }
+          : { text: tr('No matching partner bracket was found. The code is probably incomplete or broken here.', 'Парная скобка не найдена. Скорее всего, код здесь не дописан или сломан.'), confidence: 'verified' },
       );
       return info;
     }
+    // C / C++ preprocessor lines (#include, #define, #ifdef …).
+    if (tx.startsWith('#') && /^preproc/.test(n.parent?.type ?? '')) {
+      const what =
+        tx === '#include'
+          ? tr('"#include" pastes another file (usually a library header) into this one before compiling.', '«#include» вставляет другой файл (обычно заголовок библиотеки) в этот перед компиляцией.')
+          : tx === '#define'
+            ? tr('"#define" gives a name to a value or a piece of code; the name is replaced by its text everywhere before compiling.', '«#define» даёт имя значению или куску кода; перед компиляцией это имя везде заменяется текстом.')
+            : tr(`"${tx}" is a preprocessor instruction: it is handled before the code is compiled.`, `«${tx}» — команда препроцессора: она выполняется до компиляции кода.`);
+      Object.assign(info, { kind: 'keyword' as ElementKind, concept: 'preprocessor', keywordMeaning: what });
+      return info;
+    }
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(tx)) {
-      const concept = keywordConcept(languageId, tx, n.parent?.type ?? '');
-      Object.assign(info, { kind: 'keyword' as ElementKind, concept, keywordMeaning: keywordMeaning(languageId, tx) });
+      let concept = keywordConcept(languageId, tx, n.parent?.type ?? '');
+      if (languageId === 'csharp' && /^(from|where|select|orderby|group|join|let|into|ascending|descending)$/.test(tx) && isInside(n, S('query_expression'))) concept = 'linq';
+      Object.assign(info, { kind: 'keyword' as ElementKind, concept, keywordMeaning: concept === 'linq' ? undefined : keywordMeaning(languageId, tx) });
       const owner = n.parent;
       if (owner && (FUNC_DEFS.has(owner.type) || ANON_FUNCS.has(owner.type))) {
         info.func = functionInfo(owner, lines);
         info.flow = bodyOf(owner) ? buildFlow(bodyOf(owner)!, lines) : undefined;
-        context.unshift(`starts the function "${functionName(owner)}"`);
-      } else if (owner && CLASS_DEFS.has(owner.type)) context.unshift(`starts "${className(owner)}"`);
+        context.unshift(tr(`starts the function "${functionName(owner)}"`, `начинает функцию «${functionName(owner)}»`));
+      } else if (owner && CLASS_DEFS.has(owner.type)) context.unshift(tr(`starts "${className(owner)}"`, `начинает «${className(owner)}»`));
       else if (owner && /if|while|for|loop/.test(owner.type)) {
         const b = bodyOf(owner) ?? owner.childForFieldName('consequence');
         if (b) info.flow = buildFlow(owner, lines);
@@ -948,8 +962,30 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
       return info;
     }
     const op = describeOperator(n);
+    // C, C++ and C# symbols that have their own explanation.
+    const pt = n.parent?.type ?? '';
+    const special =
+      tx === '*' && /pointer_declarator|pointer_expression|pointer_type|abstract_pointer/.test(pt)
+        ? 'pointer'
+        : tx === '&' && pt === 'pointer_expression'
+          ? 'address-of'
+          : (tx === '&' || tx === '&&') && /reference_declarator|ref_type|abstract_reference/.test(pt)
+            ? 'reference'
+            : tx === '->' && /field_expression/.test(pt)
+              ? 'operator-pointer-member'
+              : tx === '::'
+                ? 'operator-scope'
+                : tx === '~' && /destructor/.test(pt)
+                  ? 'destructor'
+                  : tx === '?' && /nullable/.test(pt)
+                    ? 'nullable'
+                    : null;
+    if (special) {
+      Object.assign(info, { kind: 'operator' as ElementKind, concept: special, operator: op });
+      return info;
+    }
     Object.assign(info, { kind: 'operator' as ElementKind, concept: `operator-${op.category}`, operator: op });
-    if (op.left || op.right) facts.push({ text: `Left side: ${op.left ?? '—'}; right side: ${op.right ?? '—'}.`, confidence: 'verified' });
+    if (op.left || op.right) facts.push({ text: tr(`Left side: ${op.left ?? '—'}; right side: ${op.right ?? '—'}.`, `Слева: ${op.left ?? '—'}; справа: ${op.right ?? '—'}.`), confidence: 'verified' });
     return info;
   }
   // Markup / style / data specific.
@@ -968,7 +1004,7 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
   if (languageId === 'css') {
     if (t === 'property_name') Object.assign(info, { kind: 'css-property' as ElementKind, concept: 'css-property', symbolName: n.text });
     else if (isInside(n, S('selectors')) || t === 'class_name' || t === 'id_name' || t === 'tag_name') Object.assign(info, { kind: 'css-selector' as ElementKind, concept: 'css-selector', symbolName: n.text });
-    else Object.assign(info, { kind: 'css-value' as ElementKind, concept: 'css-value', literal: { value: n.text, type: 'style value' } });
+    else Object.assign(info, { kind: 'css-value' as ElementKind, concept: 'css-value', literal: { value: n.text, type: tr('style value', 'значение оформления') } });
     return info;
   }
   if (languageId === 'toml' && t === 'bare_key') {
@@ -1034,6 +1070,20 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
                       : /^[A-Z][A-Z0-9_]+$/.test(name)
                         ? 'constant'
                         : 'variable';
+    // Ideas specific to C, C++, C# and game engines.
+    if (kind === 'function-definition' && /^(main|Main)$/.test(name)) info.concept = 'main-function';
+    const callback = kind === 'function-definition' ? engineCallback(name, languageId) : undefined;
+    if (callback) {
+      info.concept = callback.concept;
+      info.libraryMeaning = callback.text;
+    }
+    if (UNREAL_MACROS.has(name)) info.concept = 'unreal-macro';
+    if (VECTOR_TYPES.has(name)) info.concept = 'vector';
+    else if (kind === 'type' || TYPES.has(t)) {
+      if (VECTOR_TYPES.has(name)) info.concept = 'vector';
+      else if (LIST_TYPES.has(name)) info.concept = 'list';
+      else if (DICT_TYPES.has(name)) info.concept = 'dictionary';
+    }
     // Link to definitions and uses within the file (scope-aware).
     const scopeChain = scopesContaining(summary, n.startIndex);
     const defsSameName = summary.symbols.filter((s) => s.name === name);
@@ -1060,22 +1110,23 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
     });
     if (info.definitions[0]) info.symbolKind = info.definitions[0].kind;
     const linked = defScope !== undefined && defScope !== 0 ? 'verified' : 'likely';
-    if (defs.length) facts.push({ text: `Created on line ${defs[0].range.line + 1}${defs.length > 1 ? ` (and ${defs.length - 1} other place${defs.length > 2 ? 's' : ''})` : ''}.`, confidence: linked });
-    else if (kind !== 'keyword' && kind !== 'type') facts.push({ text: `"${name}" is not created in this file. It may come from another file, a library, or the language itself.`, confidence: 'likely' });
+    if (defs.length) facts.push({ text: tr(`Created on line ${defs[0].range.line + 1}${defs.length > 1 ? ` (and ${defs.length - 1} other place${defs.length > 2 ? 's' : ''})` : ''}.`, `Создаётся на строке ${defs[0].range.line + 1}${defs.length > 1 ? ` (и ещё мест: ${defs.length - 1})` : ''}.`), confidence: linked });
+    else if (kind !== 'keyword' && kind !== 'type') facts.push({ text: tr(`"${name}" is not created in this file. It may come from another file, a library, or the language itself.`, `«${name}» не создаётся в этом файле. Оно может быть из другого файла, библиотеки или самого языка.`), confidence: 'likely' });
     const uses = info.references.filter((r) => r.role !== 'definition' && r.role !== 'parameter' && r.range.start !== n.startIndex);
-    facts.push({ text: `Used ${uses.length} other time${uses.length === 1 ? '' : 's'} in this file.`, confidence: linked });
-    if (role === 'assignment') facts.push({ text: 'Here it receives (stores) a value.', confidence: 'verified' });
-    if (role === 'read') facts.push({ text: 'Here its current value is read.', confidence: 'verified' });
+    facts.push({ text: tr(`Used ${uses.length} other time${uses.length === 1 ? '' : 's'} in this file.`, `Ещё используется в этом файле: ${uses.length}.`), confidence: linked });
+    if (role === 'assignment') facts.push({ text: tr('Here it receives (stores) a value.', 'Здесь в него кладётся (сохраняется) значение.'), confidence: 'verified' });
+    if (role === 'read') facts.push({ text: tr('Here its current value is read.', 'Здесь читается его текущее значение.'), confidence: 'verified' });
+    if ((kind === 'function-call' || kind === 'property' || kind === 'variable') && !defs.length && !info.libraryMeaning) info.libraryMeaning = libraryMeaning(name, languageId);
     if (kind === 'function-call') {
       const callNode = CALLS.has(p2.type) ? p2 : p2.parent;
       const args = callNode?.childForFieldName('arguments');
-      if (args) facts.push({ text: `It is given: ${short(args.text, 80)}`, confidence: 'verified' });
+      if (args) facts.push({ text: `${tr('It is given', 'Ей передают')}: ${short(args.text, 80)}`, confidence: 'verified' });
     }
     return info;
   }
   info.kind = 'unknown';
   info.concept = 'unknown';
-  facts.push({ text: `The syntax tree calls this a "${t.replace(/_/g, ' ')}". There is no specific explanation for it yet.`, confidence: 'verified' });
+  facts.push({ text: tr(`The syntax tree calls this a "${t.replace(/_/g, ' ')}". There is no specific explanation for it yet.`, `В синтаксическом дереве это называется «${t.replace(/_/g, ' ')}». Отдельного объяснения пока нет.`), confidence: 'verified' });
   return info;
 }
 

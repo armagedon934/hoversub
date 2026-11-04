@@ -4,6 +4,7 @@
 // inferred from patterns, not proven.
 
 import { lex, type Token } from '../languages/lexer';
+import { tr } from '../i18n';
 import { getLanguage } from '../languages/registry';
 import { keywordConcept, keywordMeaning, operatorCategory } from '../knowledge/keywords';
 import { LineIndex, short } from './lines';
@@ -47,13 +48,13 @@ export function analyzeTokens(text: string, path: string, languageId: string): T
         partners.set(i, top);
       } else {
         partners.set(i, -1);
-        if (issues.length < 50) issues.push({ range: R(t), message: `This "${c}" has no matching opening bracket.` });
+        if (issues.length < 50) issues.push({ range: R(t), message: tr(`This "${c}" has no matching opening bracket.`, `У этой «${c}» нет парной открывающей скобки.`) });
       }
     }
   });
   for (const i of stack) {
     partners.set(i, -1);
-    if (issues.length < 50) issues.push({ range: R(tokens[i]), message: `This "${tx(tokens[i])}" is never closed.` });
+    if (issues.length < 50) issues.push({ range: R(tokens[i]), message: tr(`This "${tx(tokens[i])}" is never closed.`, `Эта «${tx(tokens[i])}» нигде не закрывается.`) });
   }
 
   const symbols: SymbolDef[] = [];
@@ -227,7 +228,7 @@ export function elementAtTokens(a: TokenAnalysis, text: string, offset: number):
   };
   if (summary.mode === 'syntax-tree') return base;
   if (idx < 0) {
-    facts.push({ text: 'Empty space. Click on a word, number or symbol.', confidence: 'verified' });
+    facts.push({ text: tr('Empty space. Click on a word, number or symbol.', 'Пустое место. Нажми на слово, число или значок.'), confidence: 'verified' });
     return base;
   }
   const t = tokens[idx];
@@ -239,12 +240,12 @@ export function elementAtTokens(a: TokenAnalysis, text: string, offset: number):
   if (plain) {
     const count = tokens.filter((x) => text.slice(x.start, x.end) === w).length;
     Object.assign(base, { kind: (t.cls === 'number' ? 'number' : t.cls === 'bracket' ? 'bracket' : 'text') as ElementKind, concept: languageId === 'unknown' ? 'unknown-format' : 'plain-text' });
-    facts.push({ text: languageId === 'unknown' ? 'This file type is not recognised, so its meaning cannot be analysed. Only words, numbers and brackets can be shown.' : 'This is plain text, not program code.', confidence: 'verified' });
-    facts.push({ text: `"${short(w, 40)}" appears ${count} time${count === 1 ? '' : 's'} in this file.`, confidence: 'verified' });
+    facts.push({ text: languageId === 'unknown' ? tr('This file type is not recognised, so its meaning cannot be analysed. Only words, numbers and brackets can be shown.', 'Этот тип файла не распознан, поэтому его смысл разобрать нельзя. Можно показать только слова, числа и скобки.') : tr('This is plain text, not program code.', 'Это обычный текст, а не программный код.'), confidence: 'verified' });
+    facts.push({ text: tr(`"${short(w, 40)}" appears ${count} time${count === 1 ? '' : 's'} in this file.`, `«${short(w, 40)}» встречается в этом файле: ${count}.`), confidence: 'verified' });
     if (t.cls === 'number') base.literal = { value: w, type: 'a number (meaning unknown)' };
     return base;
   }
-  facts.push({ text: `${getLanguage(languageId).name} is analysed at token level here: words and symbols are recognised, but the full structure of the code is not parsed. Links between names are guessed from spelling.`, confidence: 'verified' });
+  facts.push({ text: tr(`${getLanguage(languageId).name} is analysed at word level here: words and symbols are recognised, but the full structure of the code is not parsed. Links between names are guessed from spelling.`, `${getLanguage(languageId).name} здесь разбирается по словам: слова и значки распознаются, но полная структура кода не строится. Связи между именами угадываются по написанию.`), confidence: 'verified' });
   const setKind = (kind: ElementKind, concept: string) => Object.assign(base, { kind, concept });
   switch (t.cls) {
     case 'comment':
@@ -289,12 +290,12 @@ export function elementAtTokens(a: TokenAnalysis, text: string, offset: number):
       const prevWord = prev ? text.slice(prev.start, prev.end) : '';
       let construct = ch === '{' || ch === '}' ? (languageId === 'lua' ? 'object' : 'block') : ch === '[' || ch === ']' ? 'list' : prev && (prev.cls === 'variable' || prev.cls === 'function') ? 'call-arguments' : 'grouping';
       if (languageId === 'xml' || languageId === 'markdown') construct = 'grouping';
-      const encloses = construct === 'call-arguments' ? `the information given to "${prevWord}"` : construct === 'object' ? 'a table (a group of values)' : construct === 'list' ? 'a list or an index' : construct === 'block' ? 'a group of lines that belong together' : 'a part that belongs together';
+      const encloses = construct === 'call-arguments' ? tr(`the information given to "${prevWord}"`, `данные, которые передают в «${prevWord}»`) : construct === 'object' ? tr('a table (a group of values)', 'таблица (группа значений)') : construct === 'list' ? tr('a list or an index', 'список или номер элемента') : construct === 'block' ? tr('a group of lines that belong together', 'группа строк, которые относятся друг к другу') : tr('a part that belongs together', 'часть, которая относится друг к другу');
       setKind('bracket', `bracket-${construct}`);
       const open = isOpen ? t : partner;
       const close = isOpen ? partner : t;
       base.bracket = { char: ch, partner: partner ? lines.range(partner.start, partner.end) : null, encloses, construct, openRange: lines.range((open ?? t).start, (open ?? t).end), closeRange: close ? lines.range(close.start, close.end) : null };
-      facts.push(partner ? { text: `Its partner is on line ${lines.lineOf(partner.start) + 1}.`, confidence: 'verified' } : { text: 'No matching partner bracket was found here.', confidence: 'verified' });
+      facts.push(partner ? { text: tr(`Its partner is on line ${lines.lineOf(partner.start) + 1}.`, `Парная скобка — на строке ${lines.lineOf(partner.start) + 1}.`), confidence: 'verified' } : { text: tr('No matching partner bracket was found here.', 'Парная скобка здесь не найдена.'), confidence: 'verified' });
       break;
     }
     case 'operator':
@@ -328,9 +329,9 @@ export function elementAtTokens(a: TokenAnalysis, text: string, offset: number):
       else setKind('variable', 'variable');
       base.definitions = defs;
       base.references = summary.refs.filter((r) => r.name === w);
-      if (defs.length) facts.push({ text: `A definition with this name is on line ${def.range.line + 1}.`, confidence: 'likely' });
-      else facts.push({ text: `No definition named "${w}" was found in this file. It may come from elsewhere (another file, a library or the language itself).`, confidence: 'likely' });
-      facts.push({ text: `The name appears ${base.references.length} time${base.references.length === 1 ? '' : 's'} in this file.`, confidence: 'verified' });
+      if (defs.length) facts.push({ text: tr(`A definition with this name is on line ${def.range.line + 1}.`, `Определение с таким именем — на строке ${def.range.line + 1}.`), confidence: 'likely' });
+      else facts.push({ text: tr(`No definition named "${w}" was found in this file. It may come from elsewhere (another file, a library or the language itself).`, `Определение «${w}» в этом файле не найдено. Оно может быть в другом месте (другой файл, библиотека или сам язык).`), confidence: 'likely' });
+      facts.push({ text: tr(`The name appears ${base.references.length} time${base.references.length === 1 ? '' : 's'} in this file.`, `Это имя встречается в этом файле: ${base.references.length}.`), confidence: 'verified' });
     }
   }
   return base;

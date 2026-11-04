@@ -108,9 +108,9 @@ async function main() {
     await idle(page);
     check('Chosen level is remembered after reload', (await code(page, 's.prefs.level')) === 5);
     check('Workspace and project are restored after reload', (await code(page, 's.files.length')) === 10);
-    await page.getByTestId('level-2').click();
     await page.locator('[data-path="shop/cart.py"]').click();
     await page.getByTestId('code-view').waitFor();
+    await page.getByTestId('level-2').click();
 
     // function, bracket, operator, keyword
     await clickText(page, 24, 'total');
@@ -243,15 +243,16 @@ async function main() {
     await page.getByTestId('glossary').getByRole('textbox').fill('loop');
     await page.locator('.gl-list li button', { hasText: /^Loop/ }).first().click();
     check('Glossary explains ideas offline', (await page.locator('.gl-body h2').textContent())?.toLowerCase().includes('loop') ?? false);
-    await page.getByTestId('reading-settings').click();
+    const fontBefore: number = await code(page, 's.prefs.fontSize');
+    await page.getByTestId('open-settings').click();
     await page.getByTestId('theme-light').click();
     await page.getByTestId('font-bigger').click();
     await page.getByTestId('font-bigger').click();
     await page.getByTestId('view-code').click();
-    check('Light theme and bigger text', (await page.locator('.cm.theme-light').count()) === 1 && (await code(page, 's.prefs.fontSize')) === 17);
+    check('Light theme and bigger text', (await page.locator('.cm.theme-light').count()) === 1 && (await code(page, 's.prefs.fontSize')) === fontBefore + 2);
     await shot(page, '10-light-theme');
-    check('Comfort panel closes when clicking elsewhere', (await page.locator('.popover').count()) === 0);
-    await page.getByTestId('reading-settings').click();
+    check('Settings panel closes when clicking elsewhere', (await page.locator('.popover').count()) === 0);
+    await page.getByTestId('open-settings').click();
     await page.getByTestId('font-smaller').click();
     await page.getByTestId('font-smaller').click();
     await page.getByTestId('theme-dark').click();
@@ -319,6 +320,71 @@ async function main() {
     check('Keeps working with the network switched off', (await page.getByTestId('explain-summary').textContent())!.length > 10);
     await ctx.setOffline(false);
     await page.getByTestId('level-2').click();
+
+    // ---- step-by-step player for real code (flow of a function, nothing is run)
+    await page.getByTestId('close-project').click();
+    await page.getByTestId('close-project-confirm').click();
+    await page.getByTestId('code-welcome').getByTestId('open-example').click();
+    await page.getByTestId('overview').waitFor();
+    await idle(page);
+    check('Guide offers the next step (open the main file)', (await page.getByTestId('guide').textContent())?.includes('main.py') ?? false);
+    await page.getByTestId('guide-action').click();
+    await page.getByTestId('code-view').waitFor();
+    check('Guide then says: click a word', /click any word/i.test((await page.getByTestId('guide').textContent()) ?? ''));
+    await clickText(page, 8, 'print_receipt');
+    await page.getByTestId('diagram-flow').click();
+    await page.getByTestId('flow-next').click();
+    await page.getByTestId('flow-next').click();
+    check('"Show me step by step" walks through the lines of a function', (await page.getByTestId('flow-player').textContent())?.includes('2 /') ?? false);
+    await shot(page, '12-step-by-step-player');
+
+    // ---- Learn: a full lesson (C#), animation, games, XP
+    await page.getByTestId('view-learn').click();
+    await page.getByTestId('track-cs').click();
+    await page.getByTestId('start-next-lesson').click();
+    await page.getByTestId('lesson-watch').click();
+    await page.getByTestId('anim-next').click();
+    check('Animation shows the changed box (health = 70)', (await page.getByTestId('anim-frames').textContent())?.includes('70') ?? false);
+    await page.getByTestId('anim-next').click();
+    check('Animation shows the program output on the "screen"', (await page.getByTestId('anim-output').textContent())?.trim() === '70');
+    await shot(page, '13-learn-animation');
+    await page.getByTestId('anim-done').click();
+    await page.getByTestId('game-option').nth(2).click();
+    check('Game 1: right answer is confirmed', /Correct/.test((await page.getByTestId('game-feedback').textContent()) ?? ''));
+    await page.getByTestId('game-next').click();
+    await page.getByTestId('game-option').nth(0).click();
+    check('Game 2: a wrong answer is answered kindly, with another try', /Try again/.test((await page.getByTestId('game-feedback').textContent()) ?? ''));
+    await page.getByTestId('game-option').nth(1).click();
+    await page.getByTestId('game-next').click();
+    await page.locator('.ln-tok', { hasText: /^\+$/ }).first().click();
+    check('Game 3: "find the mistake" by tapping the wrong symbol', /Correct/.test((await page.getByTestId('game-feedback').textContent()) ?? ''));
+    await page.getByTestId('game-next').click();
+    for (const want of ['int health = 100;', 'health = health - 30;', 'Console.WriteLine(health);']) {
+      const texts = await page.getByTestId('order-pool').allTextContents();
+      await page.getByTestId('order-pool').nth(texts.indexOf(want)).click();
+    }
+    check('Game 4: "put the lines in order"', /Correct/.test((await page.getByTestId('game-feedback').textContent()) ?? ''));
+    await page.getByTestId('game-next').click();
+    await page.getByTestId('lesson-done').waitFor();
+    const xp = await page.evaluate(() => JSON.parse(localStorage.getItem('mf.learn.v1') ?? '{}'));
+    check('Lesson completed: stars and XP are saved', xp.xp >= 50 && xp.done?.['cs:variables']?.stars === 2, `xp ${xp.xp}, stars ${xp.done?.['cs:variables']?.stars}`);
+    await shot(page, '14-lesson-done');
+    await page.getByTestId('lesson-next').click();
+    check('"Next lesson" opens the next lesson', (await page.getByTestId('lesson').textContent())?.includes('Conditions') ?? false);
+    await page.getByTestId('lesson-exit').click();
+
+    // ---- Russian interface
+    await page.getByTestId('open-settings').click();
+    await page.getByTestId('lang-ru').click();
+    await page.getByTestId('learn').waitFor();
+    check('Russian interface: tabs and lessons switch to Russian', ((await page.getByTestId('view-learn').textContent()) ?? '').includes('Учиться') && ((await page.getByTestId('lesson-path').textContent()) ?? '').includes('Переменные'));
+    await page.getByTestId('view-code').click();
+    await page.getByTestId('code-view').waitFor();
+    await clickText(page, 8, 'print_receipt');
+    check('Russian explanations', /[а-яё]/i.test((await page.getByTestId('explain-summary').textContent()) ?? ''), (await page.getByTestId('explain-summary').textContent()) ?? '');
+    await shot(page, '15-russian-explanation');
+    await page.getByTestId('open-settings').click();
+    await page.getByTestId('lang-en').click();
 
     check('No request ever left this computer', external.length === 0, external.join(', '));
     check('No errors in the page', errors.length === 0, errors.slice(0, 5).join(' | '));

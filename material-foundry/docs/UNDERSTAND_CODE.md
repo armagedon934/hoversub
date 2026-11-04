@@ -8,6 +8,31 @@ the texture studio, which is unchanged.
 Everything runs in your browser on your own computer. There is no account, no internet connection, no AI
 service and no API key involved.
 
+## New in this version
+
+* **Russian and English interface** (Settings → Language; Russian is chosen automatically on Russian systems). The
+  whole knowledge base, explanations, what-if proposals and project overview exist in both languages; a test fails
+  if any idea, keyword or operator is missing a Russian text, or if an explanation in Russian still contains an
+  English sentence.
+* **Step-by-step guide**: a one-line helper at the top always says what to do next and highlights the place to
+  click. Panels are shown only when they help (the explanation panel only while reading code).
+* **Learn**: 8 short game-themed lessons (variables → if → for → game loop → functions → lists → objects →
+  pointers) in C#, C++, C, Python and JavaScript. Each lesson: one idea, a step-by-step animation of the running
+  program (current line, boxes with values, "where are we now" call stack, screen output), then 3–4 mini-games
+  (predict the output, find the mistake by tapping it, put the lines in order). XP, levels, stars and a day
+  streak are kept in the browser. The C, C++, Python and JavaScript versions are compiled and run by the tests
+  to prove the animations show what the programs really print.
+* **"Show me step by step"** for real code: walks through a function's steps and highlights each line (nothing
+  is run).
+* **Deeper C, C++ and C#** and game engines: pointers, address-of, `->`, `::`, preprocessor, memory
+  (`new`/`delete`, `malloc`/`free`), destructors, `virtual`/`override`, references, templates, C# properties,
+  events, nullable types, LINQ, `main`; Unity callbacks (`Start`, `Update`, `OnCollisionEnter` …), Unreal macros and
+  `BeginPlay`/`Tick`, vectors, lists and dictionaries; meanings of well-known library functions (printf, malloc,
+  std::cout, Console.WriteLine, Debug.Log, Instantiate, GetComponent, Time.deltaTime …) phrased as "if this is …"
+  and marked *Likely*. Unity and Unreal projects are recognised in the project overview.
+* **Portable download**: `release/MaterialFoundry-portable.zip` with launchers for Windows (PowerShell, nothing to
+  install), macOS and Linux (Python 3 or Node.js). They serve the app on 127.0.0.1 only.
+
 ## Safety promises
 
 * **Opening never runs anything.** Files are read as text only. Project scripts (for example `npm` scripts in a
@@ -48,8 +73,8 @@ service and no API key involved.
    affected places, risks and a grammar check of the result, (4) apply only after confirmation.
 8. **Changes** lists changed files (compare side by side, *Back to original*), the history (undo/redo), restore
    points, and lets you download the changed files or the whole workspace as a ZIP, or save to the opened folder.
-9. **Ideas A–Z**: all 103 ideas of the built-in knowledge base, each at five levels.
-10. **Aa Comfort** (reading comfort): dark/light colours, text size 12–24, roomy line spacing. **Keys** lists the keyboard
+9. **Dictionary**: all 129 ideas of the built-in knowledge base, each at five levels.
+10. **Settings**: language, dark/light colours, text size 12–24, roomy line spacing, hints on/off, keyboard
     shortcuts (arrow keys move from word to word in the code).
 
 ## Supported languages and what the app really understands
@@ -85,9 +110,14 @@ reported as an outside library or as "not found among the opened files".
   Tree-sitter runtime used here); SQL, XML and PowerShell have no bundled grammar.
 * **Very large files**: above 3,000,000 characters a file is shown as plain text (still clickable, but without
   structure). Up to 4,000 files and 5 MB per file are opened from a folder.
-* **Explanations come from a fixed, built-in knowledge base** (103 ideas × 5 levels plus language keyword
+* **Explanations come from a fixed, built-in knowledge base** (129 ideas × 5 levels plus language keyword
   meanings) combined with facts from the analysis. It does not write free-form prose about what your specific
   program is *for* beyond what names, comments, the README and manifests reveal.
+* **The Windows launcher** (`Start-Windows.bat` → PowerShell) could not be executed in the Linux test container;
+  the macOS/Linux launcher (`serve.py`) and the Node launcher were tested. If PowerShell is blocked by company
+  policy, run `portable/serve.mjs` with Node.js or `portable/serve.py` with Python instead.
+* **Lessons cannot run your own changes** to their code: the animation follows a prepared, verified script.
+  The C# lesson programs are checked for structure only (no C# compiler in the test environment).
 * **Saving back to a folder** needs a browser with the File System Access API (Chrome, Edge). Elsewhere, use the
   ZIP download. Folders opened through the classic file picker or drag-and-drop are read-only.
 * The module has no optional local AI model; everything shown comes from the deterministic analysis and the
@@ -100,7 +130,10 @@ src/code/
   languages/   registry.ts (languages, detection), lexer.ts (word-level lexers), treesitter.ts (grammar loading)
   analysis/    engine.ts (open/element/flow/check), syntax.ts (Tree-sitter analysis), tokens.ts (lexer analysis),
                project.ts (imports, dependency graph, project overview), lines.ts, types.ts
-  knowledge/   concepts.ts (103 ideas × 5 levels), keywords.ts (keyword and operator meanings)
+  knowledge/   concepts.ts (+ concepts.ru*.ts, concepts.extra.ts: 129 ideas × 5 levels in two languages),
+               keywords.ts (+ keywords.ru.ts), library.ts (well-known library and engine functions)
+  learn/       lessons.ts (8 lessons × 5 languages), progress.ts (XP, stars), Learn.tsx (animation, games)
+  i18n.ts      tr(en, ru), plural forms, interface language (also used inside the workers)
   explain/     explain.ts (builds the explanation for a level, with confidence)
   workspace/   workspace.ts (protected copy, change sets, restore points, undo/redo, persistence),
                proposals.ts ("what if" edits, explanations, risks), diff.ts, idb.ts

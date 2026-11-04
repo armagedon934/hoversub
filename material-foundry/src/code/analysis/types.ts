@@ -208,4 +208,6 @@ export interface ElementInfo {
   facts: Fact[];
   /** Syntax problems around this element. */
   issues: SyntaxIssue[];
+  /** What a well-known library/engine function with this name does (name-based, "likely"). */
+  libraryMeaning?: string;
 }

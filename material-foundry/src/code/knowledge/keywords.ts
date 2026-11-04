@@ -1,6 +1,9 @@
 // Keyword and operator dictionaries. Each keyword maps to a concept in the knowledge base plus a
 // short meaning; language-specific entries override the general ones.
 
+import { getLocale } from '../i18n';
+import { RU_GENERAL, RU_OPERATORS, RU_OVERRIDES } from './keywords.ru';
+
 interface KeywordEntry {
   concept: string;
   meaning: string;
@@ -67,9 +70,9 @@ const GENERAL: Record<string, KeywordEntry> = {
   protected: K('access-modifier', '"protected" means it can be used in this class and classes built on top of it.'),
   internal: K('access-modifier', '"internal" means it can only be used inside this project/module.'),
   pub: K('access-modifier', '"pub" (public) makes it usable from outside this module (Rust).'),
-  abstract: K('access-modifier', '"abstract" means it is incomplete on purpose: other classes must fill in the details.'),
-  virtual: K('access-modifier', '"virtual" allows classes built on this one to replace this function.'),
-  override: K('access-modifier', '"override" replaces a function that was inherited from a parent class.'),
+  abstract: K('virtual', '"abstract" means it is incomplete on purpose: other classes must fill in the details.'),
+  virtual: K('virtual', '"virtual" allows classes built on this one to replace this function.'),
+  override: K('virtual', '"override" replaces a function that was inherited from a parent class.'),
   async: K('async', '"async" marks a function that can wait for slow things (like downloads) without freezing the program.'),
   await: K('async', '"await" waits here until a slow operation (like reading a file or a network request) finishes.'),
   try: K('try', '"try" runs some steps while watching for errors, so they can be handled instead of crashing the program.'),
@@ -124,8 +127,8 @@ const GENERAL: Record<string, KeywordEntry> = {
   echo: K('output', '"echo" prints text to the screen or into the page.'),
   print: K('output', '"print" shows text on the screen (in the console).'),
   goto: K('goto', '"goto" jumps directly to another labelled place in the code.'),
-  sizeof: K('operator-type', '"sizeof" tells how much memory something uses.'),
-  typedef: K('type-keyword', '"typedef" gives a new name to an existing type.'),
+  sizeof: K('sizeof', '"sizeof" tells how much memory something uses.'),
+  typedef: K('typedef', '"typedef" gives a new name to an existing type.'),
   inline: K('access-modifier', '"inline" is a hint to place the function\'s code directly where it is used, for speed.'),
   unsafe: K('access-modifier', '"unsafe" marks code that skips some of the language\'s safety checks; mistakes here can crash the program.'),
   extern: K('access-modifier', '"extern" says the thing is defined elsewhere (another file or library).'),
@@ -133,8 +136,8 @@ const GENERAL: Record<string, KeywordEntry> = {
   volatile: K('access-modifier', '"volatile" tells the compiler this value may change unexpectedly (for example by hardware).'),
   synchronized: K('access-modifier', '"synchronized" lets only one part of the program run this at a time.'),
   operator: K('function', '"operator" defines how a symbol like + works for a custom type.'),
-  template: K('type-keyword', '"template" makes code that works with many types (C++ generics).'),
-  typename: K('type-keyword', '"typename" says the following name is a type (C++ templates).'),
+  template: K('template', '"template" makes code that works with many types (C++ generics).'),
+  typename: K('template', '"typename" says the following name is a type (C++ templates).'),
   auto: K('variable-declaration', '"auto" lets the compiler figure out the type from the value.'),
   int: K('type-keyword', '"int" is the type for whole numbers.'),
   float: K('type-keyword', '"float" is the type for decimal numbers.'),
@@ -142,8 +145,8 @@ const GENERAL: Record<string, KeywordEntry> = {
   char: K('type-keyword', '"char" is the type for a single character.'),
   bool: K('type-keyword', '"bool" is the type for yes/no (true/false) values.'),
   string: K('type-keyword', '"string" is the type for text.'),
-  get: K('property', '"get" defines how a value is read.'),
-  set: K('property', '"set" defines how a value is changed.'),
+  get: K('accessor', '"get" defines how a value is read.'),
+  set: K('accessor', '"set" defines how a value is changed.'),
   local_function: K('function', ''),
   source: K('import', '"source" runs another shell file inside this one.'),
   fi: K('block-end', '"fi" ("if" backwards) closes an if-block in shell scripts.'),
@@ -207,7 +210,38 @@ const OVERRIDES: Record<string, Record<string, KeywordEntry>> = {
     drop: K('sql-modify', 'DROP permanently deletes a table or other database object.'),
   },
   css: {},
+  cpp: {
+    new: K('memory-alloc', '"new" creates an object in memory and gives back a pointer to it. That memory must later be freed with delete (or use smart pointers).'),
+    delete: K('memory-free', '"delete" frees the memory of an object created with new. The pointer must not be used afterwards.'),
+    nullptr: K('null', '"nullptr" is an empty pointer: it points at nothing.'),
+    constexpr: K('constant-declaration', '"constexpr" is a value or function that is computed already while compiling.'),
+    using: K('import', '"using" brings in names from a namespace (using namespace std) or gives a type a short name.'),
+    class: K('class', '"class" starts a class: a blueprint with data (fields) and actions (methods). In Unreal Engine every character and item is a class.'),
+  },
+  c: {
+    struct: K('struct', '"struct" defines a structure — several values under one name. In C this is the main way to describe an "object" (for example a player).'),
+    NULL: K('null', 'NULL is an empty pointer: it points at nothing.'),
+  },
+  csharp: {
+    get: K('accessor', '"get" defines what happens when the property is read.'),
+    set: K('accessor', '"set" defines what happens when the property is written; the new value arrives as "value".'),
+    value: K('accessor', '"value" is the new value someone is trying to store in the property.'),
+    delegate: K('delegate-event', '"delegate" describes a "function reference": a variable that stores which function to call.'),
+    event: K('delegate-event', '"event" is an event: others subscribe to it (+=) and get called when it happens.'),
+    ref: K('reference', '"ref" passes the variable itself, not a copy: the function may change it.'),
+    out: K('reference', '"out" is an output parameter: the function must put a value into it.'),
+    foreach: K('loop-for', '"foreach" repeats the steps for every item of a collection (list, array).'),
+    base: K('self-reference', '"base" refers to the parent class (for example base.Start()).'),
+    using: K('import', '"using" brings in a namespace (using UnityEngine;) or closes a resource automatically at the end of a block.'),
+    var: K('variable-declaration', '"var" creates a variable whose type the compiler works out from the value.'),
+    class: K('class', '"class" starts a class: a blueprint with data and actions. Every Unity script is a class.'),
+  },
 };
+
+/** Names of all keyword entries (for the translation tests). */
+export function keywordKeys(): { general: string[]; overrides: Record<string, string[]> } {
+  return { general: Object.keys(GENERAL), overrides: Object.fromEntries(Object.entries(OVERRIDES).map(([k, v]) => [k, Object.keys(v)])) };
+}
 
 export function keywordEntry(lang: string, word: string): KeywordEntry | undefined {
   const key = lang === 'sql' || lang === 'powershell' || lang === 'batch' || lang === 'dockerfile' ? word.toLowerCase() : word;
@@ -224,8 +258,19 @@ export function keywordConcept(lang: string, word: string, parentType = ''): str
 
 export function keywordMeaning(lang: string, word: string): string | undefined {
   const e = keywordEntry(lang, word);
-  if (e && e.meaning) return e.meaning;
-  return undefined;
+  if (!e || !e.meaning) return undefined;
+  if (getLocale() !== 'ru') return e.meaning;
+  const key = lang === 'sql' || lang === 'powershell' || lang === 'batch' || lang === 'dockerfile' ? word.toLowerCase() : word;
+  const fam = lang === 'typescript' || lang === 'tsx' ? 'javascript' : lang;
+  return RU_OVERRIDES[fam]?.[key] ?? (OVERRIDES[fam]?.[key] ? undefined : (RU_GENERAL[key] ?? RU_GENERAL[key.toLowerCase()])) ?? e.meaning;
+}
+
+/** Operator name and meaning in the interface language. */
+export function operatorText(sym: string): { name: string; meaning: string } | undefined {
+  const e = OPERATORS[sym];
+  if (!e) return undefined;
+  const ru = RU_OPERATORS[sym];
+  return getLocale() === 'ru' && ru ? { name: ru[0], meaning: ru[1] } : { name: e.name, meaning: e.meaning };
 }
 
 // ---------------------------------------------------------------------------------------------

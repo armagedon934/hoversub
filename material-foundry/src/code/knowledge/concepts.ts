@@ -21,6 +21,11 @@ export interface Concept {
   related?: string[];
 }
 
+import { getLocale } from '../i18n';
+import { EXTRA_CONCEPTS, EXTRA_RU } from './concepts.extra';
+import { RU1, type RuConcept } from './concepts.ru';
+import { RU2 } from './concepts.ru2';
+
 const C = (c: Concept): Concept => c;
 
 export const CONCEPTS: Concept[] = [
@@ -573,9 +578,28 @@ export const CONCEPTS: Concept[] = [
   C({ id: 'unknown', title: 'Something without a specific explanation', levels: ['The tool is not sure what this is.', 'There is no specific explanation for this part yet. You can still see its name in the language\'s syntax tree.', 'An uncommon syntax construct without a knowledge base entry.', 'Shown with its raw syntax node type so you can look it up.', 'Exercise: click the surrounding words for more context.'], simpler: ['Even the tool does not have a simple answer here — that is okay. Try clicking nearby words.'] }),
 ];
 
-const BY_ID = new Map(CONCEPTS.map((c) => [c.id, c]));
+CONCEPTS.push(...EXTRA_CONCEPTS);
 
-export function getConcept(id: string): Concept {
+const BY_ID = new Map(CONCEPTS.map((c) => [c.id, c]));
+const RU: Record<string, RuConcept> = { ...RU1, ...RU2, ...EXTRA_RU };
+
+/** The concept in the current interface language. */
+function localise(c: Concept): Concept {
+  if (getLocale() !== 'ru') return c;
+  const r = RU[c.id];
+  if (!r) return c;
+  return {
+    ...c,
+    title: r.title,
+    levels: r.levels,
+    simpler: r.simpler,
+    why: c.why ? (r.why ?? c.why) : r.why,
+    change: c.change ? (r.change ?? c.change) : r.change,
+    example: c.example ? { ...c.example, explain: r.explain ?? c.example.explain } : undefined,
+  };
+}
+
+function rawConcept(id: string): Concept {
   if (BY_ID.has(id)) return BY_ID.get(id)!;
   if (id.startsWith('bracket-')) return BY_ID.get('bracket')!;
   if (id.startsWith('operator-')) return BY_ID.get('operator-other')!;
@@ -583,27 +607,44 @@ export function getConcept(id: string): Concept {
   return BY_ID.get('unknown')!;
 }
 
+export function getConcept(id: string): Concept {
+  return localise(rawConcept(id));
+}
+
+/** Concept ids that have no Russian text (used by the tests). */
+export function missingRussian(): string[] {
+  return CONCEPTS.filter((c) => !RU[c.id]).map((c) => c.id);
+}
+
 export function hasConcept(id: string): boolean {
   return BY_ID.has(id);
 }
 
 /** Plain explanations of what different bracket pairs enclose. */
-export const BRACKET_CONSTRUCTS: Record<string, string> = {
-  'call-arguments': 'These brackets hold the information given to a function when it is used (the "arguments").',
-  parameters: 'These brackets hold the list of inputs a function expects (its "parameters").',
-  'function-body': 'These braces hold the body of a function: all the steps it performs.',
-  block: 'These braces group lines that belong together, for example the steps of an if or a loop.',
-  'if-body': 'These braces hold the steps that run only when the "if" condition is true.',
-  'loop-body': 'These braces hold the steps that are repeated by the loop.',
-  'class-body': 'These braces hold everything that belongs to a class or structure: its data and its functions.',
-  'try-body': 'These braces hold steps that are protected against errors (or the steps that handle an error).',
-  'switch-body': 'These braces hold the different cases of a choice.',
-  list: 'Square brackets make a list: several values in order, like a shopping list.',
-  object: 'These braces make an object: a group of named values (name: value).',
-  index: 'Square brackets after a name pick one item from a list or table by its position or key.',
-  grouping: 'Round brackets group things: the part inside is worked out first, or it is a condition being checked.',
-  template: '${ } inserts a value into a piece of text.',
-  'type-arguments': 'Angle brackets give type information: what kind of data is used inside.',
-  tuple: 'Round brackets make a small fixed group of values.',
-  'css-block': 'These braces hold the style rules for the selector in front of them.',
+const BRACKETS: Record<string, [string, string]> = {
+  'call-arguments': ['These brackets hold the information given to a function when it is used (the "arguments").', 'В этих скобках — данные, которые передают функции при вызове («аргументы»).'],
+  parameters: ['These brackets hold the list of inputs a function expects (its "parameters").', 'В этих скобках — список входов, которые ждёт функция («параметры»).'],
+  'function-body': ['These braces hold the body of a function: all the steps it performs.', 'В этих фигурных скобках — тело функции: все её шаги.'],
+  block: ['These braces group lines that belong together, for example the steps of an if or a loop.', 'Эти фигурные скобки объединяют строки, которые относятся друг к другу, например шаги if или цикла.'],
+  'if-body': ['These braces hold the steps that run only when the "if" condition is true.', 'В этих скобках — шаги, которые выполняются, только если условие if верно.'],
+  'loop-body': ['These braces hold the steps that are repeated by the loop.', 'В этих скобках — шаги, которые повторяет цикл.'],
+  'class-body': ['These braces hold everything that belongs to a class or structure: its data and its functions.', 'В этих скобках — всё, что принадлежит классу или структуре: данные и функции.'],
+  'try-body': ['These braces hold steps that are protected against errors (or the steps that handle an error).', 'В этих скобках — шаги, защищённые от ошибок (или шаги, которые обрабатывают ошибку).'],
+  'switch-body': ['These braces hold the different cases of a choice.', 'В этих скобках — разные варианты выбора.'],
+  list: ['Square brackets make a list: several values in order, like a shopping list.', 'Квадратные скобки создают список: несколько значений по порядку, как список покупок.'],
+  object: ['These braces make an object: a group of named values (name: value).', 'Эти фигурные скобки создают объект: группу именованных значений (имя: значение).'],
+  index: ['Square brackets after a name pick one item from a list or table by its position or key.', 'Квадратные скобки после имени берут один элемент списка или таблицы по номеру или ключу.'],
+  grouping: ['Round brackets group things: the part inside is worked out first, or it is a condition being checked.', 'Круглые скобки группируют: то, что внутри, считается первым, или это проверяемое условие.'],
+  template: ['${ } inserts a value into a piece of text.', '${ } вставляет значение в текст.'],
+  'type-arguments': ['Angle brackets give type information: what kind of data is used inside.', 'Угловые скобки указывают тип: какие данные используются внутри.'],
+  tuple: ['Round brackets make a small fixed group of values.', 'Круглые скобки создают маленькую фиксированную группу значений.'],
+  'css-block': ['These braces hold the style rules for the selector in front of them.', 'В этих скобках — правила оформления для селектора перед ними.'],
 };
+
+export function bracketConstruct(id: string): string | undefined {
+  const b = BRACKETS[id];
+  return b ? (getLocale() === 'ru' ? b[1] : b[0]) : undefined;
+}
+
+/** @deprecated use bracketConstruct (localised). Kept for the explanation engine's lookups. */
+export const BRACKET_CONSTRUCTS: Record<string, string> = Object.fromEntries(Object.entries(BRACKETS).map(([k, v]) => [k, v[0]]));

@@ -14,7 +14,15 @@ structured layouts) in Web Workers.
 The app also contains **UNDERSTAND CODE** (button in the top bar): an offline code explorer for non-programmers.
 Open any project, click on any word, symbol or bracket, and get a plain-language explanation at one of five levels,
 with pictures, a project explainer and a safe "What if I change this?" workflow (preview, restore points, undo).
-Opening a file never runs it. See [docs/UNDERSTAND_CODE.md](docs/UNDERSTAND_CODE.md).
+Opening a file never runs it. It also has a **Learn** section: short game-themed lessons in C#, C++, C, Python and
+JavaScript with a step-by-step animation of the running program and mini-games. The interface is available in
+**Russian and English**. See [docs/UNDERSTAND_CODE.md](docs/UNDERSTAND_CODE.md) · по-русски: [docs/RU_GUIDE.md](docs/RU_GUIDE.md).
+
+### Download and use offline (no installation)
+
+`release/MaterialFoundry-portable.zip` is a ready-to-run copy: unpack it and double-click `Start-Windows.bat`,
+`Start-Mac.command` or `Start-Linux.sh`. A tiny local web server (127.0.0.1 only) opens the app in your browser.
+Rebuild it with `npm run package`.
 
 ## Quick start
 
@@ -46,6 +54,7 @@ Other scripts:
 | `npm run e2e:4096 -- 8192` | Browser check of a full 4K (default) or 8K ZIP export; writes `verification/e2e-<size>.json` |
 | `npm run e2e:glb` | Exports GLB models (1K–8K) from the UI, validates them with the Khronos glTF-Validator and renders them with three.js' GLTFLoader; writes `verification/e2e-glb.json` |
 | `npm run e2e:code` | Browser end-to-end check of UNDERSTAND CODE (all requests outside the local server are blocked); writes `verification/e2e-code-report.json` and `verification/code/*.png` |
+| `npm run package` | Builds `release/MaterialFoundry-portable.zip` (app + Windows/macOS/Linux launchers) |
 | `npm run examples` | Regenerates the example ZIP exports and contact sheet in `examples/` |
 | `npx tsx scripts/render-families.ts <dir> [size] [filter]` | Developer contact sheets of every preset's maps |
 | `npm run typecheck` | TypeScript check only |
