@@ -24,6 +24,23 @@ import {
   type Val,
 } from './lessons';
 import { XP_PER_LEVEL, key, useLearn } from './progress';
+import { useReview } from '../memory/review';
+import { useResume } from '../memory/resume';
+import { Speak } from '../memory/MemoryViews';
+
+/** Questions of a finished lesson become review cards, so they come back in a few days. */
+function addLessonCards(lesson: Lesson, track: TrackId) {
+  const code = codeLines(lesson, track)
+    .map((l) => l.text)
+    .join('\n');
+  const t = TRACKS.find((x) => x.id === track)!;
+  const cards = lesson.games.flatMap((g, i) => {
+    if (g.kind !== 'choice') return [];
+    const right = g.options[g.answer];
+    return [{ id: `lesson:${track}:${lesson.id}:${i}`, front: pick(g.q), back: `${typeof right === 'string' ? right : pick(right)}\n\n${pick(g.why)}`, from: `${t.name} · ${pick(lesson.title)}`, code }];
+  });
+  useReview.getState().addCards(cards);
+}
 
 // ---------------------------------------------------------------------------------------------
 // Small pieces
@@ -200,6 +217,7 @@ export function Animator({ lesson, track, onDone }: { lesson: Lesson; track: Tra
             {tr('Step', 'Шаг')} {i + 1} / {steps.length}
           </span>
           <p>{renameText(lesson, track, pick(step.say))}</p>
+          <Speak text={renameText(lesson, track, pick(step.say))} />
         </div>
         <div className="ln-panel-title">{tr('Where are we now', 'Где мы сейчас')}</div>
         <div className="ln-frames" data-testid="anim-frames">
@@ -461,6 +479,7 @@ function LessonPlayer({ lesson, track, onExit, onNext }: { lesson: Lesson; track
       addXp(20);
       setEarned((e) => e + 20);
       finishLesson(track, lesson.id, stars);
+      addLessonCards(lesson, track);
       setStage('done');
     }
   };
@@ -602,6 +621,7 @@ export function Learn() {
   const t = TRACKS.find((x) => x.id === track)!;
   const lesson = list.find((l) => l.id === lessonId);
   if (lesson) {
+    if (useResume.getState().last?.id !== lesson.id) setTimeout(() => useResume.getState().mark({ kind: 'lesson', id: lesson.id, title: `${t.name}: ${pick(lesson.title)}`, extra: track }), 0);
     const idx = list.indexOf(lesson);
     const next = list[idx + 1];
     return (

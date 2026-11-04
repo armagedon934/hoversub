@@ -14,7 +14,7 @@ import { Workspace } from '../workspace/workspace';
 import { getCodeClient } from '../worker/client';
 import type { LoadResult } from './fileLoading';
 
-export type CodeView = 'welcome' | 'learn' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
+export type CodeView = 'welcome' | 'learn' | 'workshop' | 'unity' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
 export type DiagramKind = 'auto' | 'flow' | 'connections' | 'data' | 'files';
 
 export interface Prefs {
@@ -25,19 +25,22 @@ export interface Prefs {
   /** Show the "what to do next" helper. */
   hints: boolean;
   locale: Locale;
+  /** A calmer, very readable font with more letter spacing. */
+  readable: boolean;
 }
 
 const PREFS_KEY = 'mf.code.prefs.v1';
 const LEVEL_SESSION_KEY = 'mf.code.level';
 
 function loadPrefs(): Prefs {
-  const d: Prefs = { theme: 'dark', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale() };
+  const d: Prefs = { theme: 'dark', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale(), readable: false };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
     if (raw.theme === 'light' || raw.theme === 'dark') d.theme = raw.theme;
     if (typeof raw.fontSize === 'number' && raw.fontSize >= 12 && raw.fontSize <= 24) d.fontSize = raw.fontSize;
     if (typeof raw.spacing === 'boolean') d.spacing = raw.spacing;
     if (typeof raw.hints === 'boolean') d.hints = raw.hints;
+    if (typeof raw.readable === 'boolean') d.readable = raw.readable;
     if ([1, 2, 3, 4, 5].includes(raw.level)) d.level = raw.level;
     const s = Number(sessionStorage.getItem(LEVEL_SESSION_KEY));
     if ([1, 2, 3, 4, 5].includes(s)) d.level = s as Level;

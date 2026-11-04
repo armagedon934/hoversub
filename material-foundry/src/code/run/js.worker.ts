@@ -17,6 +17,8 @@ for (const k of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'importS
 // new Function puts 3 lines before user code: "function anonymous(args", ") {" and "use strict".
 const WRAP_LINES = 3;
 
+class NeedInput extends Error {}
+
 function show(v: unknown): string {
   if (typeof v === 'string') return v;
   try {
@@ -35,8 +37,9 @@ self.onmessage = (e: MessageEvent<{ code: string; inputs: string[] }>) => {
   const fakeConsole = { log, info: log, warn: log, error: log, table: log };
   const prompt = (q?: string) => {
     if (q) out.push(String(q));
-    const v = inputs.shift() ?? null;
-    if (v !== null) out.push(`> ${v}`);
+    const v = inputs.shift();
+    if (v === undefined) throw new NeedInput(q ? String(q) : '');
+    out.push(`> ${v}`);
     return v;
   };
   try {
@@ -44,6 +47,10 @@ self.onmessage = (e: MessageEvent<{ code: string; inputs: string[] }>) => {
     fn(fakeConsole, prompt, log);
     self.postMessage({ output: out, error: null });
   } catch (err) {
+    if (err instanceof NeedInput) {
+      self.postMessage({ output: out, error: null, needInput: err.message });
+      return;
+    }
     const er = err as Error;
     const m = /<anonymous>:(\d+):(\d+)/.exec(er.stack ?? '');
     const line = m ? Math.max(0, parseInt(m[1], 10) - 1 - WRAP_LINES) : -1;

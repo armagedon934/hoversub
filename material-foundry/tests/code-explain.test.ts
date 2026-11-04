@@ -226,7 +226,12 @@ describe('offline by design', () => {
     };
     walk('src/code');
     for (const f of files) {
-      const t = readFileSync(f, 'utf8');
+      let t = readFileSync(f, 'utf8');
+      // The sandbox workers name the network functions only to REMOVE them before user code runs.
+      if (/\.worker\.ts$/.test(f) && /src[\\/]code[\\/]run/.test(f)) {
+        expect(t, f).toMatch(/for \(const k of \[['"]fetch['"], ['"]XMLHttpRequest['"], ['"]WebSocket['"], ['"]EventSource['"], ['"]importScripts['"]/);
+        t = t.replace(/for \(const k of \[[^\]]*\]\)/g, '');
+      }
       expect(t, f).not.toMatch(/\bfetch\s*\(\s*['"`]https?:/);
       expect(t, f).not.toMatch(/XMLHttpRequest|WebSocket|EventSource|navigator\.sendBeacon/);
       expect(t, f).not.toMatch(/https?:\/\/(?!localhost)[a-z0-9.-]+\.(com|org|net|io|dev|ai)\//i);

@@ -28,7 +28,9 @@ export type Goal =
   | { type: 'collect' }
   | { type: 'destroyAll'; tag: string }
   | { type: 'log'; text: string; afterSeconds?: number }
-  | { type: 'field'; field: string; value: number };
+  | { type: 'field'; field: string; value: number }
+  /** Free play (the sandbox): never won, never lost by the rules. */
+  | { type: 'free' };
 
 export interface Level {
   id: string;
@@ -322,6 +324,8 @@ export class UnityWorld {
         break;
       case 'log':
         if (this.logs.some((l) => l.text.includes(g.text) && (g.afterSeconds === undefined || l.time >= g.afterSeconds - 0.05))) won(tr('The message appeared in the Console!', 'Сообщение появилось в консоли!'));
+        break;
+      case 'free':
         break;
       case 'field': {
         const f = this.script?.fields.get(g.field);

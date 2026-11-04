@@ -5,8 +5,19 @@
 //  • learning and the dictionary use the whole width
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
-import { useEffect, useState } from 'react';
-import { BookOpenText, Code2, FileDiff, FolderOpen, Gamepad2, Home, Map as MapIcon, Minus, Moon, Network, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, X } from 'lucide-react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Bot, Brain, BookOpenText, Code2, FileDiff, FolderOpen, Gamepad2, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
+import '@fontsource/pt-sans/cyrillic-400.css';
+import '@fontsource/pt-sans/cyrillic-700.css';
+import '@fontsource/pt-sans/latin-400.css';
+import '@fontsource/pt-sans/latin-700.css';
+import { DEFAULTS, testAi, useAi } from '../ai/localAi';
+import { FocusTimer, NotebookView, ResumeCard, ReviewView, useLearnHub } from '../memory/MemoryViews';
+import { dueCards, useReview } from '../memory/review';
+import { getRate, setRate, speechAvailable } from '../memory/speech';
+import { ErrorTranslator } from '../workshop/ErrorTranslator';
+import { MiniUnity } from '../workshop/MiniUnity';
+import { Workshop } from '../workshop/Workshop';
 import { getLanguage } from '../languages/registry';
 import { tr, type Locale } from '../i18n';
 import { Learn } from '../learn/Learn';
@@ -22,6 +33,7 @@ import { WhatIfDialog } from './WhatIf';
 import { readDataTransfer } from './fileLoading';
 import { useCode, workspace, type CodeView as View } from './store';
 import './code.css';
+import '../workshop/workshop.css';
 
 function shortcuts(): [string, string][] {
   return [
@@ -45,6 +57,7 @@ function Welcome() {
     <div className="welcome" data-testid="code-welcome">
       <h1>{tr('Understand code — without fear', 'Понимать код — без страха')}</h1>
       <p className="welcome-lead">{tr('Choose one of three ways to start. You can always come back here.', 'Выбери один из трёх способов начать. Сюда всегда можно вернуться.')}</p>
+      <ResumeCard />
       <div className="start-cards" data-guide="start">
         <button className="start-card" onClick={() => setView('learn')} data-testid="start-learn">
           <span className="start-emoji" aria-hidden>
@@ -53,6 +66,22 @@ function Welcome() {
           <b>{tr('Learn from zero', 'Учиться с нуля')}</b>
           <span>{tr('Short lessons with animations and mini-games. C#, C++, C, Python, JavaScript.', 'Короткие уроки с анимацией и мини-играми. C#, C++, C, Python, JavaScript.')}</span>
         </button>
+        <button className="start-card" onClick={() => setView('workshop')} data-testid="start-workshop">
+          <span className="start-emoji" aria-hidden>
+            🛠
+          </span>
+          <b>{tr('Write my own code', 'Писать свой код')}</b>
+          <span>{tr('An editor that guesses what comes next, explains every word, finds mistakes and runs your program safely.', 'Редактор, который угадывает, что дальше, объясняет каждое слово, находит ошибки и безопасно запускает программу.')}</span>
+        </button>
+        <button className="start-card" onClick={() => setView('unity')} data-testid="start-unity">
+          <span className="start-emoji" aria-hidden>
+            🕹
+          </span>
+          <b>{tr('Mini-Unity', 'Мини-Unity')}</b>
+          <span>{tr('Write real Unity C# scripts and watch them move a hero. 9 levels from Start() to shooting.', 'Пиши настоящие C#-скрипты Unity и смотри, как они двигают героя. 9 уровней: от Start() до стрельбы.')}</span>
+        </button>
+      </div>
+      <div className="start-cards small-cards">
         <button className="start-card" onClick={() => void openExample()} disabled={!!busy} data-testid="open-example">
           <span className="start-emoji" aria-hidden>
             🔍
@@ -68,13 +97,20 @@ function Welcome() {
           <span>{tr('A folder or files from your computer. Any language.', 'Папку или файлы с компьютера. Любой язык.')}</span>
           <OpenButtons example={false} />
         </div>
+        <button className="start-card" onClick={() => setView('errors')} data-testid="start-errors">
+          <span className="start-emoji" aria-hidden>
+            🩹
+          </span>
+          <b>{tr('Translate an error', 'Перевести ошибку')}</b>
+          <span>{tr('Paste red text from Unity, Visual Studio or Python — get plain words and a fix.', 'Вставь красный текст из Unity, Visual Studio или Python — получи простое объяснение и исправление.')}</span>
+        </button>
       </div>
       <ul className="welcome-points">
         <li>
-          <ShieldCheck size={16} aria-hidden /> {tr('Safe: files are only read. Nothing you open is ever run, and your files never change without your clear "yes".', 'Безопасно: файлы только читаются. Ничего из открытого не запускается, а твои файлы не меняются без твоего ясного «да».')}
+          <ShieldCheck size={16} aria-hidden /> {tr('Safe: opened files are only read and never run. Only code you write in the Workshop runs — when you press Run, inside a closed sandbox.', 'Безопасно: открытые файлы только читаются и никогда не запускаются. Выполняется только код, который ты пишешь в Мастерской, — когда ты нажмёшь «Запустить», внутри закрытой песочницы.')}
         </li>
         <li>
-          <ShieldCheck size={16} aria-hidden /> {tr('Private: everything stays on this computer. No internet, no AI service, no account.', 'Приватно: всё остаётся на этом компьютере. Без интернета, без ИИ-сервисов, без регистрации.')}
+          <ShieldCheck size={16} aria-hidden /> {tr('Private: everything stays on this computer. No internet, no account. An AI model on your own computer can be connected — optional.', 'Приватно: всё остаётся на этом компьютере. Без интернета и регистрации. Можно подключить ИИ-модель на твоём компьютере — по желанию.')}
         </li>
         <li>
           <ShieldCheck size={16} aria-hidden /> {tr('Honest: every explanation says how sure it is.', 'Честно: каждое объяснение говорит, насколько оно уверено.')}
@@ -132,6 +168,19 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           {prefs.hints ? tr('On', 'Включены') : tr('Off', 'Выключены')}
         </button>
       </div>
+      <div className="pop-row">
+        <span>{tr('Easy-reading font', 'Шрифт для лёгкого чтения')}</span>
+        <button className={`btn small${prefs.readable ? ' on' : ''}`} onClick={() => setPrefs({ readable: !prefs.readable })} aria-pressed={prefs.readable} data-testid="toggle-readable">
+          <Type size={13} /> {prefs.readable ? tr('On', 'Включён') : tr('Off', 'Выключен')}
+        </button>
+      </div>
+      {speechAvailable() ? (
+        <div className="pop-row">
+          <span>{tr('Reading aloud speed', 'Скорость озвучки')}</span>
+          <input type="range" min={0.6} max={1.6} step={0.1} defaultValue={getRate()} onChange={(e) => setRate(Number(e.target.value))} aria-label={tr('Reading aloud speed', 'Скорость озвучки')} />
+        </div>
+      ) : null}
+      <AiSettings />
       <button className="linklike small" onClick={() => setKeys(!keys)} aria-expanded={keys}>
         {tr('Keyboard shortcuts', 'Клавиши')} {keys ? '▲' : '▼'}
       </button>
@@ -152,6 +201,84 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
       <button className="btn small" onClick={onClose}>
         {tr('Done', 'Готово')}
       </button>
+    </div>
+  );
+}
+
+function AiSettings() {
+  const ai = useAi();
+  const [busy, setBusy] = useState(false);
+  const check = async () => {
+    setBusy(true);
+    try {
+      await testAi();
+    } catch {
+      /* the status line shows the reason */
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <fieldset className="pop-ai" data-testid="ai-settings">
+      <legend>
+        <Bot size={14} aria-hidden /> {tr('Local AI (optional)', 'Локальный ИИ (по желанию)')}
+      </legend>
+      <label className="pop-row">
+        <input type="checkbox" checked={ai.enabled} onChange={(e) => ai.set({ enabled: e.target.checked })} data-testid="ai-enabled" /> {tr('Use an AI model running on this computer', 'Использовать ИИ-модель на этом компьютере')}
+      </label>
+      {ai.enabled ? (
+        <>
+          <div className="pop-row">
+            <span>{tr('Program', 'Программа')}</span>
+            <select value={ai.kind} onChange={(e) => ai.set({ kind: e.target.value as 'ollama' | 'openai', url: DEFAULTS[e.target.value as 'ollama' | 'openai'], model: '' })} data-testid="ai-kind">
+              <option value="ollama">Ollama</option>
+              <option value="openai">LM Studio / llama.cpp / Jan (OpenAI API)</option>
+            </select>
+          </div>
+          <div className="pop-row">
+            <span>{tr('Address', 'Адрес')}</span>
+            <input defaultValue={ai.url} key={ai.kind} onBlur={(e) => ai.set({ url: e.target.value.trim() })} spellCheck={false} data-testid="ai-url" />
+          </div>
+          <div className="pop-row">
+            <span>{tr('Model', 'Модель')}</span>
+            {ai.models.length ? (
+              <select value={ai.model} onChange={(e) => ai.set({ model: e.target.value })} data-testid="ai-model">
+                {ai.models.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
+            ) : (
+              <input value={ai.model} onChange={(e) => ai.set({ model: e.target.value })} placeholder="qwen2.5-coder:7b" spellCheck={false} data-testid="ai-model-input" />
+            )}
+            <button className="btn small" onClick={() => void check()} disabled={busy} data-testid="ai-check">
+              {busy ? '…' : tr('Check', 'Проверить')}
+            </button>
+          </div>
+          {ai.statusText ? <p className={`small ${ai.status === 'ok' ? 'ok-text' : 'bad-text'}`} data-testid="ai-status">{ai.statusText}</p> : null}
+          <p className="muted small">{tr('Only addresses on this computer are allowed. The app works fully without AI; AI answers are always marked as guesses.', 'Разрешены только адреса на этом компьютере. Программа полностью работает и без ИИ; ответы ИИ всегда помечены как догадки.')}</p>
+        </>
+      ) : null}
+    </fieldset>
+  );
+}
+
+function LearnHub() {
+  const part = useSyncExternalStore(useLearnHub.subscribe, useLearnHub.get);
+  const due = dueCards(useReview((s) => s.cards)).length;
+  return (
+    <div className="hub">
+      <div className="hub-nav" role="tablist" aria-label={tr('Learning', 'Обучение')}>
+        <button role="tab" aria-selected={part === 'lessons'} className={part === 'lessons' ? 'on' : ''} onClick={() => useLearnHub.set('lessons')} data-testid="hub-lessons">
+          <Gamepad2 size={15} /> {tr('Lessons', 'Уроки')}
+        </button>
+        <button role="tab" aria-selected={part === 'review'} className={part === 'review' ? 'on' : ''} onClick={() => useLearnHub.set('review')} data-testid="hub-review">
+          <Brain size={15} /> {tr('Review', 'Повторение')} {due ? <span className="badge">{due}</span> : null}
+        </button>
+        <button role="tab" aria-selected={part === 'notebook'} className={part === 'notebook' ? 'on' : ''} onClick={() => useLearnHub.set('notebook')} data-testid="hub-notebook">
+          <NotebookPen size={15} /> {tr('Notebook', 'Блокнот')}
+        </button>
+      </div>
+      {part === 'lessons' ? <Learn /> : part === 'review' ? <ReviewView /> : <NotebookView />}
     </div>
   );
 }
@@ -186,6 +313,7 @@ export default function CodeModule() {
   const wsVersion = useCode((s) => s.wsVersion);
   const [showSettings, setShowSettings] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [focus, setFocus] = useState(false);
   const guide = useGuide();
 
   useEffect(() => {
@@ -232,7 +360,7 @@ export default function CodeModule() {
         } else s.toast('info', undo ? tr('Nothing to undo.', 'Нечего отменять.') : tr('Nothing to redo.', 'Нечего возвращать.'));
         return;
       }
-      if (e.altKey || s.view === 'learn') return;
+      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'errors') return;
       if (/^[1-5]$/.test(e.key)) s.setLevel(Number(e.key) as 1 | 2 | 3 | 4 | 5);
       else if (e.key === '?') s.simpler();
       else if (e.key === 'e') s.toggleExample();
@@ -257,15 +385,21 @@ export default function CodeModule() {
   const tabs: { v: View; label: string; icon: React.ReactNode; guide?: string }[] = hasProject
     ? [
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
+        { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
+        { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
         { v: 'overview', label: tr('About the project', 'О проекте'), icon: <BookOpenText size={16} /> },
         { v: 'code', label: tr('Code', 'Код'), icon: <Code2 size={16} /> },
         { v: 'map', label: tr('Map', 'Карта'), icon: <Network size={16} /> },
         { v: 'changes', label: changedCount ? `${tr('Changes', 'Изменения')} (${changedCount})` : tr('Changes', 'Изменения'), icon: <FileDiff size={16} />, guide: 'changes-tab' },
+        { v: 'errors', label: tr('Errors', 'Ошибки'), icon: <Languages size={16} /> },
         { v: 'glossary', label: tr('Dictionary', 'Словарь'), icon: <MapIcon size={16} /> },
       ]
     : [
         { v: 'welcome', label: tr('Start', 'Начало'), icon: <Home size={16} /> },
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
+        { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
+        { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
+        { v: 'errors', label: tr('Errors', 'Ошибки'), icon: <Languages size={16} /> },
         { v: 'glossary', label: tr('Dictionary', 'Словарь'), icon: <MapIcon size={16} /> },
       ];
 
@@ -277,7 +411,7 @@ export default function CodeModule() {
   return (
     <div
       key={prefs.locale}
-      className={`cm theme-${prefs.theme}${prefs.spacing ? ' roomy' : ''} layout-${layout}`}
+      className={`cm theme-${prefs.theme}${prefs.spacing ? ' roomy' : ''}${prefs.readable ? ' readable' : ''} layout-${layout}`}
       style={{ ['--cm-font' as string]: `${prefs.fontSize}px` }}
       data-testid="code-module"
       data-guide-now={prefs.hints && guide?.target ? guide.target : undefined}
@@ -307,6 +441,11 @@ export default function CodeModule() {
             </button>
           ))}
           <span className="spacer" />
+          {focus ? <FocusTimer onClose={() => setFocus(false)} /> : (
+            <button className="btn ghost" onClick={() => setFocus(true)} data-testid="open-focus" title={tr('Focus timer with gentle breaks', 'Таймер фокуса с мягкими перерывами')}>
+              <Timer size={16} /> {tr('Focus', 'Фокус')}
+            </button>
+          )}
           <button className="btn ghost" onClick={() => setShowSettings((v) => !v)} aria-expanded={showSettings} data-testid="open-settings" title={tr('Language, colours, text size, hints', 'Язык, цвета, размер текста, подсказки')}>
             <Settings size={16} /> {tr('Settings', 'Настройки')}
           </button>
@@ -322,7 +461,13 @@ export default function CodeModule() {
           {shownView === 'welcome' ? (
             <Welcome />
           ) : shownView === 'learn' ? (
-            <Learn />
+            <LearnHub />
+          ) : shownView === 'workshop' ? (
+            <Workshop />
+          ) : shownView === 'unity' ? (
+            <MiniUnity />
+          ) : shownView === 'errors' ? (
+            <ErrorTranslator />
           ) : shownView === 'glossary' ? (
             <Glossary />
           ) : shownView === 'code' ? (

@@ -628,3 +628,35 @@ export function starterOf(level: MiniLevel, locale: 'ru' | 'en'): string {
 export function asLevel(level: MiniLevel, locale: 'ru' | 'en'): Level {
   return { ...level, starter: starterOf(level, locale) };
 }
+
+/** A free-play world for any script from the Workshop: ground, platforms, coins, an enemy, a flag. */
+export function sandboxLevel(code: string, name: string): Level {
+  const physics = /Rigidbody2D/.test(code);
+  const prefabFields: Record<string, 'bulletPrefab'> = {};
+  for (const m of code.matchAll(/public\s+(?:GameObject|Rigidbody2D|Transform)\s+(\w*(?:[Pp]refab|[Bb]ullet)\w*)\s*;/g)) prefabFields[m[1]] = 'bulletPrefab';
+  const coins: ObjSpec[] = [4, 6, 8, 10, 12].map((x, i) => ({ name: `Coin${i + 1}`, tag: 'Coin', sprite: 'coin', x, y: physics ? (i % 2 ? 3.2 : 1.6) : 3 + (i % 2) }));
+  return {
+    id: 'sandbox',
+    icon: '🧪',
+    title: T(`Sandbox: ${name}`, `Песочница: ${name}`),
+    task: T('Free play: try your script. Arrow keys / WASD / Space control the hero.', 'Свободная игра: попробуй свой скрипт. Стрелки / WASD / пробел управляют героем.'),
+    learn: T('Mini-Unity supports a part of Unity: Start, Update, transform, Input, Time, Rigidbody2D, triggers, Instantiate, Destroy, Debug.Log.', 'Мини-Unity понимает часть Unity: Start, Update, transform, Input, Time, Rigidbody2D, триггеры, Instantiate, Destroy, Debug.Log.'),
+    hint: T('Things Mini-Unity does not know are reported honestly — they work in the real Unity.', 'То, чего Мини-Unity не знает, она честно сообщит — в настоящей Unity это работает.'),
+    width: 16,
+    height: 9,
+    player: { x: 2, y: physics ? 1.5 : 3, rigidbody: physics },
+    objects: [
+      ...ground(16),
+      { name: 'Platform', tag: 'Ground', sprite: 'platform', x: 7, y: 2.6, w: 2, h: 0.4 },
+      { name: 'Platform', tag: 'Ground', sprite: 'platform', x: 11, y: 2.6, w: 2, h: 0.4 },
+      ...coins,
+      { name: 'Enemy', tag: 'Enemy', sprite: 'enemy', x: 9, y: 1.5, patrol: { dx: 3, dy: 0, speed: 1.2 }, danger: true },
+      { name: 'Finish', tag: 'Finish', sprite: 'flag', x: 15, y: 1.5 },
+    ],
+    goal: { type: 'free' },
+    starter: code,
+    solution: code,
+    demo: [],
+    inspector: prefabFields,
+  };
+}
