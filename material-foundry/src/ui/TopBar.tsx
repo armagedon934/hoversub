@@ -1,7 +1,8 @@
 import { useRef } from 'react';
-import { CircleHelp, Download, Heart, Redo2, Undo2, Upload } from 'lucide-react';
+import { CircleHelp, Code2, Download, Heart, Palette, Redo2, Undo2, Upload } from 'lucide-react';
 import { parseSettingsJson } from '../engine/schema';
 import { useStore } from '../state/store';
+import { useAppMode } from './mode';
 
 export function TopBar() {
   const canUndo = useStore((s) => s.past.length > 0);
@@ -14,6 +15,8 @@ export function TopBar() {
   const applySettings = useStore((s) => s.applySettings);
   const toast = useStore((s) => s.toast);
   const fileRef = useRef<HTMLInputElement>(null);
+  const mode = useAppMode((s) => s.mode);
+  const setMode = useAppMode((s) => s.setMode);
 
   const onImport = async (f: File | undefined) => {
     if (!f) return;
@@ -28,7 +31,11 @@ export function TopBar() {
       return;
     }
     applySettings(r.settings);
-    if (r.warnings.length) toast('warning', `Imported “${r.settings.name}” with adjustments:\n• ${r.warnings.slice(0, 5).join('\n• ')}${r.warnings.length > 5 ? `\n• …and ${r.warnings.length - 5} more` : ''}`);
+    if (r.warnings.length)
+      toast(
+        'warning',
+        `Imported “${r.settings.name}” with adjustments:\n• ${r.warnings.slice(0, 5).join('\n• ')}${r.warnings.length > 5 ? `\n• …and ${r.warnings.length - 5} more` : ''}`,
+      );
     else toast('success', `Imported “${r.settings.name}”.`);
   };
 
@@ -38,37 +45,65 @@ export function TopBar() {
         <span className="brand-mark" aria-hidden />
         Material Foundry
       </div>
-      <button className="btn ghost small" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" data-testid="undo">
-        <Undo2 size={15} /> Undo
-      </button>
-      <button className="btn ghost small" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z / Ctrl+Y)" data-testid="redo">
-        <Redo2 size={15} /> Redo
-      </button>
-      <span className="sep" />
-      <button className="btn ghost small" onClick={addFavorite} title="Save the current material to Favorites (stored in this browser)" data-testid="save-favorite">
-        <Heart size={15} /> Save favorite
-      </button>
-      <button className="btn ghost small" onClick={() => fileRef.current?.click()} title="Import a Material Foundry settings JSON file" data-testid="import-json">
-        <Upload size={15} /> Import settings
-      </button>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="application/json,.json"
-        className="sr-only"
-        data-testid="import-input"
-        onChange={(e) => {
-          void onImport(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-      <div className="spacer" />
-      <button className="btn ghost small" onClick={() => setPrefs({ showIntro: true })} title="Show the quick workflow guide" data-testid="show-help">
-        <CircleHelp size={15} /> Guide
-      </button>
-      <button className="btn primary" onClick={() => setExportOpen(true)} data-testid="open-export">
-        <Download size={15} /> Export
-      </button>
+      <div className="mode-switch" role="tablist" aria-label="Choose a tool">
+        <button
+          role="tab"
+          aria-selected={mode === 'materials'}
+          className={mode === 'materials' ? 'on' : ''}
+          onClick={() => setMode('materials')}
+          data-testid="mode-materials"
+        >
+          <Palette size={15} /> Materials
+        </button>
+        <button role="tab" aria-selected={mode === 'code'} className={mode === 'code' ? 'on' : ''} onClick={() => setMode('code')} data-testid="mode-code">
+          <Code2 size={15} /> UNDERSTAND CODE
+        </button>
+      </div>
+      {mode === 'code' ? null : (
+        <>
+          <button className="btn ghost small" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" data-testid="undo">
+            <Undo2 size={15} /> Undo
+          </button>
+          <button className="btn ghost small" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z / Ctrl+Y)" data-testid="redo">
+            <Redo2 size={15} /> Redo
+          </button>
+          <span className="sep" />
+          <button
+            className="btn ghost small"
+            onClick={addFavorite}
+            title="Save the current material to Favorites (stored in this browser)"
+            data-testid="save-favorite"
+          >
+            <Heart size={15} /> Save favorite
+          </button>
+          <button
+            className="btn ghost small"
+            onClick={() => fileRef.current?.click()}
+            title="Import a Material Foundry settings JSON file"
+            data-testid="import-json"
+          >
+            <Upload size={15} /> Import settings
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            data-testid="import-input"
+            onChange={(e) => {
+              void onImport(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          <div className="spacer" />
+          <button className="btn ghost small" onClick={() => setPrefs({ showIntro: true })} title="Show the quick workflow guide" data-testid="show-help">
+            <CircleHelp size={15} /> Guide
+          </button>
+          <button className="btn primary" onClick={() => setExportOpen(true)} data-testid="open-export">
+            <Download size={15} /> Export
+          </button>
+        </>
+      )}
     </header>
   );
 }

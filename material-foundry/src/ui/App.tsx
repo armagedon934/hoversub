@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useGenerationController } from '../state/useGeneration';
 import { useStore } from '../state/store';
@@ -7,6 +7,10 @@ import { ExportDialog } from './ExportDialog';
 import { Library } from './Library';
 import { TopBar } from './TopBar';
 import { Viewport } from './Viewport';
+import { useAppMode } from './mode';
+
+// Loaded only when opened, so the material studio starts exactly as before.
+const CodeModule = lazy(() => import('../code/ui/CodeModule'));
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -29,9 +33,11 @@ export function App() {
   useGenerationController();
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
+  const mode = useAppMode((s) => s.mode);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (useAppMode.getState().mode !== 'materials') return;
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'range')) return;
       if (!(e.ctrlKey || e.metaKey)) return;
@@ -52,6 +58,16 @@ export function App() {
   useEffect(() => {
     window.__mf = { ...(window.__mf ?? {}), store: useStore };
   }, []);
+
+  if (mode === 'code')
+    return (
+      <div className="app app-code">
+        <TopBar />
+        <Suspense fallback={<div className="cm-loading">Loading Understand Code…</div>}>
+          <CodeModule />
+        </Suspense>
+      </div>
+    );
 
   return (
     <div className="app">

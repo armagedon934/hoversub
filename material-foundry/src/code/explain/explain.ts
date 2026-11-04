@@ -80,6 +80,12 @@ function lineList(nums: number[], max = 8): string {
   return u.length > max ? `${u.slice(0, max).join(', ')} and ${u.length - max} more` : u.join(', ');
 }
 
+function linesLabel(nums: number[]): string {
+  const l = lineList(nums);
+  if (!l) return '';
+  return new Set(nums).size === 1 ? `line ${l}` : `lines ${l}`;
+}
+
 function flowText(steps: FlowStep[], depth = 0, out: string[] = [], max = 16, counter = { n: 0 }): string[] {
   for (const s of steps) {
     if (out.length >= max) break;
@@ -115,8 +121,8 @@ function hereLines(el: ElementInfo, level: Level, cross?: CrossFileInfo): { line
       if (isParam) add(simple ? `${q(name)} is an input of the function ${q(def?.container ?? el.enclosingFunction ?? '')}: its value is given by whoever uses the function.` : `${q(name)} is a parameter of ${q(def?.container ?? el.enclosingFunction ?? '?')}; its value comes from each call.`, linkConf);
       else if (def) add(simple ? `The box ${q(name)} is first filled on ${lineRef(def.range.line)}${def.container ? ` (inside ${q(def.container)})` : ''}.` : `${q(name)} is ${def.kind === 'constant' ? 'a constant' : 'a variable'} created on ${lineRef(def.range.line)}${def.container ? ` in ${q(def.container)}` : ' at the top level of the file'}.`, linkConf);
       else add(simple ? `${q(name)} is not created in this file. It probably comes from another file or a library.` : `No definition of ${q(name)} in this file; it is likely imported, global, or built into the language.`, 'likely');
-      if (u.writes.length) add(simple ? `Its value is changed on ${plural(u.writes.length, 'line')} (${lineList(u.writes.map((r) => r.range.line))}).` : `Reassigned at lines ${lineList(u.writes.map((r) => r.range.line))}.`, linkConf);
-      if (u.reads.length) add(simple ? `Its value is looked at ${plural(u.reads.length, 'time')} (lines ${lineList(u.reads.map((r) => r.range.line))}).` : `Read at lines ${lineList(u.reads.map((r) => r.range.line))}.`, linkConf);
+      if (u.writes.length) add(simple ? `Its value is changed on ${plural(u.writes.length, 'line')} (${lineList(u.writes.map((r) => r.range.line))}).` : `Reassigned at ${linesLabel(u.writes.map((r) => r.range.line))}.`, linkConf);
+      if (u.reads.length) add(simple ? `Its value is looked at ${plural(u.reads.length, 'time')} (${linesLabel(u.reads.map((r) => r.range.line))}).` : `Read at ${linesLabel(u.reads.map((r) => r.range.line))}.`, linkConf);
       if (!u.reads.length && !u.writes.length && def) add('It is not used anywhere else in this file.', linkConf);
       break;
     }
@@ -132,7 +138,7 @@ function hereLines(el: ElementInfo, level: Level, cross?: CrossFileInfo): { line
         if (f.doc) add(`The author's description: "${f.doc.split('\n')[0].slice(0, 160)}"`, 'verified');
       }
       const callers = (el.references ?? []).filter((r) => r.role === 'call');
-      if (callers.length) add(simple ? `It is used ${plural(callers.length, 'time')} in this file (lines ${lineList(callers.map((r) => r.range.line))}).` : `Called in this file at lines ${lineList(callers.map((r) => r.range.line))}.`, el.mode === 'syntax-tree' ? 'likely' : 'likely');
+      if (callers.length) add(simple ? `It is used ${plural(callers.length, 'time')} in this file (${linesLabel(callers.map((r) => r.range.line))}).` : `Called in this file at ${linesLabel(callers.map((r) => r.range.line))}.`, el.mode === 'syntax-tree' ? 'likely' : 'likely');
       else add(simple ? 'It is not used in this file. Another file may use it.' : 'Not called within this file.', 'likely');
       break;
     }
@@ -192,7 +198,7 @@ function hereLines(el: ElementInfo, level: Level, cross?: CrossFileInfo): { line
       break;
     case 'import':
       add(simple ? `${q(name)} is brought in from another file or library here.` : `${q(name)} is imported in this statement: ${el.statement ?? ''}`, 'verified');
-      if (u.all.length) add(`It is used ${plural(u.all.length, 'time')} in this file (lines ${lineList(u.all.map((r) => r.range.line))}).`, 'likely');
+      if (u.all.length) add(`It is used ${plural(u.all.length, 'time')} in this file (${linesLabel(u.all.map((r) => r.range.line))}).`, 'likely');
       break;
     case 'json-key':
     case 'setting-key':
@@ -216,7 +222,7 @@ function hereLines(el: ElementInfo, level: Level, cross?: CrossFileInfo): { line
   if (el.mode !== 'syntax-tree' && el.facts[0]) lines.push(el.facts[0].text);
   if (cross && (el.kind === 'function-definition' || el.kind === 'class-definition' || el.kind === 'variable') && cross.usesElsewhere.length) {
     const files = [...new Set(cross.usesElsewhere.map((x) => x.path))];
-    add(simple ? `Other files use the same name too: ${files.slice(0, 4).join(', ')}${files.length > 4 ? ` and ${files.length - 4} more` : ''}.` : `Same name referenced in ${plural(files.length, 'other file')}: ${files.slice(0, 6).join(', ')}.`, 'likely');
+    add(simple ? `The same name also appears in ${files.slice(0, 4).join(', ')}${files.length > 4 ? ` and ${files.length - 4} more` : ''}. It may be the same thing, or a different thing that happens to have the same name.` : `Same name referenced in ${plural(files.length, 'other file')}: ${files.slice(0, 6).join(', ')}.`, 'likely');
   }
   return { lines, facts };
 }
@@ -229,7 +235,7 @@ function changeLines(el: ElementInfo, concept: Concept, level: Level): string[] 
   switch (el.kind) {
     case 'variable':
     case 'parameter':
-      if (u.all.length) out.push(`Specifically: ${plural(u.all.length, 'place')} in this file use ${q(name)} (lines ${lineList(u.all.map((r) => r.range.line))}).`);
+      if (u.all.length) out.push(`Specifically: ${plural(u.all.length, 'place')} in this file use ${q(name)} (${linesLabel(u.all.map((r) => r.range.line))}).`);
       break;
     case 'function-definition': {
       const calls = (el.references ?? []).filter((r) => r.role === 'call');
@@ -282,7 +288,7 @@ function exercise(el: ElementInfo, concept: Concept): Block[] {
       steps.push(`2. Press "Show every use" and look at each highlighted ${q(name)}.`);
       steps.push('3. For each use, say aloud whether the value is read or changed there.');
       steps.push('4. Open "What if I change this?", try a different value in the preview, and read what would be affected. Nothing is changed until you confirm, and Undo always works.');
-      quiz = { question: `How many other times is ${q(name)} used in this file?`, answer: `${u.all.length} (lines ${lineList(u.all.map((r) => r.range.line)) || '—'}).` };
+      quiz = { question: `How many other times is ${q(name)} used in this file?`, answer: `${u.all.length} (${linesLabel(u.all.map((r) => r.range.line)) || '—'}).` };
       break;
     case 'function-definition':
       if (el.func) {

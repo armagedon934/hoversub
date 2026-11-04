@@ -302,7 +302,7 @@ function flipBoolean(t: string): string {
   return map[t] ?? t;
 }
 
-function describeCurrent(el: ElementInfo): string {
+export function describeCurrent(el: ElementInfo): string {
   switch (el.kind) {
     case 'number':
       return `Right now this is the number ${el.text}${el.statement ? `, used in: ${short(el.statement, 80)}` : ''}.`;

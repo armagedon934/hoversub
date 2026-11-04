@@ -503,7 +503,7 @@ export function projectOverview(index: ProjectIndex, readText: (path: string) =>
       .join(', ')}.`,
     confidence: 'verified',
   });
-  if (entryPoints.length) summary.push({ text: `It probably starts in ${entryPoints[0].path}.`, confidence: entryPoints[0].confidence });
+  if (entryPoints.length) summary.push({ text: `It probably starts in ${entryPoints[0].path}.`, confidence: entryPoints[0].confidence === 'verified' ? 'likely' : entryPoints[0].confidence });
   if (externalLibraries.length) summary.push({ text: `It uses ${externalLibraries.length} outside librar${externalLibraries.length === 1 ? 'y' : 'ies'} (ready-made code written by others), for example ${externalLibraries.slice(0, 3).map((e) => e.name).join(', ')}.`, confidence: 'verified' });
   if (index.edges.length) summary.push({ text: `Its files are connected by ${index.edges.length} "import" links (one file using another).`, confidence: 'verified' });
   unknowns.push('What the program actually does when it runs can only be guessed from its code: Understand Code never runs the project.');
