@@ -585,9 +585,15 @@ function smallestAt(tree: Tree, offset: number, text: string): SyntaxNode {
   return tree.rootNode.descendantForIndex(o, o) ?? tree.rootNode;
 }
 
+const STATEMENT_STOP = new Set(['start_tag', 'self_closing_tag', 'end_tag', 'declaration']);
+
 function statementOf(n: SyntaxNode): SyntaxNode {
+  let root: SyntaxNode = n;
+  while (root.parent) root = root.parent;
+  // In data files (JSON, TOML) one key/value pair is the "line" people think about.
+  const stopAtPair = root.type === 'document';
   let p: SyntaxNode = n;
-  while (p.parent && !BLOCKS.has(p.parent.type) && p.parent.type !== 'program' && p.parent.type !== 'module' && p.parent.type !== 'source_file' && p.parent.type !== 'translation_unit' && p.parent.type !== 'compilation_unit' && p.parent.type !== 'chunk' && p.parent.type !== 'document' && p.parent.type !== 'stylesheet') {
+  while (!STATEMENT_STOP.has(p.type) && !(stopAtPair && p.type === 'pair') && p.parent && !BLOCKS.has(p.parent.type) && p.parent.type !== 'program' && p.parent.type !== 'module' && p.parent.type !== 'source_file' && p.parent.type !== 'translation_unit' && p.parent.type !== 'compilation_unit' && p.parent.type !== 'chunk' && p.parent.type !== 'document' && p.parent.type !== 'stylesheet') {
     p = p.parent;
   }
   return p;
@@ -861,6 +867,22 @@ export function elementAt(tree: Tree, text: string, offset: number, languageId: 
   };
   if (fnNode) context.push(`inside the function "${functionName(fnNode)}"`);
   if (clsNode) context.push(`inside "${className(clsNode)}"`);
+  // Where we are in markup, style sheets and settings files.
+  for (let a: SyntaxNode | null = n.parent, k = 0; a && k < 12 && context.length < 4; a = a.parent, k++) {
+    if (a.type === 'element' || a.type === 'script_element' || a.type === 'style_element') {
+      const tag = a.namedChild(0)?.namedChildren.find((c) => c?.type === 'tag_name')?.text;
+      if (tag) context.push(`inside the <${tag}> element`);
+    } else if (a.type === 'rule_set') {
+      const sel = a.namedChildren.find((c) => c?.type === 'selectors')?.text;
+      if (sel) context.push(`inside the style rule for "${short(sel, 60)}"`);
+    } else if (a.type === 'table' || a.type === 'table_array_element') {
+      const head = a.namedChildren.find((c) => c && /key/.test(c.type))?.text;
+      if (head) context.push(`in the settings section [${head}]`);
+    } else if (a.type === 'pair' && a.parent?.type === 'object' && a !== n.parent) {
+      const key = a.childForFieldName('key')?.text;
+      if (key) context.push(`inside the setting ${key}`);
+    }
+  }
   const t = n.type;
 
   if (COMMENTS.has(t)) {

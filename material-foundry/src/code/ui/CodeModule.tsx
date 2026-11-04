@@ -12,6 +12,7 @@ import { Glossary } from './Glossary';
 import { Overview, ProjectMap } from './Overview';
 import { WhatIfDialog } from './WhatIf';
 import { readDataTransfer } from './fileLoading';
+import { getCodeClient } from '../worker/client';
 import { useCode, workspace, type CodeView as View } from './store';
 import './code.css';
 
@@ -123,6 +124,9 @@ export default function CodeModule() {
 
   useEffect(() => {
     void init();
+    // Local automation hook used by the browser tests (no telemetry, nothing leaves the page).
+    const w = window as unknown as { __mf?: Record<string, unknown> };
+    w.__mf = { ...(w.__mf ?? {}), code: useCode, workspace, codeClient: getCodeClient() };
   }, [init]);
 
   // Keyboard shortcuts (ignored while typing in a field or when a dialog is open).

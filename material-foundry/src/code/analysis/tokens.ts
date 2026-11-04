@@ -94,6 +94,21 @@ export function analyzeTokens(text: string, path: string, languageId: string): T
           if (s && s.cls === 'string') imports.push({ spec: tx(s).replace(/^["']|["']$/g, ''), kind: 'require', range: R(t), names: [] });
         }
         break;
+      case 'swift':
+        if (t.cls === 'keyword' && w === 'func' && n1 >= 0) {
+          const params: string[] = [];
+          if (tx(tokens[n1 + 1] ?? t) === '(')
+            for (let k = n1 + 2, depth = 0; k < tokens.length; k++) {
+              const v = tx(tokens[k]);
+              if (v === '(') depth++;
+              else if (v === ')' && depth-- === 0) break;
+              else if (depth === 0 && tx(tokens[k + 1] ?? t) === ':' && tokens[k].cls !== 'keyword') params.push(v);
+            }
+          addSym(tokens[n1], symbols.some((x) => x.kind === 'class') && lines.lineText(text, lines.lineOf(t.start)).startsWith(' ') ? 'method' : 'function', tx(tokens[n1]), { params });
+        } else if (t.cls === 'keyword' && /^(class|struct|enum|protocol|actor|extension)$/.test(w) && n1 >= 0 && tokens[n1].cls !== 'keyword') addSym(tokens[n1], 'class');
+        else if (t.cls === 'keyword' && (w === 'let' || w === 'var') && n1 >= 0 && tokens[n1].cls !== 'bracket') addSym(tokens[n1], w === 'let' ? 'constant' : 'variable');
+        else if (t.cls === 'keyword' && w === 'import' && n1 >= 0) imports.push({ spec: tx(tokens[n1]), kind: 'import', range: R(t), names: [] });
+        break;
       case 'sql':
         if (t.cls === 'keyword' && lw === 'create') {
           let j = n1;

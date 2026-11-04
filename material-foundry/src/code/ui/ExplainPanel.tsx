@@ -106,7 +106,10 @@ function FileHelp() {
   const select = useCode((s) => s.select);
   const simplerStep = useCode((s) => s.simplerStep);
   const showExample = useCode((s) => s.showExample);
+  const summaries = useCode((s) => s.summaries);
   if (!open || !path) return null;
+  // The project index fills in where each import leads (resolved file or outside library).
+  const imports = summaries[path]?.imports ?? open.summary.imports;
   const s = open.summary;
   const lang = getLanguage(s.languageId);
   const fns = s.symbols.filter((x) => x.kind === 'function' || x.kind === 'method' || x.kind === 'class').slice(0, 30);
@@ -166,13 +169,16 @@ function FileHelp() {
           </ul>
         </>
       ) : null}
-      {s.imports.length ? (
+      {imports.length ? (
         <>
           <h4>It uses</h4>
           <ul className="xp-outline">
-            {s.imports.slice(0, 20).map((i, k) => (
+            {imports.slice(0, 20).map((i, k) => (
               <li key={k}>
-                <code>{i.spec}</code> <span className="muted">{i.resolved ? `→ ${i.resolved}` : i.external ? '(a library from outside the project)' : '(not found in the project)'}</span>
+                <code>{i.spec}</code>{' '}
+                <span className="muted">
+                  {i.resolved ? `→ ${i.resolved}` : i.external ? '(from outside the project, for example a library)' : '(not found among the opened files)'}
+                </span>
               </li>
             ))}
           </ul>

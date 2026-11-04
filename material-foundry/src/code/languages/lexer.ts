@@ -63,6 +63,9 @@ const set = (s: string) => new Set(s.split(/\s+/).filter(Boolean));
 
 export const KEYWORDS: Record<string, Set<string>> = {
   lua: set('and break do else elseif end false for function goto if in local nil not or repeat return then true until while'),
+  swift: set(
+    'actor associatedtype async await break case catch class continue default defer deinit do else enum extension fallthrough fileprivate final for func guard if import in init inout internal is lazy let mutating nil open operator override private protocol public repeat rethrows return self Self some static struct subscript super switch throw throws try typealias var weak where while any',
+  ),
   sql: set(
     'select from where and or not insert into values update set delete create table view index drop alter add column primary key foreign references join inner left right full outer on as group by order having limit offset distinct union all exists in is null like between case when then else end begin commit rollback transaction database schema function procedure trigger returns return declare if unique default check constraint asc desc count sum avg min max cast with recursive grant revoke truncate replace use show describe explain integer int varchar char text boolean bool date timestamp float double decimal numeric serial auto_increment',
   ),
@@ -81,6 +84,7 @@ export const KEYWORDS: Record<string, Set<string>> = {
 
 const CONFIGS: Record<string, LexConfig> = {
   lua: { lineComments: ['--'], blockComments: [['--[[', ']]']], quotes: ['"', "'"], longStrings: [['[[', ']]']], keywords: KEYWORDS.lua, constants: set('true false nil') },
+  swift: { lineComments: ['//'], blockComments: [['/*', '*/']], quotes: ['"'], longStrings: [['"""', '"""']], keywords: KEYWORDS.swift, constants: set('true false nil') },
   sql: { lineComments: ['--', '#'], blockComments: [['/*', '*/']], quotes: ["'", '"', '`'], keywords: KEYWORDS.sql, constants: set('true false null'), caseInsensitive: true },
   powershell: {
     lineComments: ['#'],

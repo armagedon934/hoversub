@@ -1,0 +1,118 @@
+# UNDERSTAND CODE — user guide and capabilities
+
+"Understand Code" is a second tool inside Material Foundry for people who are not programmers (and for anyone
+who finds code stressful). Open a project, click on anything you do not understand, and get a calm explanation
+in plain words. Switch to it with the **UNDERSTAND CODE** button in the top bar; **Materials** brings you back to
+the texture studio, which is unchanged.
+
+Everything runs in your browser on your own computer. There is no account, no internet connection, no AI
+service and no API key involved.
+
+## Safety promises
+
+* **Opening never runs anything.** Files are read as text only. Project scripts (for example `npm` scripts in a
+  `package.json`) are listed for information and never executed. The module has no code-execution feature at all.
+* **Your originals are protected.** Every change happens in a protected copy inside the app (stored in the
+  browser's IndexedDB). Files on disk change only when you press *Save to my folder…* and confirm — and before
+  writing, a copy of each file is saved into `.understand-code-backups/<date-time>/` in your project. A file that
+  was changed by another program after you opened it is skipped instead of overwritten.
+* **Nothing is applied without your "yes".** "What if I change this?" shows a preview first; applying requires
+  ticking *I have looked at the preview and the risks* and pressing *Yes, apply this change*.
+* **A restore point is saved before every change.** Undo, redo, going back to a restore point and "Back to
+  original" are all available, and none of them loses information (going back is itself a change that can be
+  undone).
+* **Honesty.** Every statement about your code is marked **Verified** (read from the code structure), **Likely**
+  (based on names and patterns), **Assumption** (a guess from conventions) or **Unknown** (cannot be known without
+  running the program). The app never claims a change is "safe"; it reports what it checked and what it could not.
+
+## How to use it
+
+1. **Open something**: *Open a folder*, *Open files*, drag files/folders onto the window, or *Try an example*
+   (a small shop project in Python, JavaScript, HTML, CSS, YAML and SQL). Dependency and build folders
+   (`node_modules`, `.git`, `dist`, …) are skipped; binary files are listed but not opened.
+2. **Project explained** gives an everyday summary: what kind of project it is, where it starts, the most important
+   files, the main parts and how they talk to each other, settings files, outside libraries, commands the authors
+   defined, and what cannot be known from the files alone.
+3. **Click any word, symbol, bracket or operator** in the code. The panel on the right explains what it is, what
+   it does here, where it is made and used, and what would happen if it changed.
+4. **Choose the level** (keys 1–5): *Like I'm 5*, *Beginner*, *Technical*, *Deep*, *Teach me* (a guided exercise
+   with a question and a hidden answer). The choice applies instantly and is remembered.
+5. **I don't understand** (key `?`) explains it again in a different, simpler way each time you press it.
+   **Show me with an example** (key `e`) shows a small example of the same idea.
+6. **Pictures**: *Steps* (flowchart of a function or file), *Functions* (who uses it / what it uses), *Data*
+   (where a value is created, changed and read), *Files* (which files use this one / what it needs). The
+   **Project map** tab shows the whole project's file connections.
+7. **What if I change this?** (key `w`): (1) what it does now, (2) choose a goal in simple words — change a value,
+   switch a boolean, use a different operator, rename everywhere, switch a line off, delete a line, or write your
+   own line — (3) preview: the smallest edit, a before/after comparison, an explanation of every modification,
+   affected places, risks and a grammar check of the result, (4) apply only after confirmation.
+8. **Changes** lists changed files (compare side by side, *Back to original*), the history (undo/redo), restore
+   points, and lets you download the changed files or the whole workspace as a ZIP, or save to the opened folder.
+9. **Ideas A–Z**: all 103 ideas of the built-in knowledge base, each at five levels.
+10. **Reading comfort**: dark/light colours, text size 12–24, roomy line spacing. **Keys** lists the keyboard
+    shortcuts (arrow keys move from word to word in the code).
+
+## Supported languages and what the app really understands
+
+| Depth | Languages | What works |
+| --- | --- | --- |
+| **Full structure** (Tree-sitter syntax tree) | Python, JavaScript, TypeScript, TSX/JSX, HTML, CSS, C, C++, C#, Java, Rust, Go, PHP, Ruby, Kotlin, JSON, Bash, TOML | Exact element under the cursor; functions/classes/variables with scopes; parameters, return values, calls; definitions and references (scope-aware inside a file); bracket pairs and what they enclose; operators with their two sides; step-by-step flowcharts; imports; real grammar errors |
+| **Word level** (hand-written lexers) | Swift, Lua, YAML, SQL, XML, PowerShell, INI/.env, Dockerfile, Makefile, Markdown, Batch, SCSS, .gitignore | Colours, keywords, strings, numbers, comments; bracket pairs and unbalanced brackets; functions/tables/settings/targets found by patterns (marked *Likely*); same-name uses in the file; imports for some (Lua `require`, SCSS `@import`, PowerShell `Import-Module`) |
+| **Plain text** | Any other text file | Words, numbers and brackets can be clicked; the app says clearly that it does not know the language |
+
+Language detection uses the file name, the extension, the first line (`#!…`) and the content (for example
+`<?xml`, `<?php`, JSON, Dockerfile instructions, C vs C++ headers). The detection method is shown in the panel.
+
+Imports between files are resolved for JavaScript/TypeScript (relative paths, index files), Python (packages and
+relative imports), C/C++ (`#include "…"`), Go, Rust (`mod`), Java/Kotlin (package paths), PHP, Ruby, Lua, HTML
+(`<script src>`, `<link href>`) and CSS/SCSS (`@import`). Anything that cannot be resolved inside the project is
+reported as an outside library or as "not found among the opened files".
+
+## Limitations (what it cannot do)
+
+* **It does not run code**, so it cannot know values at run time, user input, data from files, networks or
+  databases, or which branch an `if` will take. These are always marked *Unknown*.
+* **Cross-file links are by name** (marked *Likely*). Code that loads things by a computed name (reflection,
+  `getattr`, dependency injection, templates, routes in configuration) is invisible to it.
+* **No type checking or compiler.** The grammar check finds syntax errors only; it cannot tell whether a program
+  still works correctly after a change.
+* **Renames** are scope-aware within one file for full-structure languages; across files they only touch files of
+  the same language family that are connected to this file by an import, and they list (but do not rename)
+  same-name occurrences elsewhere. Names built from text at run time are not found.
+* **Swift is word-level only.** The Tree-sitter Swift grammar makes Chromium's WebAssembly compiler run out of
+  memory a few seconds after it is used ("V8 process OOM (Zone)", reproduced in the test container), so it was
+  replaced by a lexer. Lua and YAML also use lexers (their published grammar builds are incompatible with the
+  Tree-sitter runtime used here); SQL, XML and PowerShell have no bundled grammar.
+* **Very large files**: above 3,000,000 characters a file is shown as plain text (still clickable, but without
+  structure). Up to 4,000 files and 5 MB per file are opened from a folder.
+* **Explanations come from a fixed, built-in knowledge base** (103 ideas × 5 levels plus language keyword
+  meanings) combined with facts from the analysis. It does not write free-form prose about what your specific
+  program is *for* beyond what names, comments, the README and manifests reveal.
+* **Saving back to a folder** needs a browser with the File System Access API (Chrome, Edge). Elsewhere, use the
+  ZIP download. Folders opened through the classic file picker or drag-and-drop are read-only.
+* The module has no optional local AI model; everything shown comes from the deterministic analysis and the
+  knowledge base.
+
+## Architecture (for developers)
+
+```
+src/code/
+  languages/   registry.ts (languages, detection), lexer.ts (word-level lexers), treesitter.ts (grammar loading)
+  analysis/    engine.ts (open/element/flow/check), syntax.ts (Tree-sitter analysis), tokens.ts (lexer analysis),
+               project.ts (imports, dependency graph, project overview), lines.ts, types.ts
+  knowledge/   concepts.ts (103 ideas × 5 levels), keywords.ts (keyword and operator meanings)
+  explain/     explain.ts (builds the explanation for a level, with confidence)
+  workspace/   workspace.ts (protected copy, change sets, restore points, undo/redo, persistence),
+               proposals.ts ("what if" edits, explanations, risks), diff.ts, idb.ts
+  worker/      code.worker.ts, client.ts (pool of analysis workers, at most 7 grammars each)
+  sample/      the bundled example project
+  ui/          CodeModule.tsx and its panels (Explorer, CodeView, ExplainPanel, Diagrams, Overview, WhatIf,
+               ChangesView, Glossary), store.ts, fileLoading.ts, code.css
+```
+
+The grammars (`tree-sitter-wasms`) are bundled into `dist/grammars/` by a small Vite plugin, so nothing is fetched
+from the internet. The module is lazy-loaded: the Materials studio loads exactly as before until UNDERSTAND CODE is
+opened. To add a language: add it to `LANGUAGES` in `registry.ts`; either give it a grammar (and add the grammar
+name to `GRAMMARS` in `vite.config.ts`) or a lexer configuration in `lexer.ts`, plus optional symbol patterns in
+`tokens.ts`; add a sample to `tests/codeSamples.ts` — the tests then check detection, opening, clicking and that
+every concept produced exists in the knowledge base.

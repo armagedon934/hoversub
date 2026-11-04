@@ -4,7 +4,7 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /** Tree-sitter grammars used by the "Understand Code" module (see src/code/languages/registry.ts). */
-const GRAMMARS = ['python', 'javascript', 'typescript', 'tsx', 'html', 'css', 'c', 'cpp', 'c_sharp', 'java', 'rust', 'go', 'php', 'ruby', 'swift', 'kotlin', 'json', 'bash', 'toml'];
+const GRAMMARS = ['python', 'javascript', 'typescript', 'tsx', 'html', 'css', 'c', 'cpp', 'c_sharp', 'java', 'rust', 'go', 'php', 'ruby', 'kotlin', 'json', 'bash', 'toml'];
 const GRAMMAR_DIR = resolve(__dirname, 'node_modules/tree-sitter-wasms/out');
 
 /**

@@ -14,7 +14,8 @@
     "e2e": "tsx scripts/e2e.ts",
     "examples": "tsx scripts/make-examples.ts",
     "e2e:4096": "tsx scripts/e2e-4096.ts",
-    "e2e:glb": "tsx scripts/e2e-glb.ts"
+    "e2e:glb": "tsx scripts/e2e-glb.ts",
+    "e2e:code": "tsx scripts/e2e-code.ts"
   },
   "license": "MIT",
   "dependencies": {

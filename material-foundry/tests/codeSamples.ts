@@ -1,0 +1,33 @@
+// Small valid code samples, one per supported language, shared by the code-module tests.
+
+/** One small, valid sample per language with a word to click on. */
+export const SAMPLES: Record<string, { text: string; lang: string; mode: 'syntax-tree' | 'tokens' | 'plain'; click: string }> = {
+  'a.py': { lang: 'python', mode: 'syntax-tree', text: 'import os\n\ndef add(a, b):\n    total = a + b\n    return total\n\nprint(add(1, 2))\n', click: 'add(1' },
+  'a.js': { lang: 'javascript', mode: 'syntax-tree', text: 'import { f } from "./lib.js";\nconst items = [1, 2];\nfunction sum(list) { let t = 0; for (const x of list) { t += x; } return t; }\nconsole.log(sum(items));\n', click: 'sum(items' },
+  'a.ts': { lang: 'typescript', mode: 'syntax-tree', text: 'interface User { name: string }\nexport function greet(u: User): string { return u.name; }\nconst n: number = 5;\ngreet({ name: "x" });\n', click: 'greet({' },
+  'App.tsx': { lang: 'tsx', mode: 'syntax-tree', text: 'import React from "react";\nexport const App = () => { const [c, setC] = React.useState(0); return <button onClick={() => setC(c + 1)}>{c}</button>; };\n', click: 'setC(c' },
+  'i.html': { lang: 'html', mode: 'syntax-tree', text: '<!doctype html>\n<html><head><link rel="stylesheet" href="style.css"></head><body><p class="x">Hi</p></body></html>\n', click: 'class=' },
+  's.css': { lang: 'css', mode: 'syntax-tree', text: '.btn:hover { color: #fff; margin: 0 2px; }\n', click: 'color' },
+  'm.c': { lang: 'c', mode: 'syntax-tree', text: '#include <stdio.h>\nint add(int a, int b) { int t = a + b; return t; }\nint main(void) { printf("%d", add(1, 2)); return 0; }\n', click: 'add(1' },
+  'm.cpp': { lang: 'cpp', mode: 'syntax-tree', text: '#include <vector>\nclass A { public: int f(int x) { return x * 2; } };\nint main() { A a; auto y = a.f(3); return y; }\n', click: 'f(3' },
+  'P.cs': { lang: 'csharp', mode: 'syntax-tree', text: 'using System;\nclass P { static int Add(int a, int b) { var t = a + b; return t; } static void Main() { Console.WriteLine(Add(1, 2)); } }\n', click: 'Add(1' },
+  'A.java': { lang: 'java', mode: 'syntax-tree', text: 'import java.util.List;\npublic class A { private int count = 0; public int add(int a, int b) { int t = a + b; count++; return t; } }\n', click: 'add(' },
+  'lib.rs': { lang: 'rust', mode: 'syntax-tree', text: 'use std::io;\nfn add(a: i32, b: i32) -> i32 { let t = a + b; t }\nfn main() { let x = add(1, 2); println!("{}", x); }\n', click: 'add(1' },
+  'main.go': { lang: 'go', mode: 'syntax-tree', text: 'package main\nimport "fmt"\nfunc add(a int, b int) int { t := a + b; return t }\nfunc main() { fmt.Println(add(1, 2)) }\n', click: 'add(1' },
+  'i.php': { lang: 'php', mode: 'syntax-tree', text: '<?php\nfunction add($a, $b) { $t = $a + $b; return $t; }\n$x = add(1, 2);\necho $x;\n', click: 'add(1' },
+  'r.rb': { lang: 'ruby', mode: 'syntax-tree', text: 'def add(a, b)\n  t = a + b\n  t\nend\nputs add(1, 2)\n', click: 'add(1' },
+  's.swift': { lang: 'swift', mode: 'tokens', text: 'import Foundation\nfunc add(_ a: Int, _ b: Int) -> Int { let t = a + b; return t }\nprint(add(1, 2))\n', click: 'add(1' },
+  'k.kt': { lang: 'kotlin', mode: 'syntax-tree', text: 'fun add(a: Int, b: Int): Int { val t = a + b; return t }\nfun main() { println(add(1, 2)) }\n', click: 'add(1' },
+  'p.json': { lang: 'json', mode: 'syntax-tree', text: '{"name": "demo", "scripts": {"start": "node index.js"}}\n', click: 'scripts' },
+  'x.sh': { lang: 'bash', mode: 'syntax-tree', text: '#!/bin/bash\ngreet() { local n="$1"; echo "hi $n"; }\nNAME=world\ngreet "$NAME"\n', click: 'greet "' },
+  'c.toml': { lang: 'toml', mode: 'syntax-tree', text: '[package]\nname = "x"\nversion = "1.0"\n', click: 'version' },
+  'g.lua': { lang: 'lua', mode: 'tokens', text: 'local function add(a, b)\n  return a + b\nend\nprint(add(1, 2))\n', click: 'add(1' },
+  'c.yml': { lang: 'yaml', mode: 'tokens', text: 'server:\n  port: 8080\n  host: "localhost"\n', click: 'port' },
+  'q.sql': { lang: 'sql', mode: 'tokens', text: 'CREATE TABLE users (id INT PRIMARY KEY, name TEXT);\nSELECT name FROM users WHERE id = 1;\n', click: 'SELECT' },
+  'd.xml': { lang: 'xml', mode: 'tokens', text: '<?xml version="1.0"?>\n<config><item id="a" value="1"/></config>\n', click: 'value=' },
+  's.ps1': { lang: 'powershell', mode: 'tokens', text: 'function Get-Total($a, $b) { $t = $a + $b; return $t }\nif ($t -eq 3) { Write-Host "ok" }\n', click: '-eq' },
+  'Dockerfile': { lang: 'dockerfile', mode: 'tokens', text: 'FROM node:20 AS build\nWORKDIR /app\nRUN npm ci\n', click: 'WORKDIR' },
+  'Makefile': { lang: 'makefile', mode: 'tokens', text: 'CC = gcc\nall: main\nmain: main.c\n\t$(CC) -o main main.c\n', click: 'main:' },
+  'README.md': { lang: 'markdown', mode: 'tokens', text: '# Demo\nSee [docs](docs/intro.md).\n', click: 'Demo' },
+  'notes.xyz': { lang: 'unknown', mode: 'plain', text: 'hello world 42 (x)\n', click: '42' },
+};

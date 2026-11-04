@@ -11,6 +11,11 @@ structured layouts) in Web Workers.
 
 ![Preset contact sheet](examples/preset-contact-sheet.png)
 
+The app also contains **UNDERSTAND CODE** (button in the top bar): an offline code explorer for non-programmers.
+Open any project, click on any word, symbol or bracket, and get a plain-language explanation at one of five levels,
+with pictures, a project explainer and a safe "What if I change this?" workflow (preview, restore points, undo).
+Opening a file never runs it. See [docs/UNDERSTAND_CODE.md](docs/UNDERSTAND_CODE.md).
+
 ## Quick start
 
 Requirements: Node.js 20+ (tested with Node 22.22) and npm 10.
@@ -40,6 +45,7 @@ Other scripts:
 | `npm run e2e` | Browser end-to-end verification (Playwright + Chromium) of the real UI; requires `npm run build` first. Writes `verification/` |
 | `npm run e2e:4096 -- 8192` | Browser check of a full 4K (default) or 8K ZIP export; writes `verification/e2e-<size>.json` |
 | `npm run e2e:glb` | Exports GLB models (1K–8K) from the UI, validates them with the Khronos glTF-Validator and renders them with three.js' GLTFLoader; writes `verification/e2e-glb.json` |
+| `npm run e2e:code` | Browser end-to-end check of UNDERSTAND CODE (all requests outside the local server are blocked); writes `verification/e2e-code-report.json` and `verification/code/*.png` |
 | `npm run examples` | Regenerates the example ZIP exports and contact sheet in `examples/` |
 | `npx tsx scripts/render-families.ts <dir> [size] [filter]` | Developer contact sheets of every preset's maps |
 | `npm run typecheck` | TypeScript check only |
@@ -160,7 +166,8 @@ src/
     exportController.ts Export jobs, caching of the export-resolution material, downloads
     persistence.ts     localStorage (settings, prefs, favorites only) with validation and recovery
     thumbs.ts          In-memory thumbnail cache
-  ui/                React components (TopBar, Library, Viewport, Inspector, Controls, Variations, ExportDialog)
+  ui/                React components (TopBar with the Materials / UNDERSTAND CODE switch, Library, Viewport, …)
+  code/              UNDERSTAND CODE module (lazy-loaded) — see docs/UNDERSTAND_CODE.md
 ```
 
 Key design points for future development:
@@ -187,6 +194,9 @@ See [VERIFICATION.md](VERIFICATION.md) for the commands that were run and their 
 end-to-end report, screenshots and downloaded exports.
 
 ## Limitations
+
+UNDERSTAND CODE has its own list of limitations in [docs/UNDERSTAND_CODE.md](docs/UNDERSTAND_CODE.md#limitations-what-it-cannot-do).
+The material studio:
 
 * **AO** is a height-field cavity approximation; it cannot capture overhangs or occlusion from geometry outside the
   texture.
