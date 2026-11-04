@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 
 const APP = join(dirname(dirname(fileURLToPath(import.meta.url))), 'app');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.zip': 'application/zip', '.txt': 'text/plain; charset=utf-8' };
 
 if (!existsSync(join(APP, 'index.html'))) {
   console.log("The 'app' folder was not found next to this launcher. Please unpack the whole ZIP first.");

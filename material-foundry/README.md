@@ -15,8 +15,20 @@ The app also contains **UNDERSTAND CODE** (button in the top bar): an offline co
 Open any project, click on any word, symbol or bracket, and get a plain-language explanation at one of five levels,
 with pictures, a project explainer and a safe "What if I change this?" workflow (preview, restore points, undo).
 Opening a file never runs it. It also has a **Learn** section: short game-themed lessons in C#, C++, C, Python and
-JavaScript with a step-by-step animation of the running program and mini-games. The interface is available in
-**Russian and English**. See [docs/UNDERSTAND_CODE.md](docs/UNDERSTAND_CODE.md) · по-русски: [docs/RU_GUIDE.md](docs/RU_GUIDE.md).
+JavaScript with a step-by-step animation of the running program and mini-games, a **Workshop** to write your own code
+(suggestions, "what comes next" ghost text, live Unity-aware checks, "I want…" recipes, safe Run for C#/Python/JS with a
+step-by-step replay of real values), **Mini-Unity** (real Unity C# scripts driving a small 2D game, 9 levels), courses
+(*C# for Unity*, *Unreal C++*), an error translator, spaced review, a notebook and an optional bridge to an AI model on
+your own computer. The interface is available in **Russian and English**. See
+[docs/UNDERSTAND_CODE.md](docs/UNDERSTAND_CODE.md) · по-русски: [docs/RU_GUIDE.md](docs/RU_GUIDE.md) ·
+локальный ИИ: [docs/LOCAL_AI.md](docs/LOCAL_AI.md) · программа для ПК: [docs/DESKTOP.md](docs/DESKTOP.md).
+
+### Windows program with an installer
+
+`desktop/` packages the app as a Windows program (Electron + NSIS installer with folder choice, shortcuts and an
+uninstaller). Build it with `npm run desktop:win` on Windows, or download the installer from the
+*Desktop installer (Windows)* GitHub Actions run (it installs and smoke-tests the program on real Windows).
+Details: [docs/DESKTOP.md](docs/DESKTOP.md).
 
 ### Download and use offline (no installation)
 

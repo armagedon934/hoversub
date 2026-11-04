@@ -1,0 +1,72 @@
+{
+  "when": "2026-11-04T19:57:35.822Z",
+  "passed": 13,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "Materials studio renders in the desktop app",
+      "ok": true,
+      "detail": "43 canvas"
+    },
+    {
+      "name": "Window opens the app from app:// (no server, no internet)",
+      "ok": true,
+      "detail": "app://local/index.html"
+    },
+    {
+      "name": "The page has no Node.js access; only the small AI bridge is exposed",
+      "ok": true,
+      "detail": "{\"require\":\"undefined\",\"process\":\"undefined\",\"bridge\":[\"platform\",\"aiRequest\"]}"
+    },
+    {
+      "name": "Content security policy is set (no remote code)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Files outside the app folder cannot be read",
+      "ok": true,
+      "detail": "404"
+    },
+    {
+      "name": "Desktop: C# runs in the Workshop",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Desktop: Python (Pyodide) runs offline from the installed files",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Desktop: Mini-Unity level is won",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Desktop: local AI reached through the app (no CORS setup needed)",
+      "ok": true,
+      "detail": "Подключено. Моделей: 1"
+    },
+    {
+      "name": "Desktop bridge refuses non-local addresses",
+      "ok": true,
+      "detail": "400"
+    },
+    {
+      "name": "The window cannot be navigated to a website",
+      "ok": true,
+      "detail": "app://local/index.html#code"
+    },
+    {
+      "name": "No page errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Only the local AI address was contacted by the bridge",
+      "ok": true,
+      "detail": "GET /api/tags"
+    }
+  ]
+}

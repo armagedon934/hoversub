@@ -5,10 +5,46 @@ who finds code stressful). Open a project, click on anything you do not understa
 in plain words. Switch to it with the **UNDERSTAND CODE** button in the top bar; **Materials** brings you back to
 the texture studio, which is unchanged.
 
-Everything runs in your browser on your own computer. There is no account, no internet connection, no AI
-service and no API key involved.
+Everything runs in your browser on your own computer. There is no account, no internet connection, no cloud AI
+service and no API key involved. (An AI model running on your own computer can optionally be connected.)
 
-## New in this version
+## New in this version (fifth iteration: write, run, play)
+
+* **Workshop** — a code editor (CodeMirror 6) with three layers of help: (1) suggestions with a plain-language
+  explanation of every word, Unity-aware after a dot (`transform.`, `Input.`, `rb.` → `AddForce`… using the
+  variable's declared type); (2) **"what comes next"** — grey ghost text from the usual shape of Unity scripts,
+  console C#, Python and JavaScript (Tab accepts, Esc hides), each guess with the reason it is likely;
+  (3) a live explanation of the word under the cursor. **Live checks with one-click fixes** for beginner and Unity
+  mistakes the engine does not explain (lowercase `update` is silently never called, CS1612 `position.x`, `=` in a
+  condition, `if (…);`, missing `f`, movement without `Time.deltaTime`, `GetComponent` in `Update`, wrong 2D/3D
+  collider types, class/file name mismatch, `new` on a MonoBehaviour…), plus grammar errors from Tree-sitter.
+  **"I want…"**: 38 explained recipes found from free-text wishes in Russian or English (jump, coins, camera follow,
+  shooting, enemies, saving, UI, Unreal, C++, Python…), each with editor setup steps.
+* **Safe Run** — only for code written in the Workshop and only when *Run* is pressed. C# runs in an own
+  step-by-step interpreter (with `Console.ReadLine` answers); Python is real CPython (Pyodide, bundled, offline) in a
+  worker without network functions; JavaScript runs in a worker without network/storage functions and is stopped
+  after 4 s. Endless loops are stopped and explained. **Step-by-step replay** of the real run: current line, boxes
+  with real values (changed ones highlighted), call stack, screen output. C and C++ are honestly not run.
+* **Mini-Unity** — write real Unity C# MonoBehaviour scripts and watch them drive a small 2D world: 9 levels
+  (Start/Debug.Log → Update/transform/deltaTime → Input → triggers/CompareTag/Destroy → GetAxis → Rigidbody2D jump →
+  Instantiate → timer → final), Inspector with the script's public fields, Console with `Debug.Log`, keyboard and
+  touch controls, hints and solutions; a sandbox for any Workshop script. Every level's solution is played
+  automatically by the tests.
+* **Courses** — *C# for Unity* (16 lessons; every example runs for real in the replay; tasks are checked by running
+  the learner's code and comparing the output) and *Unreal Engine C++* (4 reading lessons compared with Unity).
+  "Compare with other languages" shows a lesson's code in all languages side by side.
+* **Error translator** — paste Unity Console / Visual Studio / compiler / Python / browser errors; 52 known kinds
+  are explained (meaning + fix, file and line).
+* **Memory & focus** — spaced repetition (Leitner boxes 1/2/4/8/16 days) from lesson questions and the notebook;
+  ⭐ notebook with Markdown export; "continue where you stopped"; focus timer with gentle breaks; read-aloud with the
+  system voices; an easy-reading font (PT Sans with wider spacing).
+* **Optional local AI** — Ollama or an OpenAI-compatible local server (LM Studio, llama.cpp, Jan); only localhost
+  addresses are accepted; answers are always marked as guesses and inserted only on click. See
+  [LOCAL_AI.md](LOCAL_AI.md).
+* **Desktop app with a Windows installer** (Electron + NSIS: folder choice, shortcuts, uninstaller) — see
+  [DESKTOP.md](DESKTOP.md).
+
+## Earlier: fourth iteration
 
 * **Russian and English interface** (Settings → Language; Russian is chosen automatically on Russian systems). The
   whole knowledge base, explanations, what-if proposals and project overview exist in both languages; a test fails
@@ -95,7 +131,7 @@ reported as an outside library or as "not found among the opened files".
 
 ## Limitations (what it cannot do)
 
-* **It does not run code**, so it cannot know values at run time, user input, data from files, networks or
+* **Opened projects are never run**, so the explainer cannot know values at run time, user input, data from files, networks or
   databases, or which branch an `if` will take. These are always marked *Unknown*.
 * **Cross-file links are by name** (marked *Likely*). Code that loads things by a computed name (reflection,
   `getattr`, dependency injection, templates, routes in configuration) is invisible to it.
@@ -116,12 +152,19 @@ reported as an outside library or as "not found among the opened files".
 * **The Windows launcher** (`Start-Windows.bat` → PowerShell) could not be executed in the Linux test container;
   the macOS/Linux launcher (`serve.py`) and the Node launcher were tested. If PowerShell is blocked by company
   policy, run `portable/serve.mjs` with Node.js or `portable/serve.py` with Python instead.
-* **Lessons cannot run your own changes** to their code: the animation follows a prepared, verified script.
-  The C# lesson programs are checked for structure only (no C# compiler in the test environment).
+* **The first 8 lessons** follow prepared, verified scripts (their C# versions are now also run by the C#
+  interpreter in the tests). Your own code runs in the Workshop, the courses and Mini-Unity.
+* **The C# interpreter** covers what beginners write (variables, conditions, loops, arrays, List, Dictionary,
+  classes, properties, inheritance, enums, LINQ basics, exceptions, vectors, local functions) but not all of C#
+  (no `ref`/`out`, async, generics you define yourself, reflection…); unsupported parts are reported plainly.
+  **Mini-Unity** is a small 2D world with a part of the Unity API, not a game engine.
+* **C and C++ are not run** (no compiler in the app). JavaScript runs without a step-by-step replay.
+* **"What comes next"** is rule-based (the usual order of scripts), not an understanding of your intentions;
+  local-AI guesses can be wrong.
 * **Saving back to a folder** needs a browser with the File System Access API (Chrome, Edge). Elsewhere, use the
   ZIP download. Folders opened through the classic file picker or drag-and-drop are read-only.
-* The module has no optional local AI model; everything shown comes from the deterministic analysis and the
-  knowledge base.
+* Explanations come from the deterministic analysis and the knowledge base. A local AI model is optional and its
+  answers are always labelled as guesses.
 
 ## Architecture (for developers)
 
@@ -132,7 +175,16 @@ src/code/
                project.ts (imports, dependency graph, project overview), lines.ts, types.ts
   knowledge/   concepts.ts (+ concepts.ru*.ts, concepts.extra.ts: 129 ideas × 5 levels in two languages),
                keywords.ts (+ keywords.ru.ts), library.ts (well-known library and engine functions)
-  learn/       lessons.ts (8 lessons × 5 languages), progress.ts (XP, stars), Learn.tsx (animation, games)
+  learn/       lessons.ts (8 lessons × 5 languages), courses.ts (C# for Unity, Unreal C++), progress.ts (XP, stars),
+               Learn.tsx (animation, games), CourseView.tsx
+  run/         csharp.ts (step-by-step C# interpreter), runner.ts (grammar problems, input, limits), unity.ts
+               (Mini-Unity world + Unity API), levels.ts, errors.ts (error translator rules), sandbox.ts (one door
+               for C#/Python/JS runs), python.worker.ts + pyRunner.ts (Pyodide), js.worker.ts
+  workshop/    editor.ts (CodeMirror setup, ghost text, live checks), api.ts (Unity/C# members with explanations),
+               predict.ts ("what comes next"), lint.ts (beginner/Unity checks), recipes.ts ("I want…"),
+               Workshop.tsx, TraceView.tsx, MiniUnity.tsx, ErrorTranslator.tsx, store.ts
+  memory/      review.ts (spaced repetition), notebook.ts, resume.ts, speech.ts, MemoryViews.tsx
+  ai/          localAi.ts (optional local model bridge, localhost only)
   i18n.ts      tr(en, ru), plural forms, interface language (also used inside the workers)
   explain/     explain.ts (builds the explanation for a level, with confidence)
   workspace/   workspace.ts (protected copy, change sets, restore points, undo/redo, persistence),

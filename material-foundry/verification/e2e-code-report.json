@@ -1,5 +1,5 @@
 {
-  "when": "2026-11-04T19:22:45.919Z",
+  "when": "2026-11-04T19:55:27.710Z",
   "passed": 68,
   "total": 68,
   "checks": [
@@ -251,7 +251,7 @@
     {
       "name": "Large file (24,000 lines) opens and only visible lines are drawn",
       "ok": true,
-      "detail": "4987 ms, 48 line elements"
+      "detail": "4908 ms, 48 line elements"
     },
     {
       "name": "Clicking deep inside a large file works",

@@ -238,3 +238,59 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
   (`serve.py`): `index.html` served as `text/html`, grammars as `application/wasm`, files outside the app folder
   are refused, the server listens on 127.0.0.1 only. The Windows launcher (PowerShell `TcpListener` server) could
   not be executed here — downloading PowerShell into the container was not permitted — so it is untested.
+
+## 8. Workshop, Mini-Unity, courses, memory, local AI, desktop installer (fifth iteration)
+
+* **Unit tests: 247, all passing** (`npm test`, 15 files). New:
+  * `tests/csharp-run.test.ts` (14): every C# lesson program runs in the step-by-step interpreter and prints exactly
+    what its animation shows; everyday beginner C# (lists, dictionaries with `["k"] = v`, floats, LINQ, local
+    functions, classes with properties and `ToString`, `switch`, `ReadLine`, `try/catch`); call-stack trace frames;
+    plain-language errors (missing `;`, unknown name, endless loop, NullReference, IndexOutOfRange, DivideByZero,
+    stack overflow); **every Mini-Unity level is won by its reference solution and not by its starter**, played
+    automatically with simulated key presses; Unity mistakes (CS1612, endless loop in `Update`, no MonoBehaviour).
+  * `tests/workshop.test.ts` (15): "what comes next" walks through the usual shape of a Unity script (using → class →
+    fields → Update → GetAxis → Translate with deltaTime → jump with AddForce → triggers with CompareTag → score),
+    console C#, Python and JavaScript; member suggestions by declared type; all beginner/Unity checks fire on wrong
+    code and stay quiet on correct code (including the learner's own variable names); recipes are found from Russian
+    wishes in any word form; every recipe's notes match its code; **every C# recipe parses without grammar problems
+    and every Unity recipe has no error-level finding; console recipes really run** (the guessing game is played to
+    the end); the error translator explains pasted Unity console output with file and line.
+  * `tests/courses.test.ts` (48): **every C# course example runs for real with a step-by-step trace; every task's
+    reference solution prints exactly the expected lines and the starter does not**; quiz answers and notes are
+    consistent; `Console.Write` + `WriteLine` stay on one line and input starts a new one.
+  * `tests/code-explain.test.ts`: the "never contacts the network" guard now also checks that the sandbox workers
+    name network functions only in order to remove them.
+* **Python runner checked in Node with the bundled Pyodide**: output, `input()` answers and the "needs input" signal,
+  the 200 000-line endless-loop stop, IndexError and SyntaxError with the right line.
+* **Browser e2e `npm run e2e:workshop`: 49/49**, offline (every non-local request is blocked), Russian interface:
+  ghost text inside `Update` and the next guess after Tab; Unity member suggestions with Russian explanations; live
+  checks for lowercase `update` and CS1612 and the one-click fix; "Хочу…" recipe → new file; C# run with
+  `ReadLine` answer, step-by-step replay with the call `Twice(n = 21)`; runtime error explained; **real Python with
+  `input()`** and its replay; endless Python and JavaScript loops stopped; JavaScript error on the right line and
+  no `fetch` in the worker; C++ honestly not run; **Mini-Unity: a level won, Inspector values, an endless loop caught,
+  real key presses → `Debug.Log`, a Workshop script in the sandbox**; error translator; notebook → review cards;
+  "continue where you stopped"; a review session; focus timer; **local AI with a fake local Ollama** (model list,
+  non-local address refused, AI guess shown as marked ghost text, only `/api/…` on localhost contacted);
+  **C# for Unity course lesson** (real replay, quiz, wrong task output shown next to the expected one, right answer
+  accepted); Unreal lesson walk; compare languages; no horizontal scroll at tablet width. The run found two real
+  bugs that were fixed: the step replay stole the editor cursor on every re-render, and checks of a closed editor
+  could overwrite the problem list of the next file.
+* **Browser e2e `npm run e2e:code`: 68/68**, **materials `npm run e2e`: 39/39** on the same build.
+* **Desktop app (Electron 44.9.0)** — `xvfb-run -a npm run e2e:desktop`: **13/13** on the Linux build of the same
+  app: materials studio renders, the page loads from `app://` with a strict CSP and no Node.js access (only the
+  `aiRequest` bridge), files outside the app folder are refused, C# and **Python from the packaged Pyodide** run,
+  a Mini-Unity level is won, the **local AI is reached through the main process** (a fake local server without CORS
+  headers), non-local addresses are refused by the bridge, and navigation to a website is blocked.
+  `--smoke-test` mode passes.
+* **Windows installer** `MaterialFoundry-Setup-1.0.0.exe` (NSIS, 128 MB, sha256 `61d0b7055f61…0533acf6b` for this
+  build) was built in the Linux container with Wine and checked **under Wine**: license page (RU/EN text), "only for
+  me / all users", **the folder choice page**; a silent install into `C:\Games\Material Foundry` produced the program,
+  `resources/app.asar` (containing `main.cjs`, `preload.cjs`, `server.cjs`, `app/index.html`, Pyodide and the C#
+  grammar), the uninstaller and the desktop and Start-menu shortcuts; the silent uninstall removed the folder and the
+  shortcut. Under Wine the installer falsely reports "Material Foundry is running" (Wine's process list), so that
+  check was disabled **only in a verification copy**; the shipped installer keeps it. The installed Windows Electron
+  program does not open a window under Wine, so it was **not run on Windows here**; the workflow
+  `.github/workflows/desktop-installer.yml` builds the installer on `windows-latest`, installs it into a custom
+  folder, starts the installed program with `--smoke-test`, uninstalls it and uploads the installer as an artifact.
+* **Portable package** rebuilt (9.8 MB, now with Pyodide): unpacked and started with `serve.py`; Python ran in the
+  Workshop from the served files. The servers now also send `.zip` and `.woff` with the right types.
