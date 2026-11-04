@@ -1142,3 +1142,150 @@
   min-width: 0;
   overflow: hidden;
 }
+
+/* The step-by-step replay needs room: the side panel grows while it is shown. */
+@media (min-width: 1001px) {
+  .ws-main.wide-side {
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 48%);
+  }
+  .ws-main.wide-side .ws-trace-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------- courses */
+
+.cv-courses {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ln-track.on {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft);
+}
+.cv-code {
+  font-family: var(--mono);
+  font-size: calc(var(--cm-font, 16px) * 0.9);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 0;
+  margin: 10px 0;
+  overflow-x: auto;
+}
+.cv-line {
+  display: grid;
+  grid-template-columns: 34px max-content minmax(220px, 1fr);
+  gap: 10px;
+  padding: 1px 10px 1px 0;
+  white-space: pre;
+}
+.cv-line.noted {
+  background: var(--cm-current);
+}
+.cv-line.cur {
+  background: var(--cm-sel);
+}
+.cv-n {
+  color: var(--muted);
+  text-align: right;
+}
+.cv-note {
+  white-space: normal;
+  font-family: system-ui, sans-serif;
+  font-size: 0.92em;
+  color: var(--tk-comment);
+  border-left: 2px solid var(--tk-comment);
+  padding-left: 8px;
+}
+.cm.readable .cv-note {
+  font-family: 'PT Sans', system-ui, sans-serif;
+}
+.cv-quiz {
+  padding: 16px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.cv-options {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+.cv-opt {
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  text-align: left;
+  font-size: 1em;
+  font-family: var(--mono);
+}
+.cv-opt:hover {
+  border-color: var(--accent);
+}
+.cv-opt.good {
+  border-color: var(--ok, #3ecf8e);
+  background: color-mix(in srgb, var(--ok, #3ecf8e) 14%, transparent);
+}
+.cv-opt.bad {
+  border-color: var(--danger, #e5484d);
+  background: color-mix(in srgb, var(--danger, #e5484d) 10%, transparent);
+}
+.cv-task-editor {
+  height: 280px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.cv-task-editor .cm-editor {
+  height: 100%;
+}
+.cv-result {
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+.cv-result.good {
+  border: 2px solid var(--ok, #3ecf8e);
+}
+.cv-result.bad {
+  border: 2px solid var(--danger, #e5484d);
+}
+.cv-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cv-compare pre {
+  font-family: var(--mono);
+  background: #0b0f16;
+  color: #d8f5d0;
+  border-radius: 8px;
+  padding: 8px;
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+.ln-compare {
+  margin: 8px 0;
+}
+.ln-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.ln-compare-col pre {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  margin: 4px 0 0;
+  overflow-x: auto;
+}

@@ -395,6 +395,8 @@ export function Workshop() {
     edRef.current = ed;
     setResult(null);
     setLive(null);
+    setProblems([]);
+    setPreds([]);
     session.current = null;
     return () => {
       ed.destroy();
@@ -561,7 +563,7 @@ export function Workshop() {
         </button>
       </div>
 
-      <div className="ws-main">
+      <div className={`ws-main${side === 'result' && result?.steps.length ? ' wide-side' : ''}`}>
         <div className="ws-editor-col">
           <div className="ws-editor" ref={hostRef} data-testid="ws-editor" />
           <div className="ws-under">

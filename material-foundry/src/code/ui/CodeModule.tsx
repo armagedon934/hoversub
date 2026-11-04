@@ -6,7 +6,7 @@
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { Bot, Brain, BookOpenText, Code2, FileDiff, FolderOpen, Gamepad2, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
+import { Bot, Brain, BookOpenText, Code2, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -20,6 +20,7 @@ import { MiniUnity } from '../workshop/MiniUnity';
 import { Workshop } from '../workshop/Workshop';
 import { getLanguage } from '../languages/registry';
 import { tr, type Locale } from '../i18n';
+import { CoursesView } from '../learn/CourseView';
 import { Learn } from '../learn/Learn';
 import { getCodeClient } from '../worker/client';
 import { ChangesView } from './ChangesView';
@@ -271,6 +272,9 @@ function LearnHub() {
         <button role="tab" aria-selected={part === 'lessons'} className={part === 'lessons' ? 'on' : ''} onClick={() => useLearnHub.set('lessons')} data-testid="hub-lessons">
           <Gamepad2 size={15} /> {tr('Lessons', 'Уроки')}
         </button>
+        <button role="tab" aria-selected={part === 'courses'} className={part === 'courses' ? 'on' : ''} onClick={() => useLearnHub.set('courses')} data-testid="hub-courses">
+          <GraduationCap size={15} /> {tr('Courses: C# for Unity, Unreal', 'Курсы: C# для Unity, Unreal')}
+        </button>
         <button role="tab" aria-selected={part === 'review'} className={part === 'review' ? 'on' : ''} onClick={() => useLearnHub.set('review')} data-testid="hub-review">
           <Brain size={15} /> {tr('Review', 'Повторение')} {due ? <span className="badge">{due}</span> : null}
         </button>
@@ -278,7 +282,7 @@ function LearnHub() {
           <NotebookPen size={15} /> {tr('Notebook', 'Блокнот')}
         </button>
       </div>
-      {part === 'lessons' ? <Learn /> : part === 'review' ? <ReviewView /> : <NotebookView />}
+      {part === 'lessons' ? <Learn /> : part === 'courses' ? <CoursesView /> : part === 'review' ? <ReviewView /> : <NotebookView />}
     </div>
   );
 }

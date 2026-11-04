@@ -445,6 +445,31 @@ function OrderGame({ game, lesson, track, onSolved }: GameProps & { game: Extrac
 
 type Stage = 'intro' | 'watch' | 'play' | 'done';
 
+/** The same lesson in every language, side by side: the ideas are the same, only the spelling differs. */
+function CompareLanguages({ lesson, track }: { lesson: Lesson; track: TrackId }) {
+  const [open, setOpen] = useState(false);
+  const others = TRACKS.filter((t) => t.id !== track && lesson.code[t.id]);
+  if (!others.length) return null;
+  return (
+    <div className="ln-compare">
+      <button className="btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-testid="compare-languages">
+        🔤 {open ? tr('Hide other languages', 'Скрыть другие языки') : tr('Compare with other languages', 'Сравнить с другими языками')}
+      </button>
+      {open ? (
+        <div className="ln-compare-grid" data-testid="compare-grid">
+          {others.map((t) => (
+            <div key={t.id} className="ln-compare-col">
+              <b style={{ color: t.color }}>{t.name}</b>
+              <pre>{codeLines(lesson, t.id).map((l) => l.text).join('\n')}</pre>
+            </div>
+          ))}
+          <p className="muted small">{tr('Same idea, different spelling. Learn the idea once — reading the others becomes easy.', 'Одна и та же идея, разное написание. Пойми идею один раз — читать остальные станет легко.')}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function LessonPlayer({ lesson, track, onExit, onNext }: { lesson: Lesson; track: TrackId; onExit: () => void; onNext: (() => void) | null }) {
   const [stage, setStage] = useState<Stage>('intro');
   const [gi, setGi] = useState(0);
@@ -509,6 +534,7 @@ function LessonPlayer({ lesson, track, onExit, onNext }: { lesson: Lesson; track
           </div>
           <p className="ln-intro-text">{pick(lesson.intro)}</p>
           <CodeBlock lines={codeLines(lesson, track)} />
+          <CompareLanguages lesson={lesson} track={track} />
           {lesson.gameNote?.[track] ? (
             <p className="ln-note">
               🎮 <b>{tr('In real games:', 'В настоящих играх:')}</b> {pick(lesson.gameNote[track])}

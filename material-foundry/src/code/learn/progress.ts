@@ -47,6 +47,8 @@ interface LearnState extends Saved {
   openLesson: (id: string | null) => void;
   addXp: (n: number) => void;
   finishLesson: (track: TrackId, lessonId: string, stars: number) => void;
+  /** Course lessons are stored as "course:<course>:<lesson>". */
+  finishCourseLesson: (courseId: string, lessonId: string, stars: number) => void;
   reset: () => void;
 }
 
@@ -81,6 +83,12 @@ export const useLearn = create<LearnState>((set, get) => ({
   },
   finishLesson(track, lessonId, stars) {
     const k = key(track, lessonId);
+    const prev = get().done[k];
+    set({ done: { ...get().done, [k]: { stars: Math.max(stars, prev?.stars ?? 0), at: Date.now() } } });
+    save(get());
+  },
+  finishCourseLesson(courseId, lessonId, stars) {
+    const k = `course:${courseId}:${lessonId}`;
     const prev = get().done[k];
     set({ done: { ...get().done, [k]: { stars: Math.max(stars, prev?.stars ?? 0), at: Date.now() } } });
     save(get());

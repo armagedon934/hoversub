@@ -1,6 +1,6 @@
 {
-  "when": "2026-11-04T19:21:37.385Z",
-  "passed": 43,
+  "when": "2026-11-04T19:30:55.443Z",
+  "passed": 49,
   "failed": 0,
   "dialogs": 0,
   "checks": [
@@ -176,6 +176,36 @@
     },
     {
       "name": "Review session: show answer → \"I remember\" moves on",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Courses: C# for Unity has 16 lessons",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Course lesson replays the real run step by step",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Course task: a wrong answer shows needed vs printed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Course task: the right code is accepted and the lesson completes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Unreal lesson: honest line-by-line walk (C++ not run)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Lessons: compare the same code in other languages",
       "ok": true,
       "detail": ""
     },

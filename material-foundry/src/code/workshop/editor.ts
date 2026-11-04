@@ -335,11 +335,15 @@ export function createEditor(parent: HTMLElement, o: EditorOptions): WorkshopEdi
   const lintC = new Compartment();
   let lang = o.lang;
   let ghostOn = o.ghost;
+  // Async checks of a closed editor must not overwrite the panel of the next one.
+  let alive = true;
+  const onProblems = (p: LiveProblem[]) => alive && o.onProblems(p);
+  const onPredictions = (p: Prediction[]) => alive && o.onPredictions(p);
   const smart = () => [
     autocompletion({ override: [completionSource(lang)], activateOnTyping: true, icons: true, maxRenderedOptions: 40, defaultKeymap: true }),
-    ghostOn ? [ghostField, ghostPlugin(lang, o.onPredictions)] : ghostPluginListOnly(lang, o.onPredictions),
+    ghostOn ? [ghostField, ghostPlugin(lang, onPredictions)] : ghostPluginListOnly(lang, onPredictions),
   ];
-  const lint = () => liveLinter(lang, o.fileName, o.syntax, o.onProblems);
+  const lint = () => liveLinter(lang, o.fileName, o.syntax, onProblems);
   const view = new EditorView({
     parent,
     state: EditorState.create({
@@ -394,6 +398,7 @@ export function createEditor(parent: HTMLElement, o: EditorOptions): WorkshopEdi
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: 0 } });
     },
     destroy() {
+      alive = false;
       view.destroy();
     },
   };

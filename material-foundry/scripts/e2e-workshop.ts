@@ -323,6 +323,51 @@ async function main() {
     check('Review session: show answer → "I remember" moves on', true);
     await shot(page, '12-review');
 
+    // ------------------------------------------------------------------ Courses + compare languages
+    await page.getByTestId('view-learn').click();
+    await page.getByTestId('hub-courses').click();
+    await page.getByTestId('courses').waitFor();
+    check('Courses: C# for Unity has 16 lessons', (await page.getByTestId('course-lesson-card').count()) === 16);
+    await page.getByTestId('course-start-next').click();
+    await page.getByTestId('course-read').waitFor();
+    await shot(page, '16-course-read');
+    await page.getByTestId('course-watch').click();
+    await page.getByTestId('trace-view').waitFor();
+    check('Course lesson replays the real run step by step', /Шаг 1 \/ \d+/.test((await page.getByTestId('trace-count').textContent()) ?? ''));
+    await page.getByTestId('course-to-quiz').click();
+    for (let q = 0; q < 2; q++) {
+      const opts = page.getByTestId('quiz-option');
+      const n = await opts.count();
+      for (let k = 0; k < n; k++) {
+        await opts.nth(k).click();
+        if (await page.getByTestId('quiz-next').count()) break;
+      }
+      await page.getByTestId('quiz-next').click();
+    }
+    await page.getByTestId('course-task').waitFor();
+    await setEditor(page, 'course-task-editor', 'using System;\n\nint coins = 10;\ncoins += 4;\nConsole.WriteLine("Coins: " + coins);\n');
+    await page.getByTestId('task-check').click();
+    check('Course task: a wrong answer shows needed vs printed', /Coins: 14/.test((await page.getByTestId('task-result').textContent()) ?? ''));
+    await shot(page, '17-course-task-wrong');
+    await setEditor(page, 'course-task-editor', 'using System;\n\nint coins = 10;\ncoins += 5;\nConsole.WriteLine("Coins: " + coins);\n');
+    await page.getByTestId('task-check').click();
+    await page.getByTestId('task-next').click();
+    await page.getByTestId('course-done').waitFor();
+    check('Course task: the right code is accepted and the lesson completes', true);
+    await page.getByTestId('course-exit').click().catch(() => {});
+    await page.getByTestId('course-unreal').click();
+    await page.getByTestId('course-lesson-card').first().click();
+    await page.getByTestId('course-watch').click();
+    await page.getByTestId('course-walk').waitFor();
+    check('Unreal lesson: honest line-by-line walk (C++ not run)', /нельзя запустить/.test((await page.getByTestId('course-walk').textContent()) ?? ''));
+    await page.getByTestId('hub-lessons').click();
+    if (await page.getByTestId('track-cs').count()) await page.getByTestId('track-cs').click();
+    await page.getByTestId('lesson-card').first().click();
+    await page.getByTestId('compare-languages').click();
+    const cmp = await page.getByTestId('compare-grid').textContent();
+    check('Lessons: compare the same code in other languages', /C\+\+/.test(cmp ?? '') && /Python/.test(cmp ?? ''));
+    await shot(page, '18-compare-languages');
+
     // ------------------------------------------------------------------ Focus timer
     await page.getByTestId('open-focus').click();
     await page.getByTestId('focus-timer').waitFor();

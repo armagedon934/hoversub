@@ -27,6 +27,11 @@ export function useGuide(): GuideState | null {
   const s = useCode.getState();
 
   if (view === 'learn') return null;
+  if (view === 'workshop')
+    return { text: tr('Write code. Grey text = a guess of what comes next (Tab accepts). Red underline = a problem with a fix on the right. "Run" runs it safely.', 'Пиши код. Серый текст — догадка, что дальше (Tab — принять). Красное подчёркивание — проблема, справа есть исправление. «Запустить» — безопасный запуск.'), target: null };
+  if (view === 'unity')
+    return { text: tr('1) Read the task. 2) Change the code on the left. 3) Press "Play" and use the arrow keys. Stuck? Press "Hint".', '1) Прочитай задание. 2) Измени код слева. 3) Нажми «Играть» и жми стрелки. Застрял? Нажми «Подсказка».'), target: null };
+  if (view === 'errors') return { text: tr('Paste the red error text — each error gets a plain explanation and a fix.', 'Вставь красный текст ошибки — для каждой ошибки будет простое объяснение и исправление.'), target: null };
   if (view === 'glossary')
     return { text: tr('This is the dictionary of ideas. Pick any idea on the left; the level buttons change how detailed it is.', 'Это словарь идей. Выбери любую идею слева; кнопки уровней меняют, насколько подробно объяснение.'), target: null };
   if (!files)

@@ -392,7 +392,9 @@ export class CsProgram {
           const nm = m.childForFieldName('name')?.text ?? '?';
           const type = typeName(m.childForFieldName('type'));
           const arrow = named(m).find((c) => c.type === 'arrow_expression_clause');
-          const init = m.childForFieldName('value') ?? named(m).find((c) => c.type === 'equals_value_clause');
+          // tree-sitter puts both "= 100" and "=> expr" in the field "value": only the first is an initial value.
+          let init = m.childForFieldName('value') ?? named(m).find((c) => c.type === 'equals_value_clause') ?? null;
+          if (init?.type === 'arrow_expression_clause') init = null;
           info.fields.push({ name: nm, type, init: init ? (init.type === 'equals_value_clause' ? (named(init)[0] ?? null) : init) : null, isStatic, getter: arrow ? named(arrow)[0] : undefined });
         } else if (m.type === 'method_declaration') {
           const nm = m.childForFieldName('name')?.text ?? '?';
@@ -1548,7 +1550,11 @@ export class CsProgram {
 
   // -------------------------------------------------------------------------- built-ins
 
+  /** True after Console.Write: the next output continues the same line. */
+  openLine = false;
+
   private print(text: string): void {
+    this.openLine = false;
     if (this.output.length >= this.limits.maxOutput) return;
     this.output.push(text);
   }
@@ -1576,11 +1582,15 @@ export class CsProgram {
     const a = (i: number) => num(args[i], line);
     switch (`${type}.${name}`) {
       case 'Console.WriteLine':
-        this.print(args.length ? formatComposite(args) : '');
+        if (this.openLine && this.output.length) {
+          this.output[this.output.length - 1] += args.length ? formatComposite(args) : '';
+          this.openLine = false;
+        } else this.print(args.length ? formatComposite(args) : '');
         return undefined;
       case 'Console.Write':
-        if (this.output.length) this.output[this.output.length - 1] += formatComposite(args);
+        if (this.openLine && this.output.length) this.output[this.output.length - 1] += formatComposite(args);
         else this.print(formatComposite(args));
+        this.openLine = true;
         return undefined;
       case 'Console.ReadLine': {
         const answer = yield { t: 'input', prompt: this.output.at(-1) ?? '' };

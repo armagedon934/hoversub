@@ -109,6 +109,7 @@ export class CsRun {
     let send: string | undefined = input;
     if (st.status === 'input' && input !== undefined) {
       this.program.output.push(`> ${input}`);
+      this.program.openLine = false;
       if (this.opts.trace && st.steps.length < maxTrace)
         st.steps.push({ line: st.steps.at(-1)?.line ?? 0, kind: 'input', say: tr(`You typed: ${input}`, `Ты ввёл: ${input}`), frames: this.program.snapshot(), output: this.program.output.length });
     }

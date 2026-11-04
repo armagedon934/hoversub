@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Brain, Download, Pause, Play, RotateCcw, Timer, Trash2, Volume2, X } from 'lucide-react';
 import { tr } from '../i18n';
+import { courseRequest } from '../learn/CourseView';
 import { useLearn } from '../learn/progress';
 import { useCode } from '../ui/store';
 import { useWorkshop } from '../workshop/store';
@@ -206,7 +207,12 @@ export function ResumeCard() {
   if (!last && !due) return null;
   const go = () => {
     if (!last) return;
-    if (last.kind === 'lesson') {
+    if (last.kind === 'lesson' && last.extra?.startsWith('course:')) {
+      courseRequest.value = { course: last.extra.slice(7), lesson: last.id };
+      useLearnHub.set('courses');
+      setView('learn');
+    } else if (last.kind === 'lesson') {
+      useLearnHub.set('lessons');
       if (last.extra) useLearn.getState().setTrack(last.extra as never);
       useLearn.getState().openLesson(last.id);
       setView('learn');
@@ -251,7 +257,7 @@ export function ResumeCard() {
 
 /** Which part of the Learn hub is open (lessons / review / notebook). */
 export const useLearnHub = (() => {
-  let value: 'lessons' | 'review' | 'notebook' = 'lessons';
+  let value: 'lessons' | 'courses' | 'review' | 'notebook' = 'lessons';
   const subs = new Set<() => void>();
   return {
     get: () => value,
