@@ -266,6 +266,10 @@ export class World3D {
   status: Frame3['status'] = 'playing';
   message = '';
   kills = 0;
+  /** For the HUD: when the player last hit / killed something, and when the player was hurt. */
+  hitMarkAt = -10;
+  killMarkAt = -10;
+  hurtAt = -10;
   frameBudget = 60_000;
   insts: ScriptInst[] = [];
   private programs: { program: CsProgram; spec: ScriptSpec3 }[] = [];
@@ -314,6 +318,7 @@ export class World3D {
     this.rays = [];
     this.ui = [];
     this.kills = 0;
+    this.hitMarkAt = this.killMarkAt = this.hurtAt = -10;
     this.lastRay = null;
     this.status = 'playing';
     this.message = '';
@@ -759,6 +764,9 @@ export class World3D {
     }
     o.health.value = Math.max(0, o.health.value - amount);
     o.lastHitAt = this.time;
+    if (o === this.player) this.hurtAt = this.time;
+    if (by === this.player && o !== this.player) this.hitMarkAt = this.time;
+    if (o.health.value <= 0 && by === this.player && o !== this.player) this.killMarkAt = this.time;
     if (o.health.value <= 0) {
       o.health.deadAt = this.time;
       if (o.bot) {

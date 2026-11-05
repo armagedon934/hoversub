@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 
 export interface Resume {
-  kind: 'lesson' | 'level' | 'file';
+  kind: 'lesson' | 'level' | 'file' | 'mission';
   id: string;
   title: string;
   /** Extra info, e.g. the lesson's language track. */

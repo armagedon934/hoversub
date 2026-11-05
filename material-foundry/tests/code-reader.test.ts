@@ -8,6 +8,7 @@ import { COURSES } from '../src/code/learn/courses';
 import { LEVELS } from '../src/code/run/levels';
 import { PROJECT } from '../src/code/run/project';
 import { RECIPES } from '../src/code/workshop/recipes';
+import { MISSIONS, OFFICIAL, answerOf } from '../src/code/run/shooter';
 
 setLocale('ru', false);
 
@@ -16,6 +17,8 @@ const sources: [string, string][] = [
   ...COURSES.flatMap((c) => c.lessons.filter((l) => l.lang === 'cs').map((l) => [`course ${l.id}`, l.code] as [string, string])),
   ...BUGS.map((b) => [`bug ${b.id}`, prepareBug(b).lines.join('\n')] as [string, string]),
   ...[...LEVELS, ...PROJECT].map((l) => [`level ${l.id}`, l.solution] as [string, string]),
+  ...MISSIONS.map((m) => [`mission ${m.id}`, answerOf(m)] as [string, string]),
+  ...Object.entries(OFFICIAL).map(([k, v]) => [`official ${k}`, v] as [string, string]),
 ];
 
 describe('code reader', () => {
@@ -30,6 +33,16 @@ describe('code reader', () => {
       }
     expect(total).toBeGreaterThan(1000);
     expect(missing).toEqual([]);
+  });
+
+  it('reads one-line ifs, else-if and constructors as whole sentences', () => {
+    const say = (l: string) => pick(explainLine(l)!);
+    expect(say('if (health != null) health.TakeDamage(damage);')).toMatch(/существует.*→ просим health сделать TakeDamage/);
+    expect(say('if (Input.GetMouseButton(0) && Time.time >= nextFireTime)')).toMatch(/левая кнопка мыши и Time\.time ≥ nextFireTime/);
+    expect(say('else if (playerHealth.currentHealth <= 0 || roundTime <= 0)')).toMatch(/^Иначе, если/);
+    expect(say('public Weapon(string name, int damage, float fireRate)')).toMatch(/конструктор/i);
+    expect(say('if (Input.GetButtonDown("Jump") && controller.isGrounded)')).toMatch(/прыжок.*Пробел.*и controller\.isGrounded/);
+    expect(say('hit.collider.GetComponent<Health>().TakeDamage(5);')).toMatch(/деталь Health/);
   });
 
   it('gives precise translations for typical Unity lines', () => {

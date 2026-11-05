@@ -217,6 +217,7 @@ export function ResumeCard() {
       useLearn.getState().openLesson(last.id);
       setView('learn');
     } else if (last.kind === 'level') setView('unity');
+    else if (last.kind === 'mission') setView('shooter');
     else {
       useWorkshop.getState().open(last.id);
       setView('workshop');
@@ -228,7 +229,7 @@ export function ResumeCard() {
       {last ? (
         <button className="resume-main" onClick={go} data-testid="resume-go">
           <span className="resume-icon" aria-hidden>
-            {last.kind === 'lesson' ? '📘' : last.kind === 'level' ? '🎮' : '🛠'}
+            {last.kind === 'lesson' ? '📘' : last.kind === 'level' ? '🎮' : last.kind === 'mission' ? '🎯' : '🛠'}
           </span>
           <span>
             <b>{tr('Continue where you stopped', 'Продолжить с того места, где остановился')}</b>

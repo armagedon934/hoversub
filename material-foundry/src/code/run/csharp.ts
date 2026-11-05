@@ -1817,7 +1817,6 @@ export class CsProgram {
         const t = Math.min(Math.max(a(2), 0), 1);
         return vec(p.x + (q.x - p.x) * t, p.y + (q.y - p.y) * t, p.z + (q.z - p.z) * t, p.dim);
       }
-      case 'Vector2.MoveTowards':
       case 'Vector3.Cross': {
         const p = args[0] as VecV;
         const q = args[1] as VecV;
@@ -1911,6 +1910,7 @@ export class CsProgram {
         const v = Math.sin(nx * 1.7 + Math.sin(ny * 2.3) * 1.3) * 0.5 + Math.sin(ny * 1.1 + nx * 0.7) * 0.5;
         return Math.fround(0.5 + v * 0.5 * 0.9);
       }
+      case 'Vector2.MoveTowards':
       case 'Vector3.MoveTowards': {
         const p = args[0] as VecV;
         const q = args[1] as VecV;

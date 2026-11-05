@@ -2582,3 +2582,42 @@ button.start-card:hover:not(:disabled) {
     grid-template-columns: 1fr;
   }
 }
+
+/* The main entry: the 3D campaign */
+.start-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin: 4px 0 14px;
+  padding: 18px 20px;
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 92% 50%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 55%),
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 12%, var(--panel)), var(--panel));
+  color: var(--text);
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.start-hero:hover {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.start-hero-emoji {
+  font-size: 44px;
+}
+.start-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.start-hero-text b {
+  font-size: 1.2em;
+}
+.start-hero-go {
+  margin-left: auto;
+  font-size: 26px;
+  color: var(--accent);
+}

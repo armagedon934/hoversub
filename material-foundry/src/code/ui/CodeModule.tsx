@@ -5,8 +5,8 @@
 //  • learning and the dictionary use the whole width
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { Bot, Brain, BookOpenText, Code2, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { Bot, Brain, BookOpenText, Code2, Crosshair, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -35,6 +35,9 @@ import { WhatIfDialog } from './WhatIf';
 import { readDataTransfer } from './fileLoading';
 import { useCode, workspace, type CodeView as View } from './store';
 import './code.css';
+
+// The 3D game (three.js) loads only when it is opened.
+const Shooter = lazy(() => import('../workshop/Shooter'));
 import '../workshop/workshop.css';
 
 function shortcuts(): [string, string][] {
@@ -66,6 +69,16 @@ function Welcome() {
           🐞 🔮 🔄 {tr('Trainers — 5 minutes', 'Тренажёры — 5 минут')}
         </button>
       </div>
+      <button className="start-hero" onClick={() => setView('shooter')} data-testid="start-shooter">
+        <span className="start-hero-emoji" aria-hidden>
+          🎯
+        </span>
+        <span className="start-hero-text">
+          <b>{tr('Shooter from zero — learn C# for Unity by playing', 'Шутер с нуля — учи C# для Unity, играя')}</b>
+          <span>{tr('A 3D game: your soldier\'s suit is off. Every mission you write a few words of real Unity code and get a new ability — legs, eyes, weapon, bots, atmosphere. 25 missions → your own shooter with bots and a map.', '3D-игра: костюм твоего бойца выключен. В каждой миссии ты дописываешь несколько слов настоящего кода Unity и получаешь новую способность — ноги, глаза, оружие, ботов, атмосферу. 25 миссий → свой шутер с ботами и картой.')}</span>
+        </span>
+        <span className="start-hero-go">▶</span>
+      </button>
       <div className="start-cards" data-guide="start">
         <button className="start-card" onClick={() => setView('learn')} data-testid="start-learn">
           <span className="start-emoji" aria-hidden>
@@ -374,7 +387,7 @@ export default function CodeModule() {
         } else s.toast('info', undo ? tr('Nothing to undo.', 'Нечего отменять.') : tr('Nothing to redo.', 'Нечего возвращать.'));
         return;
       }
-      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'errors') return;
+      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'errors') return;
       if (/^[1-5]$/.test(e.key)) s.setLevel(Number(e.key) as 1 | 2 | 3 | 4 | 5);
       else if (e.key === '?') s.simpler();
       else if (e.key === 'e') s.toggleExample();
@@ -400,6 +413,7 @@ export default function CodeModule() {
     ? [
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
+        { v: 'shooter', label: tr('Shooter 3D', 'Шутер 3D'), icon: <Crosshair size={16} /> },
         { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
         { v: 'overview', label: tr('About the project', 'О проекте'), icon: <BookOpenText size={16} /> },
         { v: 'code', label: tr('Code', 'Код'), icon: <Code2 size={16} /> },
@@ -412,6 +426,7 @@ export default function CodeModule() {
         { v: 'welcome', label: tr('Start', 'Начало'), icon: <Home size={16} /> },
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
+        { v: 'shooter', label: tr('Shooter 3D', 'Шутер 3D'), icon: <Crosshair size={16} /> },
         { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
         { v: 'errors', label: tr('Errors', 'Ошибки'), icon: <Languages size={16} /> },
         { v: 'glossary', label: tr('Dictionary', 'Словарь'), icon: <MapIcon size={16} /> },
@@ -480,6 +495,10 @@ export default function CodeModule() {
             <Workshop />
           ) : shownView === 'unity' ? (
             <MiniUnity />
+          ) : shownView === 'shooter' ? (
+            <Suspense fallback={<div className="muted" style={{ padding: 20 }}>{tr('Loading the 3D game…', 'Загружаю 3D-игру…')}</div>}>
+              <Shooter />
+            </Suspense>
           ) : shownView === 'errors' ? (
             <ErrorTranslator />
           ) : shownView === 'glossary' ? (

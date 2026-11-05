@@ -170,6 +170,7 @@ const cond = (c: string) => c.replace(/&&/g, ' И ').replace(/\|\|/g, ' ИЛИ '
 const condEn = (c: string) => c.replace(/&&/g, ' AND ').replace(/\|\|/g, ' OR ').replace(/!=/g, ' ≠ ').replace(/==/g, ' = ').replace(/>=/g, ' ≥ ').replace(/<=/g, ' ≤ ').replace(/\s+/g, ' ').trim();
 
 const RULES: Rule[] = [
+  [/^([\w.]+)\.GetComponent<(\w+)>\(\)\.(\w+)\((.*)\);$/, (m) => T(`Take the ${m[2]} part of ${m[1]} and ask it to do ${m[3]}(${m[4]}).`, `Берём у ${m[1]} деталь ${m[2]} и просим её сделать ${m[3]}(${m[4]}).`)],
   [/^\/\/\s*(.*)$/, (m) => T(`A note for people (the computer ignores it): ${m[1]}`, `Заметка для людей (компьютер её пропускает): ${m[1]}`)],
   [/^using\s+UnityEngine\s*;/, () => T('Connect Unity: GameObject, transform, Input, Time, physics…', 'Подключаем Unity: GameObject, transform, Input, Time, физику…')],
   [/^using\s+System\.Collections\s*;/, () => T('Connect IEnumerator — needed for coroutines.', 'Подключаем IEnumerator — нужен для корутин.')],
@@ -189,10 +190,10 @@ const RULES: Rule[] = [
   [/^void\s+(Start|Awake|Update|LateUpdate|FixedUpdate|OnEnable|OnDisable|OnDestroy)\s*\(\)/, (m) => T(`Begin "${m[1]}": ${UNITY_EVENT_ABOUT[m[1]][1].en}.`, `Начало «${m[1]}»: ${UNITY_EVENT_ABOUT[m[1]][1].ru}.`)],
   [/^void\s+(OnTrigger\w+|OnCollision\w+)\s*\(\s*(\w+)\s+(\w+)\s*\)/, (m) => T(`Begin "${m[1]}": ${UNITY_EVENT_ABOUT[m[1]]?.[1].en ?? 'Unity calls it on contact'}. ${m[3]} = what we touched.`, `Начало «${m[1]}»: ${UNITY_EVENT_ABOUT[m[1]]?.[1].ru ?? 'Unity вызывает его при касании'}. ${m[3]} — то, чего коснулись.`)],
   [/^IEnumerator\s+(\w+)\s*\(/, (m) => T(`Begin the coroutine ${m[1]} — it can pause and continue later.`, `Начало корутины ${m[1]} — она умеет вставать на паузу и продолжать.`)],
-  [/^(?:public\s+|private\s+)?(?:static\s+)?(void|[\w<>[\]]+)\s+(\w+)\s*\(([^)]*)\)\s*(\{)?$/, (m) => T(`Begin the action ${m[2]}(${m[3] ? m[3] : ''})${m[1] !== 'void' ? ` — it gives back a ${typeName(m[1], false)}` : ''}.`, `Начало действия ${m[2]}(${m[3] ? m[3] : ''})${m[1] !== 'void' ? ` — оно возвращает: ${typeName(m[1], true)}` : ''}.`)],
-  [/^(?:public\s+)?struct\s+(\w+)/, (m) => T(`The value-blueprint (struct) ${m[1]}: copied on every assignment.`, `Чертёж-значение (struct) ${m[1]}: копируется при каждом присваивании.`)],
   [/^public\s+(\w+)\s*\(([^)]*)\)\s*\{.*\}$/, (m) => T(`The constructor of ${m[1]}(${m[2]}): fills the fields of a new object.`, `Конструктор ${m[1]}(${m[2]}): заполняет поля нового объекта.`)],
-  [/^public\s+(\w+)\s*\(([^)]*)\)$/, (m) => T(`Begin the constructor of ${m[1]}(${m[2]}): runs once for every new object.`, `Начало конструктора ${m[1]}(${m[2]}): выполняется один раз для каждого нового объекта.`)],
+  [/^(?:public|private|protected|internal)\s+([A-Z]\w*)\s*\(([^)]*)\)$/, (m) => T(`Begin the constructor of ${m[1]}(${m[2]}): runs once for every new object.`, `Начало конструктора ${m[1]}(${m[2]}): выполняется один раз для каждого нового объекта.`)],
+  [/^(?!else\b|return\b|new\b)(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?!public\b|private\b)(void|[\w<>[\]]+)\s+(?!(?:if|while|for|foreach|switch|catch|using|lock)\b)(\w+)\s*\(([^)]*)\)\s*(\{)?$/, (m) => T(`Begin the action ${m[2]}(${m[3] ? m[3] : ''})${m[1] !== 'void' ? ` — it gives back a ${typeName(m[1], false)}` : ''}.`, `Начало действия ${m[2]}(${m[3] ? m[3] : ''})${m[1] !== 'void' ? ` — оно возвращает: ${typeName(m[1], true)}` : ''}.`)],
+  [/^(?:public\s+)?struct\s+(\w+)/, (m) => T(`The value-blueprint (struct) ${m[1]}: copied on every assignment.`, `Чертёж-значение (struct) ${m[1]}: копируется при каждом присваивании.`)],
   [/^public\s+virtual\s+(\w+)\s+(\w+)\s*\(/, (m) => T(`Begin ${m[2]}: "virtual" — child classes may replace it.`, `Начало ${m[2]}: «virtual» — наследники могут заменить его своим.`)],
   [/^public\s+override\s+(\w+)\s+(\w+)\s*\(/, (m) => T(`Begin ${m[2]}: "override" — this class's own version replaces the parent's.`, `Начало ${m[2]}: «override» — своя версия этого класса вместо родительской.`)],
   [/^(?:public\s+)?(\w+)\s+(\w+)\s*\{\s*get;\s*(private\s+)?set;\s*\}(?:\s*=\s*(.+);)?/, (m) => T(`A property ${m[2]} (${typeName(m[1], false)}): everybody can read it${m[3] ? ', only this class can change it' : ''}${m[4] ? `; starts as ${m[4]}` : ''}.`, `Свойство ${m[2]} (${typeName(m[1], true)}): прочитать может любой${m[3] ? ', изменить — только этот класс' : ''}${m[4] ? `; в начале ${m[4]}` : ''}.`)],
@@ -216,6 +217,8 @@ const RULES: Rule[] = [
   [/^else\s+if\s*\((.+)\)/, (m) => T(`Otherwise, if ${condEn(m[1])}:`, `Иначе, если ${cond(m[1])}:`)],
   [/^if\s*\(\s*Input\.GetKeyDown\(KeyCode\.(\w+)\)\s*(&&\s*(.+))?\)/, (m) => T(`If ${m[1]} was JUST pressed (this frame)${m[3] ? ` and ${condEn(m[3])}` : ''}:`, `Если только что нажали ${key(m[1])} (в этом кадре)${m[3] ? ` и ${cond(m[3])}` : ''}:`)],
   [/^if\s*\(\s*Input\.GetKey\(KeyCode\.(\w+)\)\s*\)/, (m) => T(`While ${m[1]} is held:`, `Пока зажата ${key(m[1])}:`)],
+  [/^if\s*\(\s*Input\.GetButtonDown\("(\w+)"\)\s*\)/, (m) => T(`If the "${m[1]}" button was JUST pressed${m[1] === 'Jump' ? ' (Space)' : ''}:`, `Если только что нажали кнопку «${AXIS_RU[m[1]] ?? m[1]}»${m[1] === 'Jump' ? ' (Пробел)' : ''}:`)],
+  [/^if\s*\(\s*Input\.GetButton\("(\w+)"\)\s*\)/, (m) => T(`While the "${m[1]}" button is held:`, `Пока зажата кнопка «${AXIS_RU[m[1]] ?? m[1]}»:`)],
   [/^if\s*\(\s*Input\.GetMouseButtonDown\(0\)/, () => T('If the left mouse button was just clicked:', 'Если только что нажали левую кнопку мыши:')],
   [/^if\s*\(\s*Input\.GetMouseButton\(0\)/, () => T('While the left mouse button is held:', 'Пока зажата левая кнопка мыши:')],
   [/^if\s*\(\s*(\w+)\.CompareTag\("(\w+)"\)\s*\)/, (m) => T(`If ${m[1]} has the tag "${m[2]}":`, `Если у ${m[1]} тег «${m[2]}»:`)],
@@ -288,15 +291,74 @@ const RULES: Rule[] = [
 ];
 
 /** Plain-words translation of one line, or null when no rule knows it (honest, no guessing). */
-export function explainLine(line: string): Text2 | null {
-  const t = line.trim().replace(/\s*\/\/(?!.*["']).*$/, (c) => (line.trim().startsWith('//') ? c : ''));
-  if (!t) return null;
-  const src = line.trim().startsWith('//') ? line.trim() : t.trim();
+function ruleFor(src: string): Text2 | null {
   for (const [re, f] of RULES) {
     const m = re.exec(src);
     if (m) return f(m);
   }
   return null;
+}
+
+/** "if (" … the matching ")" — returns the condition and what follows, or null. */
+function splitIf(src: string): { cond: string; rest: string } | null {
+  const m = /^if\s*\(/.exec(src);
+  if (!m) return null;
+  let depth = 1;
+  for (let i = m[0].length; i < src.length; i++) {
+    const c = src[i];
+    if (c === '(') depth++;
+    else if (c === ')' && --depth === 0) return { cond: src.slice(m[0].length, i).trim(), rest: src.slice(i + 1).trim() };
+  }
+  return null;
+}
+
+/** Splits a condition at its first top-level && or ||. */
+function splitCond(c: string): { first: string; op: string; rest: string } | null {
+  let depth = 0;
+  for (let i = 0; i < c.length - 1; i++) {
+    const ch = c[i];
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    else if (depth === 0 && (c.slice(i, i + 2) === '&&' || c.slice(i, i + 2) === '||')) return { first: c.slice(0, i).trim(), op: c.slice(i, i + 2), rest: c.slice(i + 2).trim() };
+  }
+  return null;
+}
+
+const lower1 = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
+const SPECIAL_COND = /^(Input\.|Physics\.|[\w.]+\.CompareTag\(|.+\s[!=]=\s*null$)/;
+
+/** One-line ifs ("if (x) y;"), "else if" and "special check && something" read as a whole sentence. */
+function explainIf(src: string): Text2 | null {
+  const elseIf = /^else\s+(if\s*\(.*)$/.exec(src);
+  if (elseIf) {
+    const inner = explainIf(elseIf[1]) ?? ruleFor(elseIf[1]);
+    return inner ? T(`Otherwise, ${lower1(inner.en)}`, `Иначе, ${lower1(inner.ru)}`) : null;
+  }
+  const p = splitIf(src);
+  if (!p) return null;
+  let head: Text2 | null = null;
+  const parts = splitCond(p.cond);
+  if (parts && SPECIAL_COND.test(parts.first)) {
+    const h = ruleFor(`if (${parts.first})`);
+    if (h) head = T(`${h.en.replace(/:$/, '')} ${parts.op === '&&' ? 'and' : 'or'} ${condEn(parts.rest)}:`, `${h.ru.replace(/:$/, '')} ${parts.op === '&&' ? 'и' : 'или'} ${cond(parts.rest)}:`);
+  }
+  head ??= ruleFor(`if (${p.cond})`);
+  if (!p.rest || p.rest === '{') return parts && head ? head : null;
+  if (/^return\s*;$/.test(p.rest)) return null;
+  const action = explainLine(p.rest);
+  if (!head || !action) return null;
+  return T(`${head.en.replace(/:$/, '')} → ${lower1(action.en)}`, `${head.ru.replace(/:$/, '')} → ${lower1(action.ru)}`);
+}
+
+export function explainLine(line: string): Text2 | null {
+  const t = line.trim().replace(/\s*\/\/(?!.*["']).*$/, (c) => (line.trim().startsWith('//') ? c : ''));
+  if (!t) return null;
+  const src = line.trim().startsWith('//') ? line.trim() : t.trim();
+  if (/^(else\s+)?if\s*\(/.test(src)) {
+    const r = explainIf(src);
+    if (r) return r;
+  }
+  return ruleFor(src);
 }
 
 /** Lines that need no explanation (empty, braces only). */

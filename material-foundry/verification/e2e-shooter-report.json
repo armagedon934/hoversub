@@ -1,0 +1,147 @@
+{
+  "when": "2026-11-05T03:10:28.419Z",
+  "passed": 26,
+  "failed": 2,
+  "checks": [
+    {
+      "name": "Welcome shows the big \"Shooter from zero\" card first",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "25 missions in 5 chapters + free play",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mission 1 starts on a soft light screen (light, but not glaring white)",
+      "ok": true,
+      "detail": "rgb 221,225,230, stage 840×632"
+    },
+    {
+      "name": "The blanks counter shows what is left",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Upload is refused while ___ is left, with a clear note",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "New words open a plain explanation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Hints open one by one",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The blank ___ is highlighted in the editor",
+      "ok": true,
+      "detail": "using UnityEngine;public class Radio : M"
+    },
+    {
+      "name": "After typing, all blanks are filled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mission 1 is complete after writing the radio message",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The Debug.Log message arrives on the in-game radio",
+      "ok": true,
+      "detail": "📻 Приём! Боец на связи"
+    },
+    {
+      "name": "Mission 3: holding the real W key walks to the circle",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mission s05 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "0.9 s"
+    },
+    {
+      "name": "Mission s08 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "3.4 s"
+    },
+    {
+      "name": "Mission s10 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "0.9 s"
+    },
+    {
+      "name": "Mission s16 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "11.1 s"
+    },
+    {
+      "name": "Mission s18 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "2.9 s"
+    },
+    {
+      "name": "Mission s22 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "2.5 s"
+    },
+    {
+      "name": "Mission s24 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "0.4 s"
+    },
+    {
+      "name": "A syntax mistake is explained next to the code",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Read simply\" opens the 5-lines reader for the mission script",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Final mission: the match against 5 bots is won (team of 3, real loop)",
+      "ok": true,
+      "detail": "12.5 s"
+    },
+    {
+      "name": "Free play: the whole game runs with every script (timer and enemies on screen)",
+      "ok": true,
+      "detail": "30 / 30Врагов: 5⏱ 178"
+    },
+    {
+      "name": "Free play: the player moves with the keyboard",
+      "ok": false,
+      "detail": "-25.4999"
+    },
+    {
+      "name": "Completed missions are remembered",
+      "ok": true,
+      "detail": "s01,s03,s05,s08,s10,s16,s18,s22,s24,s25"
+    },
+    {
+      "name": "Unexpected failure",
+      "ok": false,
+      "detail": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('sh-mission-s10')\u001b[22m\n\u001b[2m    - locator resolved to <button title=\"10. Луч\" class=\"sh-dot done\" data-testid=\"sh-mission-s10\">✓</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - performing click action\u001b[22m\n\u001b[2m      - <html lang=\"en\">…</html> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - performing click action\u001b[22m\n\u001b[2m      - <html lang=\"en\">…</html> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    24 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - performing click action\u001b[22m\n\u001b[2m       - <html lang=\"en\">…</html> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\nlocator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('sh-mission-s10')\u001b[22m\n\u001b[2m    - locator resolved to <button title=\"10. Луч\" class=\"sh-dot done\" data-testid=\"sh-mission-s10\">✓</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - performing click action\u001b[22m\n\u001b[2m      - <html lang=\"en\">…</html> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - performing click action\u001b[22m\n\u001b[2m      - <html lang=\"en\">…</html> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    24 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - performing click action\u001b[22m\n\u001b[2m       - <html lang=\"en\">…</html> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at main (/home/user/hoversub/material-foundry/scripts/e2e-shooter.ts:215:46)"
+    },
+    {
+      "name": "No requests left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

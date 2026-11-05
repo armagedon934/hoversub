@@ -12,7 +12,7 @@ import { csharp } from '@codemirror/legacy-modes/mode/clike';
 import { linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState, Prec, StateEffect, StateField, type Extension } from '@codemirror/state';
-import { Decoration, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate } from '@codemirror/view';
+import { Decoration, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, MatchDecorator, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { pick, tr } from '../i18n';
 import { CPP_WORDS, CS_WORDS, JS_WORDS, PY_WORDS, UNITY_EVENTS, csMembers, type ApiItem } from './api';
@@ -319,6 +319,8 @@ export interface EditorOptions {
   /** Alt+A or Ctrl+Shift+Space: ask the local AI (when enabled). */
   onAskAi?: () => void;
   ghost: boolean;
+  /** Extra CodeMirror extensions (e.g. highlighting the blanks ___ of a mission). */
+  extra?: Extension[];
 }
 
 export interface WorkshopEditor {
@@ -381,6 +383,7 @@ export function createEditor(parent: HTMLElement, o: EditorOptions): WorkshopEdi
           if (u.selectionSet || u.docChanged) o.onCursor(u.state.selection.main.head);
         }),
         EditorView.contentAttributes.of({ 'aria-label': tr('Code editor', 'Редактор кода'), 'data-testid': 'ws-editor-content', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
+        ...(o.extra ?? []),
       ],
     }),
   });
@@ -431,4 +434,21 @@ export function showAiGhost(view: EditorView, text: string, why: string): void {
   const pos = view.state.selection.main.head;
   view.dispatch({ effects: setGhost.of({ pos, text, why, fromAi: true }) });
   view.focus();
+}
+
+/** Highlights every ___ (a blank to fill in a mission) so it is easy to find. */
+export function blankHighlighter(): Extension {
+  const deco = new MatchDecorator({ regexp: /___/g, decoration: Decoration.mark({ class: 'cm-blank', attributes: { title: tr('Fill this blank', 'Заполни этот пропуск') } }) });
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+      constructor(v: EditorView) {
+        this.decorations = deco.createDeco(v);
+      }
+      update(u: ViewUpdate) {
+        this.decorations = deco.updateDeco(u, this.decorations);
+      }
+    },
+    { decorations: (v) => v.decorations },
+  );
 }

@@ -31,13 +31,15 @@ export function useGuide(): GuideState | null {
     return { text: tr('Write code. Grey text = a guess of what comes next (Tab accepts). Red underline = a problem with a fix on the right. "Run" runs it safely.', 'Пиши код. Серый текст — догадка, что дальше (Tab — принять). Красное подчёркивание — проблема, справа есть исправление. «Запустить» — безопасный запуск.'), target: null };
   if (view === 'unity')
     return { text: tr('1) Read the task. 2) Change the code on the left. 3) Press "Play" and use the arrow keys. Stuck? Press "Hint".', '1) Прочитай задание. 2) Измени код слева. 3) Нажми «Играть» и жми стрелки. Застрял? Нажми «Подсказка».'), target: null };
+  if (view === 'shooter')
+    return { text: tr('1) Read the radio message. 2) Fill the highlighted ___ in the code. 3) "Upload the script", click the game and play. Stuck? "Hint" or "Show me how to play".', '1) Прочитай сообщение по рации. 2) Заполни подсвеченные ___ в коде. 3) «Загрузить прошивку», нажми на игру и играй. Застрял? «Подсказка» или «Покажи, как играть».'), target: null };
   if (view === 'errors') return { text: tr('Paste the red error text — each error gets a plain explanation and a fix.', 'Вставь красный текст ошибки — для каждой ошибки будет простое объяснение и исправление.'), target: null };
   if (view === 'glossary')
     return { text: tr('This is the dictionary of ideas. Pick any idea on the left; the level buttons change how detailed it is.', 'Это словарь идей. Выбери любую идею слева; кнопки уровней меняют, насколько подробно объяснение.'), target: null };
   if (!files)
     return {
       step: 1,
-      text: tr('Start here: "Learn from zero" — lessons and courses; "Write my own code" — the Workshop; "Mini-Unity" — your scripts move a hero.', 'Начни отсюда: «Учиться с нуля» — уроки и курсы; «Писать свой код» — Мастерская; «Мини-Unity» — твои скрипты двигают героя.'),
+      text: tr('Start here: "Shooter from zero" — learn Unity C# while playing a 3D game; "Learn from zero" — lessons and courses; "Write my own code" — the Workshop.', 'Начни отсюда: «Шутер с нуля» — учи C# для Unity, играя в 3D-игру; «Учиться с нуля» — уроки и курсы; «Писать свой код» — Мастерская.'),
       target: 'start',
     };
   if (view === 'map') return { text: tr('This is the project map. Arrows show which file uses which. Click a file to open it.', 'Это карта проекта. Стрелки показывают, какой файл каким пользуется. Нажми на файл, чтобы открыть его.'), target: null };

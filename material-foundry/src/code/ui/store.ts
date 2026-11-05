@@ -14,7 +14,7 @@ import { Workspace } from '../workspace/workspace';
 import { getCodeClient } from '../worker/client';
 import type { LoadResult } from './fileLoading';
 
-export type CodeView = 'welcome' | 'learn' | 'workshop' | 'unity' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
+export type CodeView = 'welcome' | 'learn' | 'workshop' | 'unity' | 'shooter' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
 export type DiagramKind = 'auto' | 'flow' | 'connections' | 'data' | 'files';
 
 export interface Prefs {
