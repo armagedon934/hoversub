@@ -168,6 +168,8 @@ export interface Host {
   method?(target: HostV, name: string, args: V[], line: number): V | typeof NOT_FOUND;
   /** A static call on a type the program does not define (e.g. GameObject.FindWithTag, Physics2D.Raycast). */
   static?(type: string, name: string, args: V[], line: number): V | typeof NOT_FOUND;
+  /** Arithmetic with engine values (Quaternion * Quaternion, Quaternion * Vector3). */
+  arith?(op: string, a: V, b: V, line: number): V | typeof NOT_FOUND;
   /** "new X(…)" for a type the program does not define (e.g. new WaitForSeconds(1f)). */
   create?(type: string, args: V[], line: number): V | typeof NOT_FOUND;
   log?(text: string): void;
@@ -499,6 +501,9 @@ export class CsProgram {
   private paramInfo(n: SyntaxNode): { name: string; type: string; def: SyntaxNode | null }[] {
     const pl = n.childForFieldName('parameters');
     if (!pl) return [];
+    for (const p of named(pl))
+      if (p.type === 'parameter' && /^(ref|out)\s/.test(p.text))
+        throw new CsError(tr('Your own methods with ref/out parameters are not supported yet (engine functions like Physics.Raycast(…, out hit) work).', 'Свои методы с параметрами ref/out пока не поддерживаются (функции движка вроде Physics.Raycast(…, out hit) работают).'), lineOf(p), 'unsupported');
     return named(pl)
       .filter((p) => p.type === 'parameter')
       .map((p) => {
@@ -1190,6 +1195,11 @@ export class CsProgram {
       if (op === '/') return vec(a.x / b, a.y / b, a.z / b, a.dim);
     }
     if (isNum(a) && typeof b === 'object' && b?.k === 'vec' && op === '*') return vec(b.x * a, b.y * a, b.z * a, b.dim);
+    if (typeof a === 'object' && a?.k === 'vec' && op === '-' && (b === undefined)) return vec(-a.x, -a.y, -a.z, a.dim);
+    if (((typeof a === 'object' && a?.k === 'host') || (typeof b === 'object' && b?.k === 'host')) && this.host.arith) {
+      const r = this.host.arith(op, a, b, line);
+      if (r !== NOT_FOUND) return r;
+    }
     const x = num(a, line);
     const y = num(b, line);
     switch (op) {
@@ -1398,7 +1408,26 @@ export class CsProgram {
     const out: V[] = [];
     for (const a of list ? named(list) : []) {
       const e = a.type === 'argument' ? named(a).at(-1)! : a;
-      if (a.type === 'argument' && /^(ref|out|in)\b/.test(a.text)) throw new CsError(tr('ref/out parameters are not supported by the learning runner yet.', 'Параметры ref/out учебный запуск пока не поддерживает.'), lineOf(a), 'unsupported');
+      if (a.type === 'argument' && /^(ref|out)\b/.test(a.text)) {
+        // out RaycastHit hit / out hit / ref velocity: pass a reference to the box; engine functions fill it.
+        let cell: Cell | undefined;
+        if (e.type === 'declaration_expression') {
+          const tn = e.childForFieldName('type');
+          const nm = e.childForFieldName('name')?.text ?? named(e).at(-1)?.text ?? '?';
+          cell = { v: null, type: tn ? typeName(tn) : 'var' };
+          scope.vars.set(nm, cell);
+        } else if (e.type === 'identifier') {
+          cell = scope.lookup(e.text) ?? this.currentSelfField(e.text) ?? (self?.fields.get(e.text));
+          if (!cell) throw new CsError(tr(`There is no box "${e.text}" to pass with ${a.text.split(/\s/)[0]}.`, `Нет коробки «${e.text}», чтобы передать её через ${a.text.split(/\s/)[0]}.`), lineOf(a), 'runtime', 'CS0103');
+        } else if (e.type === 'member_access_expression') {
+          const owner = yield* this.eval(e.childForFieldName('expression')!, scope, self, cls);
+          const nm = e.childForFieldName('name')?.text ?? '';
+          if (owner && typeof owner === 'object' && owner.k === 'obj') cell = owner.fields.get(nm);
+        }
+        if (!cell) throw new CsError(tr('This kind of ref/out argument is not supported yet.', 'Такой ref/out-аргумент пока не поддерживается.'), lineOf(a), 'unsupported');
+        out.push({ k: 'host', kind: 'ref', ref: cell });
+        continue;
+      }
       out.push(yield* this.eval(e, scope, self, cls));
     }
     return out;
@@ -1789,6 +1818,99 @@ export class CsProgram {
         return vec(p.x + (q.x - p.x) * t, p.y + (q.y - p.y) * t, p.z + (q.z - p.z) * t, p.dim);
       }
       case 'Vector2.MoveTowards':
+      case 'Vector3.Cross': {
+        const p = args[0] as VecV;
+        const q = args[1] as VecV;
+        return vec(p.y * q.z - p.z * q.y, p.z * q.x - p.x * q.z, p.x * q.y - p.y * q.x, 3);
+      }
+      case 'Vector2.Dot':
+      case 'Vector3.Dot': {
+        const p = args[0] as VecV;
+        const q = args[1] as VecV;
+        return p.x * q.x + p.y * q.y + p.z * q.z;
+      }
+      case 'Vector3.Scale': {
+        const p = args[0] as VecV;
+        const q = args[1] as VecV;
+        return vec(p.x * q.x, p.y * q.y, p.z * q.z, 3);
+      }
+      case 'Vector2.ClampMagnitude':
+      case 'Vector3.ClampMagnitude': {
+        const p = args[0] as VecV;
+        const m = Math.hypot(p.x, p.y, p.z);
+        const max = a(1);
+        return m > max && m > 0 ? vec((p.x / m) * max, (p.y / m) * max, (p.z / m) * max, p.dim) : p;
+      }
+      case 'Vector3.ProjectOnPlane': {
+        const p = args[0] as VecV;
+        const n = args[1] as VecV;
+        const nl = Math.hypot(n.x, n.y, n.z) || 1;
+        const d = (p.x * n.x + p.y * n.y + p.z * n.z) / (nl * nl);
+        return vec(p.x - n.x * d, p.y - n.y * d, p.z - n.z * d, 3);
+      }
+      case 'Vector2.Angle':
+      case 'Vector3.Angle': {
+        const p = args[0] as VecV;
+        const q = args[1] as VecV;
+        const d = (p.x * q.x + p.y * q.y + p.z * q.z) / ((Math.hypot(p.x, p.y, p.z) * Math.hypot(q.x, q.y, q.z)) || 1);
+        return Math.fround((Math.acos(Math.max(-1, Math.min(1, d))) * 180) / Math.PI);
+      }
+      case 'Mathf.SmoothDamp': {
+        // SmoothDamp(current, target, ref velocity, smoothTime) — the same spring as Unity.
+        const ref = args[2] as HostV;
+        const cell = ref?.k === 'host' && ref.kind === 'ref' ? (ref.ref as Cell) : null;
+        const [cur, target, time] = [a(0), a(1), Math.max(0.0001, a(3))];
+        const vel = typeof cell?.v === 'number' ? cell.v : 0;
+        const dt = typeof args[5] === 'number' ? args[5] : 1 / 60;
+        const omega = 2 / time;
+        const x = omega * dt;
+        const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+        const change = cur - target;
+        const temp = (vel + omega * change) * dt;
+        if (cell) cell.v = (vel - omega * temp) * exp;
+        return Math.fround(target + (change + temp) * exp);
+      }
+      case 'Vector3.SmoothDamp': {
+        const ref = args[2] as HostV;
+        const cell = ref?.k === 'host' && ref.kind === 'ref' ? (ref.ref as Cell) : null;
+        const cur = args[0] as VecV;
+        const target = args[1] as VecV;
+        const time = Math.max(0.0001, a(3));
+        const v0 = cell?.v && typeof cell.v === 'object' && (cell.v as VecV).k === 'vec' ? (cell.v as VecV) : vec(0, 0, 0, 3);
+        const dt = 1 / 60;
+        const omega = 2 / time;
+        const x = omega * dt;
+        const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+        const res = [0, 0, 0];
+        const nv = [0, 0, 0];
+        (['x', 'y', 'z'] as const).forEach((k, i) => {
+          const change = cur[k] - target[k];
+          const temp = (v0[k] + omega * change) * dt;
+          nv[i] = (v0[k] - omega * temp) * exp;
+          res[i] = target[k] + (change + temp) * exp;
+        });
+        if (cell) cell.v = vec(nv[0], nv[1], nv[2], 3);
+        return vec(res[0], res[1], res[2], 3);
+      }
+      case 'Mathf.LerpAngle': {
+        let d = (a(1) - a(0)) % 360;
+        if (d > 180) d -= 360;
+        if (d < -180) d += 360;
+        return a(0) + d * Math.min(1, Math.max(0, a(2)));
+      }
+      case 'Mathf.InverseLerp':
+        return a(1) === a(0) ? 0 : Math.min(1, Math.max(0, (a(2) - a(0)) / (a(1) - a(0))));
+      case 'Mathf.Exp':
+        return Math.exp(a(0));
+      case 'Mathf.Log':
+        return Math.log(a(0));
+      case 'Mathf.PerlinNoise': {
+        // Smooth pseudo-noise 0…1 (good enough for camera shake and sway).
+        const nx = a(0);
+        const ny = a(1);
+        const v = Math.sin(nx * 1.7 + Math.sin(ny * 2.3) * 1.3) * 0.5 + Math.sin(ny * 1.1 + nx * 0.7) * 0.5;
+        return Math.fround(0.5 + v * 0.5 * 0.9);
+      }
       case 'Vector3.MoveTowards': {
         const p = args[0] as VecV;
         const q = args[1] as VecV;
