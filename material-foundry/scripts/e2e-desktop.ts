@@ -113,7 +113,10 @@ async function main() {
     await page.getByTestId('mu-play').click();
     await page.getByTestId('mu-won').waitFor({ timeout: 20000 });
     check('Desktop: Mini-Unity level is won', true);
+    await page.getByTestId('fx-lesson').waitFor({ timeout: 10000 });
+    check('Desktop: the "done" card with the sentence to remember appears', true);
     await page.screenshot({ path: join(SHOTS, '03-desktop-mini-unity.png') });
+    await page.getByTestId('fx-close').click();
 
     // Local AI through the main process (the fake server sends no CORS headers).
     await page.getByTestId('open-settings').click();

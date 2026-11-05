@@ -11,8 +11,7 @@
 //                                               glued to the most important idea
 //   🔓 a lock breaking + the district name ... "a new part of the map is open" (rare, the biggest)
 //
-// Settings: full (everything), calm (no flying things — only colour and text) or off (only the card
-// with the sentence to remember). The OS "reduce motion" setting starts in calm.
+// Settings: full (everything), calm (no flying things — only colour, text and the cards) or off (nothing). The OS "reduce motion" setting starts in calm.
 
 import { create } from 'zustand';
 import type { Text2 } from '../i18n';
@@ -126,11 +125,13 @@ export const fx = {
   /** A lesson (level, mission) is done: confetti and the card with the sentence to remember. */
   lesson(data: LessonFx) {
     playUi('success');
+    if (fxLevel() === 'off') return;
     if (fxLevel() === 'full') useFx.setState((s) => ({ confetti: s.confetti + 1 }));
     useFx.setState((s) => ({ overlays: [...s.overlays, { kind: 'lesson', data, id: nextId++ }] }));
   },
   /** A new district of the map is open. */
   unlock(data: UnlockFx) {
+    if (fxLevel() === 'off') return;
     useFx.setState((s) => ({ overlays: [...s.overlays, { kind: 'unlock', data, id: nextId++ }] }));
   },
   close(id: number) {

@@ -401,7 +401,15 @@ export function MiniUnity() {
           p.set({ done: [...p.done, level.id] });
           addXp(25);
         }
-        fx.lesson({ icon: level.icon, title: pick(level.title), anchor: pick(level.learn), xp: first ? 25 : undefined });
+        const list = PROJECT_IDS.has(level.id) ? PROJECT : LEVELS;
+        const nx = list[list.findIndex((l) => l.id === level.id) + 1];
+        fx.lesson({
+          icon: level.icon,
+          title: pick(level.title),
+          anchor: pick(level.learn),
+          xp: first ? 25 : undefined,
+          next: nx ? { label: tr('Next level', 'Следующий уровень'), go: () => useUnityProgress.getState().set({ levelId: nx.id }) } : undefined,
+        });
       }
     };
     raf.current = requestAnimationFrame(loop);

@@ -1,20 +1,20 @@
 {
-  "when": "2026-11-05T04:27:38.568Z",
+  "when": "2026-11-05T06:10:24.328Z",
   "passed": 24,
   "failed": 0,
   "checks": [
     {
-      "name": "Welcome shows \"My path — next step\" first",
+      "name": "The program opens on \"My path\" with one big Continue button",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "My path lists 10 stages in order",
+      "name": "My path lists 12 districts in order",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Continue opens the next lesson (Mini-Unity 2D level 1)",
+      "name": "A district opens its next lesson (Mini-Unity 2D level 1)",
       "ok": true,
       "detail": ""
     },
@@ -81,7 +81,7 @@
     {
       "name": "Watching bots: the camera follows a bot and their states are drawn over them",
       "ok": true,
-      "detail": "4 labels"
+      "detail": "6 labels"
     },
     {
       "name": "The bot brain panel changes all bots live (characters and sliders)",
@@ -101,7 +101,7 @@
     {
       "name": "Racing: holding W drives the car (speedometer)",
       "ok": true,
-      "detail": "87 km/h"
+      "detail": "85 km/h"
     },
     {
       "name": "Models \"Tiling\": the brick wall from the texture studio repeats by its size",

@@ -1,10 +1,10 @@
 {
-  "when": "2026-11-05T04:33:38.180Z",
+  "when": "2026-11-05T06:09:30.491Z",
   "passed": 28,
   "failed": 0,
   "checks": [
     {
-      "name": "Welcome shows the big \"Shooter from zero\" card first",
+      "name": "The 3D shooter is a district on the map",
       "ok": true,
       "detail": ""
     },
@@ -71,7 +71,7 @@
     {
       "name": "Mission s08 completes in the real game loop (\"show me\")",
       "ok": true,
-      "detail": "3.5 s"
+      "detail": "3.4 s"
     },
     {
       "name": "Mission s10 completes in the real game loop (\"show me\")",
@@ -91,7 +91,7 @@
     {
       "name": "Mission s22 completes in the real game loop (\"show me\")",
       "ok": true,
-      "detail": "2.4 s"
+      "detail": "2.5 s"
     },
     {
       "name": "Mission s24 completes in the real game loop (\"show me\")",

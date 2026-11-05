@@ -1,7 +1,7 @@
 {
-  "when": "2026-11-05T06:02:44.684Z",
-  "passed": 42,
-  "total": 43,
+  "when": "2026-11-05T06:07:37.635Z",
+  "passed": 68,
+  "total": 68,
   "checks": [
     {
       "name": "UNDERSTAND CODE opens from the top bar",
@@ -214,9 +214,134 @@
       "detail": ""
     },
     {
-      "name": "Unexpected failure",
-      "ok": false,
-      "detail": "locator.setInputFiles: Timeout 30000ms exceeded."
+      "name": "Grammars are spread over several analysis workers",
+      "ok": true,
+      "detail": "3 workers for 18 grammars"
+    },
+    {
+      "name": "Page stays alive 15 s after loading every grammar (Chromium compiler memory)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "All 28 sample files detected correctly",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Binary file listed but not opened as text",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Opening a script never runs it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SQL, PowerShell, Kotlin, Lua and unknown files are explainable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Search inside the code finds matches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Large file (24,000 lines) opens and only visible lines are drawn",
+      "ok": true,
+      "detail": "5061 ms, 48 line elements"
+    },
+    {
+      "name": "Clicking deep inside a large file works",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Keeps working with the network switched off",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Guide offers the next step (open the main file)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Guide then says: click a word",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Show me step by step\" walks through the lines of a function",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Animation shows the changed box (health = 70)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Animation shows the program output on the \"screen\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 1: right answer is confirmed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 2: a wrong answer is answered kindly, with another try",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 3: \"find the mistake\" by tapping the wrong symbol",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Game 4: \"put the lines in order\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Lesson completed: stars and XP are saved",
+      "ok": true,
+      "detail": "xp 55, stars 2"
+    },
+    {
+      "name": "\"Next lesson\" opens the next lesson",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Russian interface: tabs and lessons switch to Russian",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Russian explanations",
+      "ok": true,
+      "detail": "Функция — это именованный набор шагов, который можно использовать снова и снова. Она может получать входные данные и возвращать результат."
+    },
+    {
+      "name": "No request ever left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No errors in the page",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Switching back to Materials shows the material studio",
+      "ok": true,
+      "detail": ""
     }
   ]
 }

@@ -1,11 +1,11 @@
 {
-  "when": "2026-11-05T04:30:02.315Z",
+  "when": "2026-11-05T06:08:06.207Z",
   "passed": 62,
   "failed": 0,
   "dialogs": 0,
   "checks": [
     {
-      "name": "Welcome offers Workshop, Mini-Unity and the error translator",
+      "name": "Free mode offers the Workshop, the example and the error translator",
       "ok": true,
       "detail": ""
     },
