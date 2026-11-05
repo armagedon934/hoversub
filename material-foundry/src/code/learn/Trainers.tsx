@@ -244,9 +244,9 @@ function PredictGame({ onExit }: { onExit: () => void }) {
           <pre className="tr-snippet" data-testid="predict-code">
             {q.code}
           </pre>
-          <div className="cv-options">
+          <div className="crs-options">
             {q.options.map((o, n) => (
-              <button key={n} className={`cv-opt${picked !== null && n === q.answer ? ' good' : ''}${picked === n && n !== q.answer ? ' bad' : ''}`} onClick={() => choose(n)} data-testid="predict-option">
+              <button key={n} className={`crs-opt${picked !== null && n === q.answer ? ' good' : ''}${picked === n && n !== q.answer ? ' bad' : ''}`} onClick={() => choose(n)} data-testid="predict-option">
                 <pre>{o.text}</pre>
               </button>
             ))}

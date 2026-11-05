@@ -256,6 +256,7 @@ async function main() {
     check('C++ is honestly not run (needs a compiler)', /компилятор/.test((await page.getByTestId('ws-result').textContent()) ?? ''));
 
     // ------------------------------------------------------------------ Mini-Unity
+    await page.getByTestId('view-games').click();
     await page.getByTestId('view-unity').click();
     await page.getByTestId('mini-unity').waitFor();
     await page.getByTestId('mu-level-move-right').click();
@@ -497,6 +498,7 @@ async function main() {
 
     // ------------------------------------------------------------------ narrow screen
     await page.setViewportSize({ width: 820, height: 1100 });
+    await page.getByTestId('view-games').click();
     await page.getByTestId('view-unity').click();
     await page.getByTestId('mini-unity').waitFor();
     await shot(page, '15-tablet-mini-unity');

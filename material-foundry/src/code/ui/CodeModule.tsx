@@ -6,7 +6,7 @@
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { AudioLines, Bot, Brain, Gauge, BookOpenText, Code2, Crosshair, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
+import { Bot, Brain, Joystick, Route, BookOpenText, Code2, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -24,6 +24,7 @@ import { THEMES, themeById } from './themes';
 import { loudness, playUi, UI_SOUNDS, useSound, type UiSound } from './uiSound';
 import { sfx } from '../workshop/sfx';
 import { CoursesView } from '../learn/CourseView';
+import { LearningPath, nextStep, usePathStages } from '../learn/LearningPath';
 import { DailyGoal, Trainers } from '../learn/Trainers';
 import { Learn } from '../learn/Learn';
 import { getCodeClient } from '../worker/client';
@@ -38,6 +39,16 @@ import { WhatIfDialog } from './WhatIf';
 import { readDataTransfer } from './fileLoading';
 import { useCode, workspace, type CodeView as View } from './store';
 import './code.css';
+
+/** The games: each teaches by playing; one tab "Games" and a row to switch between them. */
+const GAMES: View[] = ['unity', 'shooter', 'racing', 'models', 'sound'];
+const GAME_TABS: { v: View; icon: string; label: Text2 }[] = [
+  { v: 'unity', icon: '🕹', label: { en: 'Mini-Unity 2D', ru: 'Мини-Unity 2D' } },
+  { v: 'shooter', icon: '🎯', label: { en: 'Shooter 3D', ru: 'Шутер 3D' } },
+  { v: 'racing', icon: '🏎', label: { en: 'Racing', ru: 'Гонки' } },
+  { v: 'models', icon: '🎨', label: { en: 'Models & materials', ru: 'Модели и материалы' } },
+  { v: 'sound', icon: '🔊', label: { en: 'Sound', ru: 'Звук' } },
+];
 
 // The 3D game (three.js) loads only when it is opened.
 const Shooter = lazy(() => import('../workshop/Shooter'));
@@ -75,6 +86,7 @@ function Welcome() {
           🐞 🔮 🔄 {tr('Trainers — 5 minutes', 'Тренажёры — 5 минут')}
         </button>
       </div>
+      <PathCard />
       <button className="start-hero" onClick={() => setView('shooter')} data-testid="start-shooter">
         <span className="start-hero-emoji" aria-hidden>
           🎯
@@ -184,6 +196,33 @@ function SoundSettings() {
           ))
         : null}
       <span className="muted small">{tr('Every theme has its own voice. Make your own sounds in the Sound Lab.', 'У каждой темы свой голос. Свои звуки — в Звуковой лаборатории.')}</span>
+    </div>
+  );
+}
+
+/** The next step of "My path" — one click to continue learning in the right order. */
+function PathCard() {
+  const stages = usePathStages();
+  const next = nextStep(stages);
+  const setView = useCode((s) => s.setView);
+  const total = stages.reduce((n, s) => n + s.items.length, 0);
+  const done = stages.reduce((n, s) => n + s.items.filter((x) => s.done.has(x.id)).length, 0);
+  return (
+    <div className="path-card" data-testid="path-card">
+      <button className="path-card-go" onClick={() => next.stage.open(next.item?.id)} data-testid="path-card-go">
+        <span className="lp-next-icon">{next.stage.icon}</span>
+        <span>
+          <b>{tr('My path — next step', 'Мой путь — следующий шаг')}</b>
+          <span>
+            {pick(next.stage.title)}
+            {next.item ? ` → ${pick(next.item.title)}` : ''}
+          </span>
+        </span>
+        <span className="lp-go">▶</span>
+      </button>
+      <button className="btn small ghost" onClick={() => setView('path')} data-testid="path-card-all">
+        🗺 {tr('The whole path', 'Весь путь')} · {done}/{total}
+      </button>
     </div>
   );
 }
@@ -393,6 +432,24 @@ export default function CodeModule() {
   const init = useCode((s) => s.init);
   const prefs = useCode((s) => s.prefs);
   const view = useCode((s) => s.view);
+  // the "Games" tab opens the game you played last
+  const [lastGame, setLastGame] = useState<View>(() => {
+    try {
+      const g = localStorage.getItem('mf.lastGame') as View | null;
+      return g && GAMES.includes(g) ? g : 'shooter';
+    } catch {
+      return 'shooter';
+    }
+  });
+  useEffect(() => {
+    if (!GAMES.includes(view)) return;
+    setLastGame(view);
+    try {
+      localStorage.setItem('mf.lastGame', view);
+    } catch {
+      /* ignore */
+    }
+  }, [view]);
   const setView = useCode((s) => s.setView);
   const busy = useCode((s) => s.busy);
   const error = useCode((s) => s.error);
@@ -450,7 +507,7 @@ export default function CodeModule() {
         } else s.toast('info', undo ? tr('Nothing to undo.', 'Нечего отменять.') : tr('Nothing to redo.', 'Нечего возвращать.'));
         return;
       }
-      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'racing' || s.view === 'models' || s.view === 'sound' || s.view === 'errors') return;
+      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'racing' || s.view === 'models' || s.view === 'path' || s.view === 'sound' || s.view === 'errors') return;
       if (/^[1-5]$/.test(e.key)) s.setLevel(Number(e.key) as 1 | 2 | 3 | 4 | 5);
       else if (e.key === '?') s.simpler();
       else if (e.key === 'e') s.toggleExample();
@@ -472,14 +529,12 @@ export default function CodeModule() {
   const changedCount = workspace.changedFiles().length;
   const hasProject = files.length > 0;
   const shownView: View = !hasProject && (view === 'code' || view === 'overview' || view === 'map' || view === 'changes') ? 'welcome' : view;
-  const tabs: { v: View; label: string; icon: React.ReactNode; guide?: string }[] = hasProject
+  const tabs: { v: View; label: string; icon: React.ReactNode; guide?: string; group?: string }[] = hasProject
     ? [
+        { v: 'path', label: tr('My path', 'Мой путь'), icon: <Route size={16} /> },
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
-        { v: 'shooter', label: tr('Shooter 3D', 'Шутер 3D'), icon: <Crosshair size={16} /> },
-        { v: 'racing', label: tr('Racing', 'Гонки'), icon: <Gauge size={16} /> },
-        { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
-        { v: 'sound', label: tr('Sound', 'Звук'), icon: <AudioLines size={16} /> },
+        { v: GAMES.includes(view) ? view : lastGame, label: tr('Games', 'Игры'), icon: <Joystick size={16} />, group: 'games' },
         { v: 'overview', label: tr('About the project', 'О проекте'), icon: <BookOpenText size={16} /> },
         { v: 'code', label: tr('Code', 'Код'), icon: <Code2 size={16} /> },
         { v: 'map', label: tr('Map', 'Карта'), icon: <Network size={16} /> },
@@ -489,12 +544,10 @@ export default function CodeModule() {
       ]
     : [
         { v: 'welcome', label: tr('Start', 'Начало'), icon: <Home size={16} /> },
+        { v: 'path', label: tr('My path', 'Мой путь'), icon: <Route size={16} /> },
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
-        { v: 'shooter', label: tr('Shooter 3D', 'Шутер 3D'), icon: <Crosshair size={16} /> },
-        { v: 'racing', label: tr('Racing', 'Гонки'), icon: <Gauge size={16} /> },
-        { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
-        { v: 'sound', label: tr('Sound', 'Звук'), icon: <AudioLines size={16} /> },
+        { v: GAMES.includes(view) ? view : lastGame, label: tr('Games', 'Игры'), icon: <Joystick size={16} />, group: 'games' },
         { v: 'errors', label: tr('Errors', 'Ошибки'), icon: <Languages size={16} /> },
         { v: 'glossary', label: tr('Dictionary', 'Словарь'), icon: <MapIcon size={16} /> },
       ];
@@ -535,7 +588,7 @@ export default function CodeModule() {
       <main className="cm-center">
         <div className="cm-tabs" role="tablist" aria-label={tr('Sections', 'Разделы')}>
           {tabs.map((t) => (
-            <button key={t.v} role="tab" aria-selected={shownView === t.v} className={shownView === t.v ? 'on' : ''} onClick={() => setView(t.v)} data-testid={`view-${t.v}`} data-guide={t.guide}>
+            <button key={t.group ?? t.v} role="tab" aria-selected={t.group ? GAMES.includes(shownView) : shownView === t.v} className={(t.group ? GAMES.includes(shownView) : shownView === t.v) ? 'on' : ''} onClick={() => setView(t.v)} data-testid={t.group ? 'view-games' : `view-${t.v}`} data-guide={t.guide}>
               {t.icon} {t.label}
             </button>
           ))}
@@ -556,9 +609,20 @@ export default function CodeModule() {
             {error}
           </div>
         ) : null}
+        {GAMES.includes(shownView) ? (
+          <div className="cm-games" role="tablist" aria-label={tr('Games', 'Игры')}>
+            {GAME_TABS.map((g) => (
+              <button key={g.v} role="tab" aria-selected={shownView === g.v} className={shownView === g.v ? 'on' : ''} onClick={() => setView(g.v)} data-testid={`view-${g.v}`}>
+                {g.icon} {pick(g.label)}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="cm-view">
           {shownView === 'welcome' ? (
             <Welcome />
+          ) : shownView === 'path' ? (
+            <LearningPath />
           ) : shownView === 'learn' ? (
             <LearnHub />
           ) : shownView === 'workshop' ? (

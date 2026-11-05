@@ -2676,3 +2676,131 @@ label.sound-row {
   grid-template-columns: auto 1fr;
   flex: 1;
 }
+
+/* Games row (under the main tabs) */
+.cm-games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.cm-games button {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.92em;
+  cursor: pointer;
+}
+.cm-games button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+/* My path */
+.lp {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px 22px 40px;
+}
+.lp-next,
+.path-card-go {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, var(--panel)), var(--panel));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lp-next > span:nth-child(2),
+.path-card-go > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.lp-next-icon {
+  font-size: 34px;
+}
+.lp-go {
+  margin-left: auto;
+  font-size: 22px;
+  color: var(--accent);
+}
+.lp-stages {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lp-stage {
+  display: grid;
+  grid-template-columns: 34px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.lp-stage.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.lp-stage.done {
+  opacity: 0.8;
+}
+.lp-n {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--panel-2);
+  font-weight: 700;
+}
+.lp-stage.done .lp-n {
+  background: color-mix(in srgb, var(--ok) 30%, var(--panel));
+}
+.lp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lp-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.lp-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+.path-card .btn {
+  align-self: flex-start;
+}
+@media (max-width: 700px) {
+  .lp-stage {
+    grid-template-columns: 30px 1fr;
+  }
+}

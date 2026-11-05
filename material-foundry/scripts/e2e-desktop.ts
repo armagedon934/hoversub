@@ -101,6 +101,7 @@ async function main() {
     await page.screenshot({ path: join(SHOTS, '02-desktop-python.png') });
 
     // Mini-Unity level.
+    await page.getByTestId('view-games').click();
     await page.getByTestId('view-unity').click();
     await page.getByTestId('mu-level-hello').click();
     await page.locator('[data-testid="mu-editor"] .cm-content').click();

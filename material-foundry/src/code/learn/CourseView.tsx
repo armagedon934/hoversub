@@ -18,6 +18,8 @@ import { useWorkshop } from '../workshop/store';
 import { COURSES, type Course, type CourseLesson, type Quiz } from './courses';
 import { ReaderModal } from './ReaderView';
 import { useLearn } from './progress';
+import { useCode } from '../ui/store';
+import { useRacing, useShooter } from '../workshop/shooterProgress';
 
 type Stage = 'read' | 'watch' | 'quiz' | 'task' | 'done';
 
@@ -34,12 +36,12 @@ function NotedCode({ code, notes, current }: { code: string; notes: [string, Tex
     }),
   );
   return (
-    <div className="cv-code" role="list">
+    <div className="crs-code" role="list">
       {lines.map((l, i) => (
-        <div key={i} role="listitem" className={`cv-line${per[i].length ? ' noted' : ''}${current === i ? ' cur' : ''}`} data-line={i}>
-          <span className="cv-n">{i + 1}</span>
+        <div key={i} role="listitem" className={`crs-line${per[i].length ? ' noted' : ''}${current === i ? ' cur' : ''}`} data-line={i}>
+          <span className="crs-n">{i + 1}</span>
           <code>{l || ' '}</code>
-          {per[i].length ? <span className="cv-note">{per[i].join(' ')}</span> : null}
+          {per[i].length ? <span className="crs-note">{per[i].join(' ')}</span> : null}
         </div>
       ))}
     </div>
@@ -64,7 +66,7 @@ function LineWalk({ lesson, onDone }: { lesson: CourseLesson; onDone: () => void
   const [i, setI] = useState(0);
   const stop = stops[i];
   return (
-    <div className="cv-walk" data-testid="course-walk">
+    <div className="crs-walk" data-testid="course-walk">
       <p className="ws-honest muted">{tr('C++ cannot run inside this app (it needs a compiler and Unreal). Walk through the important lines:', 'C++ нельзя запустить в этой программе (нужен компилятор и Unreal). Пройдём по важным строкам:')}</p>
       <div className="ws-say" aria-live="polite">
         {tr('Line', 'Строка')} {stop.line + 1}: {stop.text} <Speak text={stop.text} />
@@ -96,13 +98,13 @@ function QuizCard({ quiz, onDone }: { quiz: Quiz; onDone: (firstTry: boolean) =>
   const [tries, setTries] = useState(0);
   const right = picked === quiz.answer;
   return (
-    <div className="cv-quiz" data-testid="course-quiz">
+    <div className="crs-quiz" data-testid="course-quiz">
       <p className="rv-front">{pick(quiz.q)}</p>
-      <div className="cv-options">
+      <div className="crs-options">
         {quiz.options.map((o, i) => (
           <button
             key={i}
-            className={`cv-opt${picked === i ? (i === quiz.answer ? ' good' : ' bad') : ''}`}
+            className={`crs-opt${picked === i ? (i === quiz.answer ? ' good' : ' bad') : ''}`}
             onClick={() => {
               if (right) return;
               setPicked(i);
@@ -165,9 +167,9 @@ function TaskStage({ lesson, onDone }: { lesson: CourseLesson; onDone: (firstTry
   };
   const info = res?.error ? explainError(res.error) : null;
   return (
-    <div className="cv-task" data-testid="course-task">
+    <div className="crs-task" data-testid="course-task">
       <p className="mu-goal">🛠 {pick(task.text)}</p>
-      <div className="cv-task-editor" ref={host} data-testid="course-task-editor" />
+      <div className="crs-task-editor" ref={host} data-testid="course-task-editor" />
       <div className="ws-row">
         <button className="btn primary big" onClick={() => void check()} data-testid="task-check">
           <Play size={16} /> {tr('Run and check', 'Запустить и проверить')}
@@ -185,7 +187,7 @@ function TaskStage({ lesson, onDone }: { lesson: CourseLesson; onDone: (firstTry
       </div>
       {hint ? <p className="mu-hint">💡 {pick(task.hint)}</p> : null}
       {res ? (
-        <div className={`cv-result ${res.ok ? 'good' : 'bad'}`} data-testid="task-result">
+        <div className={`crs-result ${res.ok ? 'good' : 'bad'}`} data-testid="task-result">
           <b>{res.ok ? tr('✅ Correct! The program printed exactly what was needed.', '✅ Верно! Программа вывела ровно то, что нужно.') : res.error ? tr('⚠ The program stopped with an error', '⚠ Программа остановилась с ошибкой') : tr('❌ Not yet — compare what is printed:', '❌ Пока нет — сравни, что выводится:')}</b>
           {res.error ? (
             <p>
@@ -193,7 +195,7 @@ function TaskStage({ lesson, onDone }: { lesson: CourseLesson; onDone: (firstTry
               {info ? ` — ${errorText(info).fix}` : ''}
             </p>
           ) : !res.ok ? (
-            <div className="cv-compare">
+            <div className="crs-compare">
               <div>
                 <span className="muted small">{tr('Needed', 'Нужно')}</span>
                 <pre>{task.expect.join('\n')}</pre>
@@ -246,7 +248,7 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
     ...(lesson.task ? ([['task', tr('4. Do it yourself', '4. Сделай сам')]] as [Stage, string][]) : []),
   ];
   return (
-    <div className="ln-lesson cv" data-testid="course-lesson">
+    <div className="ln-lesson crs" data-testid="course-lesson">
       <header className="ln-lesson-head">
         <button className="btn" onClick={onExit} data-testid="course-exit">
           <ArrowLeft size={16} /> {tr('All lessons', 'Все уроки')}
@@ -263,6 +265,7 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
         </ol>
       </header>
       {stage === 'read' ? (
+        <div className="crs-two">
         <div className="ln-intro" data-testid="course-read">
           <div className="ln-goal">🎯 {pick(lesson.goal)}</div>
           {lesson.intro.map((p, i) => (
@@ -282,6 +285,8 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
           <button className="btn big primary" onClick={() => setStage('watch')} data-testid="course-watch">
             <Play size={18} /> {lesson.lang === 'cs' ? tr('Watch it run, step by step', 'Посмотреть, как это выполняется, по шагам') : tr('Walk through the lines', 'Пройти по строкам')}
           </button>
+        </div>
+        <ResultPane lesson={lesson} />
         </div>
       ) : null}
       {stage === 'watch' ? (
@@ -338,6 +343,61 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
   );
 }
 
+/** The same idea in a game: a mission of the 3D campaigns or a Mini-Unity level. */
+const IN_GAME: Record<string, { view: 'shooter' | 'racing' | 'unity'; mission?: string; label: Text2 }> = {
+  types: { view: 'shooter', mission: 's02', label: { en: 'Shooter mission "Who are you?" — variables of your soldier', ru: 'Миссия шутера «Кто ты?» — переменные бойца' } },
+  if: { view: 'shooter', mission: 's03', label: { en: 'Shooter mission "First step" — if a key is held', ru: 'Миссия шутера «Первый шаг» — если клавиша зажата' } },
+  for: { view: 'shooter', mission: 's14', label: { en: 'Shooter mission "Shotgun" — a for loop of pellets', ru: 'Миссия шутера «Дробовик» — цикл for из дробин' } },
+  while: { view: 'shooter', mission: 'b5', label: { en: 'Bot mission "Looking around" — while (true) with pauses', ru: 'Миссия «Оглядываться» — while (true) с паузами' } },
+  arrays: { view: 'shooter', mission: 's16', label: { en: 'Bot mission "Patrol" — an array of points', ru: 'Миссия «Патруль» — массив точек' } },
+  list: { view: 'racing', mission: 'r7', label: { en: 'Racing "The ghost" — a List of recorded positions', ru: 'Гонки «Призрак» — List записанных точек' } },
+  methods: { view: 'shooter', mission: 's13', label: { en: 'Shooter mission "Automatic fire" — bool CanShoot()', ru: 'Миссия «Автоматический огонь» — bool CanShoot()' } },
+  classes: { view: 'shooter', mission: 's15', label: { en: 'Shooter mission "Arsenal" — class Weapon', ru: 'Миссия «Арсенал» — класс Weapon' } },
+  properties: { view: 'shooter', mission: 'b7', label: { en: 'Bot mission "A bot\'s character" — setting a brain\'s values', ru: 'Миссия «Характер бота» — значения мозга' } },
+  'enum-switch': { view: 'shooter', mission: 's18', label: { en: 'Bot mission "The brain of a bot" — enum State + switch', ru: 'Миссия «Мозг бота» — enum State + switch' } },
+  vectors: { view: 'shooter', mission: 's04', label: { en: 'Shooter mission "All directions" — Vector3', ru: 'Миссия «Во все стороны» — Vector3' } },
+  strings: { view: 'racing', mission: 'r6', label: { en: 'Racing "A lap and its time" — text with numbers', ru: 'Гонки «Круг и время» — текст с числами' } },
+};
+
+/** Right pane of a lesson: the program already ran — its result is here at once. */
+function ResultPane({ lesson }: { lesson: CourseLesson }) {
+  const [out, setOut] = useState<string[] | null>(null);
+  const setView = useCode((s) => s.setView);
+  useEffect(() => {
+    if (lesson.lang !== 'cs') return;
+    ensureMainThreadTreeSitter();
+    void runCSharp(lesson.code, lesson.input ?? []).then((r) => setOut(r.output));
+  }, [lesson]);
+  const g = IN_GAME[lesson.id];
+  return (
+    <aside className="crs-result-pane" data-testid="course-result-pane">
+      <h4>🖥 {tr('What this program does', 'Что делает эта программа')}</h4>
+      {lesson.lang === 'cs' ? (
+        <pre className="crs-screen" data-testid="course-screen">
+          {out ? (out.length ? out.join('\n') : tr('(it prints nothing — it only changes boxes)', '(ничего не печатает — только меняет коробки)')) : '…'}
+        </pre>
+      ) : (
+        <p className="muted">{tr('C++ for Unreal cannot run here — step 2 walks through it line by line.', 'C++ для Unreal здесь не запускается — шаг 2 проведёт по строкам.')}</p>
+      )}
+      {g ? (
+        <button
+          className="btn crs-game"
+          onClick={() => {
+            if (g.mission) {
+              const store = g.view === 'racing' ? useRacing : useShooter;
+              store.getState().set({ current: g.mission });
+            }
+            setView(g.view);
+          }}
+          data-testid="course-in-game"
+        >
+          🎮 {tr('The same idea in a game:', 'Та же идея в игре:')} {pick(g.label)}
+        </button>
+      ) : null}
+    </aside>
+  );
+}
+
 /** Set by "continue where you stopped" to open a course lesson directly. */
 export const courseRequest: { value: { course: string; lesson: string } | null } = { value: null };
 
@@ -365,7 +425,7 @@ export function CoursesView() {
   return (
     <div className="ln" data-testid="courses">
       <div className="ln-home">
-        <div className="cv-courses">
+        <div className="crs-courses">
           {COURSES.map((c) => {
             const n = c.lessons.filter((l) => done[`course:${c.id}:${l.id}`]).length;
             return (
