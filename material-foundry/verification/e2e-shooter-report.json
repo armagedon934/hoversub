@@ -1,5 +1,5 @@
 {
-  "when": "2026-11-05T03:19:12.090Z",
+  "when": "2026-11-05T04:33:38.180Z",
   "passed": 28,
   "failed": 0,
   "checks": [
@@ -9,14 +9,14 @@
       "detail": ""
     },
     {
-      "name": "25 missions in 5 chapters + free play",
+      "name": "32 missions in 6 chapters + free play",
       "ok": true,
       "detail": ""
     },
     {
       "name": "Mission 1 starts on a soft light screen (light, but not glaring white)",
       "ok": true,
-      "detail": "rgb 221,225,230, stage 840×632"
+      "detail": "rgb 221,225,230, stage 840×590"
     },
     {
       "name": "The blanks counter shows what is left",
@@ -71,17 +71,17 @@
     {
       "name": "Mission s08 completes in the real game loop (\"show me\")",
       "ok": true,
-      "detail": "3.4 s"
+      "detail": "3.5 s"
     },
     {
       "name": "Mission s10 completes in the real game loop (\"show me\")",
       "ok": true,
-      "detail": "0.8 s"
+      "detail": "0.9 s"
     },
     {
       "name": "Mission s16 completes in the real game loop (\"show me\")",
       "ok": true,
-      "detail": "11.6 s"
+      "detail": "11.5 s"
     },
     {
       "name": "Mission s18 completes in the real game loop (\"show me\")",
@@ -91,7 +91,7 @@
     {
       "name": "Mission s22 completes in the real game loop (\"show me\")",
       "ok": true,
-      "detail": "2.5 s"
+      "detail": "2.4 s"
     },
     {
       "name": "Mission s24 completes in the real game loop (\"show me\")",
@@ -111,7 +111,7 @@
     {
       "name": "Final mission: the match against 5 bots is won (team of 3, real loop)",
       "ok": true,
-      "detail": "13.0 s"
+      "detail": "9.0 s"
     },
     {
       "name": "Free play: the whole game runs with every script (timer and enemies on screen)",

@@ -2535,3 +2535,9 @@
     position: static;
   }
 }
+.crs-game.btn {
+  height: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  line-height: 1.35;
+}

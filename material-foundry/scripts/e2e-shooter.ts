@@ -102,7 +102,7 @@ async function main() {
     await page.getByTestId('shooter').waitFor();
     await page.getByTestId('sh-brief').waitFor();
     await page.waitForTimeout(600);
-    check('25 missions in 5 chapters + free play', (await page.locator('[data-testid^="sh-mission-"]').count()) === 25 && (await page.getByTestId('sh-free').count()) === 1);
+    check('32 missions in 6 chapters + free play', (await page.locator('[data-testid^="sh-mission-"]').count()) === 32 && (await page.getByTestId('sh-free').count()) === 1);
 
     // ------------------------------------------------------------ mission 1: soft "offline" screen
     const stage = await page.getByTestId('sh-stage').boundingBox();
