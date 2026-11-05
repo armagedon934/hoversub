@@ -10,20 +10,7 @@ import { pick, tr, type Text2 } from '../i18n';
 import { errorText, explainError } from '../run/errors';
 import { ensureMainThreadTreeSitter } from '../run/mainThread';
 import { parseCSharp, syntaxProblems } from '../run/runner';
-import {
-  CHAPTERS,
-  FREE_PLAY_SCRIPTS,
-  MISSIONS,
-  answerOf,
-  blankLines,
-  checkGoals,
-  matchLevel,
-  missionById,
-  openBlanks,
-  starterOf,
-  type Mission,
-  type MissionRun,
-} from '../run/shooter';
+import { answerOf, blankLines, checkGoals, openBlanks, starterOf, type Mission, type MissionRun } from '../run/shooter';
 import { World3D, type DemoStep3 } from '../run/unity3d';
 import { useLearn } from '../learn/progress';
 import { ReaderModal } from '../learn/ReaderView';
@@ -32,10 +19,10 @@ import { useResume } from '../memory/resume';
 import { blankHighlighter, createEditor, type WorkshopEditor } from './editor';
 import { useWorkshop } from './store';
 import { Scene3D } from './Scene3D';
-import { setSfx, sfx, sfxOn } from './sfx';
+import { engineHum, setSfx, sfx, sfxOn } from './sfx';
 import { BotBrainPanel, LiveInspector, SpectatorBar, VisionLabels } from './GamePanels';
 import type { VisionLabel } from './Scene3D';
-import { useShooter } from './shooterProgress';
+import { RACING, SHOOTER, type Campaign } from './campaigns';
 
 // ------------------------------------------------------------------------------------ input
 
@@ -52,7 +39,9 @@ function keyOf(e: KeyboardEvent): string | null {
 }
 
 const KEY_LABEL: Record<string, Text2> = {
-  W: { en: 'W — forward', ru: 'W — вперёд' },
+  W: { en: 'W — forward / gas', ru: 'W — вперёд / газ' },
+  'A/D': { en: 'A/D — steer', ru: 'A/D — руль' },
+  S: { en: 'S — brake', ru: 'S — тормоз' },
   WASD: { en: 'WASD — walk', ru: 'WASD — ходить' },
   mouse: { en: 'Mouse — look', ru: 'Мышь — смотреть' },
   LMB: { en: 'Left click — shoot', ru: 'ЛКМ — выстрел' },
@@ -81,19 +70,24 @@ interface Hud {
   hurtAt: number;
   time: number;
   redLeft: number;
+  speed: number;
 }
 
-const EMPTY_HUD: Hud = { health: 100, maxHealth: 100, ui: [], radio: [], goals: [], callsign: '', hitAt: -10, killAt: -10, hurtAt: -10, time: 0, redLeft: 0 };
+const EMPTY_HUD: Hud = { health: 100, maxHealth: 100, ui: [], radio: [], goals: [], callsign: '', hitAt: -10, killAt: -10, hurtAt: -10, time: 0, redLeft: 0, speed: 0 };
 
 // ------------------------------------------------------------------------------------ screen
 
-export default function Shooter() {
+/** The screen of a 3D campaign: missions on top, code on the left, the game on the right. */
+export function Campaign3D({ c }: { c: Campaign }) {
+  const useShooter = c.store;
+  const MISSIONS = c.missions;
+  const CHAPTERS = c.chapters;
   const prog = useShooter();
   const addXp = useLearn((s) => s.addXp);
   const mark = useResume((s) => s.mark);
   const free = prog.current === 'free';
-  const mission: Mission | null = free ? null : (missionById(prog.current) ?? MISSIONS[0]);
-  const freeScripts = useMemo(() => FREE_PLAY_SCRIPTS(), []);
+  const mission: Mission | null = free ? null : (MISSIONS.find((m) => m.id === prog.current) ?? MISSIONS[0]);
+  const freeScripts = useMemo(() => c.free.scripts(), [c]);
   const [freeFile, setFreeFile] = useState(freeScripts[0].file);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -156,7 +150,7 @@ export default function Shooter() {
   const levelOf = useCallback(() => {
     if (!mission) {
       const st = useShooter.getState().free;
-      return matchLevel('free', freeScripts.slice(1).map((s) => ({ source: st[s.file] ?? s.source, on: s.on })));
+      return c.free.level(freeScripts.slice(1).map((s) => ({ source: st[s.file] ?? s.source, on: s.on })));
     }
     return mission.level();
   }, [mission, freeScripts]);
@@ -165,7 +159,7 @@ export default function Shooter() {
   const showStill = useCallback(() => {
     const w = new World3D(levelOf());
     worldRef.current = w;
-    const offline = mission?.id === 's01' && !useShooter.getState().done.includes('s01');
+    const offline = !!c.offlineFirst && mission?.id === c.offlineFirst && !useShooter.getState().done.includes(c.offlineFirst);
     powerRef.current = offline ? 0 : 1;
     sceneRef.current?.setPower(powerRef.current);
     sceneRef.current?.render(w);
@@ -178,6 +172,7 @@ export default function Shooter() {
   const stop = useCallback(() => {
     cancelAnimationFrame(raf.current);
     raf.current = 0;
+    engineHum(null);
     if (document.pointerLockElement) document.exitPointerLock();
   }, []);
 
@@ -225,7 +220,7 @@ export default function Shooter() {
     demoRef.current = false;
     setWordOpen(null);
     showStill();
-    if (mission) mark({ kind: 'mission', id: mission.id, title: pick(mission.title) });
+    if (mission) mark({ kind: 'mission', id: mission.id, title: pick(mission.title), extra: c.id });
     return stop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prog.current]);
@@ -349,7 +344,7 @@ export default function Shooter() {
         message = r.message ?? '';
         errLine = r.error?.line ?? -1;
         acc -= w.dt;
-        const goals = mission ? checkGoals(mission, w, runRef.current) : [w.redLeft() === 0];
+        const goals = mission ? checkGoals(mission, w, runRef.current) : [c.free.check(w)];
         if (!won && goals.every(Boolean)) {
           won = true;
           onWin();
@@ -367,6 +362,7 @@ export default function Shooter() {
         if (w.hurtAt > marks.hurt) sfx.hurt();
       }
       shotsSeen = Math.max(shotsSeen, ...w.shots.map((s) => s.at));
+      if (c.hud === 'race' && sound) engineHum(Math.hypot(w.player.vel.x, w.player.vel.z));
       marks = { hit: w.hitMarkAt, kill: w.killMarkAt, hurt: w.hurtAt };
       // the suit "powers on" after the first mission
       if (won && powerRef.current < 1) {
@@ -376,7 +372,7 @@ export default function Shooter() {
       if (sceneRef.current) sceneRef.current.vision = visionRef.current;
       const lb = sceneRef.current?.render(w) ?? [];
       if (++n % 5 === 0 || status !== 'playing') {
-        setHud(readHud(w, mission ? checkGoals(mission, w, runRef.current) : [w.redLeft() === 0]));
+        setHud(readHud(w, mission ? checkGoals(mission, w, runRef.current) : [c.free.check(w)]));
         setLabels(lb);
         if (n % 30 === 0) setTick((t) => t + 1);
       }
@@ -408,7 +404,7 @@ export default function Shooter() {
         const p = useShooter.getState();
         if (!p.done.includes(mission.id)) {
           p.set({ done: [...p.done, mission.id] });
-          addXp(30);
+          addXp(c.xp);
         }
       }
     };
@@ -480,7 +476,7 @@ export default function Shooter() {
   const info = err ? explainError(err.message) : null;
   const chapter = mission ? CHAPTERS.find((c) => c.n === mission.chapter)! : null;
   const usesMouse = !mission || mission.keys.includes('mouse');
-  const offline = mission?.id === 's01' && !done.has('s01') && phase !== 'won';
+  const offline = !!c.offlineFirst && mission?.id === c.offlineFirst && !done.has(c.offlineFirst) && phase !== 'won';
 
   return (
     <div className="sh" data-testid="shooter">
@@ -541,8 +537,8 @@ export default function Shooter() {
             </div>
           ) : (
             <div className="sh-brief" data-testid="sh-brief">
-              <h3>🎮 {tr('Free play: Operation "Dusty Yard"', 'Свободная игра: операция «Пыльный двор»')}</h3>
-              <p className="sh-task">{tr('The whole game is here: your team (blue) against 5 bots (red). Every script below is the real code of the game — change numbers, add your ideas, press Play.', 'Здесь вся игра целиком: твоя команда (синие) против 5 ботов (красные). Каждый скрипт ниже — настоящий код игры. Меняй числа, добавляй свои идеи, жми «Играть».')}</p>
+              <h3>🎮 {pick(c.free.title)}</h3>
+              <p className="sh-task">{pick(c.free.about)}</p>
               <div className="sh-files" role="tablist">
                 {freeScripts.map((s) => (
                   <button key={s.file} role="tab" aria-selected={s.file === freeFile} className={s.file === freeFile ? 'on' : ''} onClick={() => setFreeFile(s.file)} title={tr(`On: ${s.on}`, `Висит на: ${s.on}`)}>
@@ -646,7 +642,7 @@ export default function Shooter() {
               onContextMenu={(e) => e.preventDefault()}
             />
             {!webgl ? <div className="sh-overlay">{tr('3D graphics (WebGL) are not available on this computer.', 'На этом компьютере недоступна 3D-графика (WebGL).')}</div> : null}
-            <HudView hud={hud} mission={mission} phase={phase} hasGun={!!worldRef.current?.gun && !worldRef.current?.spectate} />
+            <HudView hud={hud} mission={mission} phase={phase} hasGun={!!worldRef.current?.gun && !worldRef.current?.spectate} race={c.hud === 'race'} freeGoal={c.free.goal} />
             {vision ? <VisionLabels labels={labels} /> : null}
             {worldRef.current?.spectate ? <div className="gp-watching">👁 {tr('Watching', 'Наблюдаешь')}: <b>{worldRef.current.spectate.bot.name}</b></div> : null}
             {phase === 'edit' ? (
@@ -704,12 +700,13 @@ export default function Shooter() {
               {phase === 'playing' ? <Square size={14} /> : <RotateCcw size={14} />} {phase === 'playing' ? tr('Stop', 'Стоп') : tr('Reset', 'Сначала')}
             </button>
             <span className="sh-keys" data-testid="sh-keys">
-              {(mission ? mission.keys : ['WASD', 'mouse', 'LMB (hold)', 'R', 'Space', 'Shift', 'C', 'Q', 'E']).map((k) => (
+              {(mission ? mission.keys : c.free.keys).map((k) => (
                 <span key={k} className="sh-key">
                   {KEY_LABEL[k] ? pick(KEY_LABEL[k]) : k}
                 </span>
               ))}
             </span>
+            {c.hud === 'race' && phase === 'playing' ? <RaceTools world={worldRef.current} /> : null}
             <span className="spacer" />
             {usesMouse ? (
               <label className="sh-sens muted small" title={tr('Mouse sensitivity', 'Чувствительность мыши')}>
@@ -781,15 +778,16 @@ function readHud(w: World3D, goals: boolean[]): Hud {
     hurtAt: w.hurtAt,
     time: w.time,
     redLeft: w.redLeft(),
+    speed: Math.hypot(w.player.vel.x, w.player.vel.z) * 3.6,
   };
 }
 
 /** The game's on-screen display: crosshair, health, texts from scripts, radio, goals. */
-function HudView({ hud, mission, phase, hasGun }: { hud: Hud; mission: Mission | null; phase: Phase; hasGun: boolean }) {
+function HudView({ hud, mission, phase, hasGun, race, freeGoal }: { hud: Hud; mission: Mission | null; phase: Phase; hasGun: boolean; race: boolean; freeGoal: Text2 }) {
   const recentHit = hud.time - hud.hitAt < 0.18;
   const recentKill = hud.time - hud.killAt < 0.5;
   const hurt = Math.max(0, 1 - (hud.time - hud.hurtAt) / 0.6);
-  const goals = mission ? mission.goals : [{ text: { en: 'Take down all enemies', ru: 'Выведи из боя всех врагов' } as Text2 }];
+  const goals = mission ? mission.goals : [{ text: freeGoal }];
   return (
     <div className="sh-hud" aria-live="polite">
       <div className="sh-goals" data-testid="sh-goals">
@@ -801,9 +799,14 @@ function HudView({ hud, mission, phase, hasGun }: { hud: Hud; mission: Mission |
       </div>
       {phase === 'playing' || phase === 'won' ? (
         <>
-          <div className={`sh-cross${hasGun ? ' gun' : ''}${recentHit ? ' hit' : ''}${recentKill ? ' kill' : ''}`} aria-hidden />
+          {race ? null : <div className={`sh-cross${hasGun ? ' gun' : ''}${recentHit ? ' hit' : ''}${recentKill ? ' kill' : ''}`} aria-hidden />}
           {hurt > 0 ? <div className="sh-hurt" style={{ opacity: hurt * 0.55 }} aria-hidden /> : null}
           <div className="sh-bottom">
+            {race ? (
+              <div className="sh-speedo" data-testid="sh-speed">
+                <b>{Math.round(hud.speed)}</b> {tr('km/h', 'км/ч')}
+              </div>
+            ) : (
             <div className="sh-hp" title={tr('Health', 'Здоровье')}>
               <span>❤</span>
               <span className="sh-hp-bar">
@@ -811,6 +814,7 @@ function HudView({ hud, mission, phase, hasGun }: { hud: Hud; mission: Mission |
               </span>
               <b>{Math.ceil(hud.health)}</b>
             </div>
+            )}
             {hud.callsign ? <div className="sh-callsign">🪪 {hud.callsign}</div> : null}
             <div className="sh-ui" data-testid="sh-ui">
               {hud.ui.map((u) => (
@@ -828,5 +832,47 @@ function HudView({ hud, mission, phase, hasGun }: { hud: Hud; mission: Mission |
         </>
       ) : null}
     </div>
+  );
+}
+
+export default function Shooter() {
+  return <Campaign3D key="shooter" c={SHOOTER} />;
+}
+
+export function Racing() {
+  return <Campaign3D key="racing" c={RACING} />;
+}
+
+const PAINT = ['#e8483b', '#2f6fd6', '#3bb273', '#e8a33b', '#9b59d0', '#20b2c8', '#f2f2f2', '#2b2f36'];
+
+/** Racing: put the car back on the track, and paint it. */
+function RaceTools({ world }: { world: World3D | null }) {
+  if (!world) return null;
+  const paint = (hex: string) => {
+    // with the CarPaint script the colour lives in its "hue" — change that, so the script does not paint over it
+    const inst = world.insts.find((i) => i.obj === world.player && typeof i.self?.fields.get('hue')?.v === 'number');
+    if (inst) {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min || 1;
+      const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      inst.self!.fields.get('hue')!.v = (((h / 6) % 1) + 1) % 1;
+      if (inst.self!.fields.get('saturation')) inst.self!.fields.get('saturation')!.v = max ? (max - min) / max : 0;
+      if (inst.self!.fields.get('brightness')) inst.self!.fields.get('brightness')!.v = max;
+    }
+    world.player.color = hex;
+  };
+  return (
+    <span className="sh-race-tools">
+      <button className="btn small" onClick={() => world.respawnCar()} data-testid="race-respawn" title={tr('Put the car back on the track', 'Поставить машину обратно на трассу')}>
+        ↺ {tr('Back on track', 'На трассу')}
+      </button>
+      {PAINT.map((p) => (
+        <button key={p} className="sh-paint" style={{ background: p }} onClick={() => paint(p)} aria-label={tr(`Paint ${p}`, `Покрасить ${p}`)} data-testid="race-paint" />
+      ))}
+    </span>
   );
 }

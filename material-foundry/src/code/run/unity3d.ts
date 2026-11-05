@@ -562,7 +562,10 @@ export class World3D {
       this.makeCar(o, !!s.ghost);
       if (s.passThroughCars) o.car!.phantom = true;
     }
-    if (s.opacity !== undefined) o.opacity = s.opacity;
+    if (s.opacity !== undefined) {
+      o.opacity = s.opacity;
+      for (const x of this.objects) if (x.parent === o) x.opacity = s.opacity;
+    }
     return o;
   }
 
@@ -1219,6 +1222,17 @@ export class World3D {
   }
 
   lastCollision: { obj: Obj3; impact: number; at: number } | null = null;
+
+  /** Puts the player's car back on the centre line, facing the driving direction (a "reset" button). */
+  respawnCar(): void {
+    if (!this.trackPts.length) return;
+    const info = this.trackInfo(this.player.pos);
+    const p = this.trackPts[info.i];
+    this.player.pos = v3(p.x, this.player.half.y, p.z);
+    this.player.rot = qEuler(0, (Math.atan2(info.dir.x, info.dir.z) * 180) / Math.PI, 0);
+    if (this.player.car) this.player.car.lastPos = { ...this.player.pos };
+    this.follow();
+  }
   private chase = { pos: null as V3 | null };
 
   /** The built-in chase camera of race mode: behind and above the car, a little late — feels fast. */
@@ -1771,7 +1785,10 @@ export class World3D {
             const shooterBot = world.objects.find((o) => o.bot && o.alive && Math.abs(origin.x - o.pos.x) < o.half.x && Math.abs(origin.z - o.pos.z) < o.half.z && Math.abs(origin.y - o.pos.y) < o.half.y + 0.05);
             if (!shooterBot && len(sub(origin, world.camera.pos)) < 1.5) world.lastNoise = { pos: { ...world.player.pos }, at: world.time };
             const end = hit ? hit.point : add(origin, mul(norm(dir), Math.min(dist, 80)));
-            if (shooterBot) {
+            if (world.level.mode === 'race') {
+              // race scripts cast rays as sensors, not shots: show them only in the "vision" view
+              world.sightRays.push({ from: origin, to: end, color: hit ? 'yellow' : 'green' });
+            } else if (shooterBot) {
               world.sightRays.push({ from: origin, to: end, color: hit && world.isPartOf(hit.obj, world.player) ? 'red' : 'yellow' });
               world.botRays.push({ at: world.time, bot: shooterBot, hitPlayer: !!hit && world.isPartOf(hit.obj, world.player) });
             } else world.shots.push({ from: origin, to: end, at: world.time, hit: !!hit, byBot: false });

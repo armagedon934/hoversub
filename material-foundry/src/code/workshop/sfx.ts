@@ -112,3 +112,53 @@ export const sfx = {
   hurt: () => tone(90, 0.18, 0.12, 'sine'),
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 0.06, 'triangle', i * 0.11)),
 };
+
+// ---------------------------------------------------------------------------------- engine hum
+
+let engineNodes: { src: OscillatorNode | AudioBufferSourceNode; gain: GainNode; custom: boolean } | null = null;
+
+/** A car engine that follows the speed (m/s); null stops it. Uses your Sound Lab engine if you chose one. */
+export function engineHum(speed: number | null): void {
+  if (speed === null) {
+    try {
+      engineNodes?.src.stop();
+    } catch {
+      /* already stopped */
+    }
+    engineNodes = null;
+    return;
+  }
+  const a = audio();
+  if (!a) return;
+  if (!engineNodes) {
+    const customSamples = getCustomSound('engine');
+    const gain = a.createGain();
+    gain.gain.value = 0.0001;
+    let src: OscillatorNode | AudioBufferSourceNode;
+    if (customSamples) {
+      const b = a.createBuffer(1, customSamples.length, SAMPLE_RATE);
+      b.getChannelData(0).set(customSamples);
+      const s = a.createBufferSource();
+      s.buffer = b;
+      s.loop = true;
+      src = s;
+      src.connect(gain);
+    } else {
+      const o = a.createOscillator();
+      o.type = 'sawtooth';
+      const lp = a.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 700;
+      o.connect(lp).connect(gain);
+      src = o;
+    }
+    gain.connect(a.destination);
+    src.start();
+    engineNodes = { src, gain, custom: !!customSamples };
+  }
+  const v = Math.max(0, speed);
+  const t = a.currentTime;
+  if (engineNodes.custom) (engineNodes.src as AudioBufferSourceNode).playbackRate.setTargetAtTime(0.6 + v / 25, t, 0.05);
+  else (engineNodes.src as OscillatorNode).frequency.setTargetAtTime(45 + v * 4.2, t, 0.05);
+  engineNodes.gain.gain.setTargetAtTime(0.035 * gameVol() * (0.5 + Math.min(1, v / 30)), t, 0.08);
+}

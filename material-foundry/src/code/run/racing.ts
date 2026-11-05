@@ -377,7 +377,8 @@ export const RACE_MISSIONS: Mission[] = [
         const v = kmh(w);
         const coasting = w.keys.size === 0 && v > 40;
         if (coasting && r.mem.coastV !== undefined && r.mem.coastV - v > 0.08) r.mem.slowFrames = (r.mem.slowFrames ?? 0) + 1;
-        r.mem.coastV = coasting ? v : undefined;
+        if (coasting) r.mem.coastV = v;
+        else delete r.mem.coastV;
         return sticky(r, 'drag', (r.mem.slowFrames ?? 0) > 20);
       } },
       { text: T('Stop inside the pit box', 'Остановись в боксе'), check: (w, r) => {

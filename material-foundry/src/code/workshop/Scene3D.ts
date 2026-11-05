@@ -398,6 +398,22 @@ export class Scene3D {
         const idx: number[] = [];
         for (let i = 0; i < mesh.tris.length; i += 3) idx.push(mesh.tris[i], mesh.tris[i + 2], mesh.tris[i + 1]);
         geo.setIndex(idx);
+        // make sure the faces look outwards (light falls on the outside of the body)
+        const posArr = geo.getAttribute('position') as THREE.BufferAttribute;
+        mesh.verts.forEach((v, i) => posArr.setXYZ(i, v.x, v.y, -v.z));
+        geo.computeVertexNormals();
+        const nrm = geo.getAttribute('normal') as THREE.BufferAttribute;
+        let outward = 0;
+        for (let i = 0; i < nrm.count; i++) outward += nrm.getX(i) * posArr.getX(i) + nrm.getY(i) * posArr.getY(i) + nrm.getZ(i) * posArr.getZ(i);
+        if (outward < 0) {
+          const ix = geo.getIndex()!;
+          for (let i = 0; i < ix.count; i += 3) {
+            const t = ix.getX(i + 1);
+            ix.setX(i + 1, ix.getX(i + 2));
+            ix.setX(i + 2, t);
+          }
+          geo.computeVertexNormals();
+        }
         const body = add(geo, m);
         body.userData.meshVersion = -1;
         body.userData.body = true;
@@ -462,9 +478,9 @@ export class Scene3D {
         const ring = add(new THREE.RingGeometry(sx / 2 - 0.12, sx / 2, 48), m, undefined, false);
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.01 - o.half.y;
-        const glow = this.mat(o.color, { emissive: new THREE.Color(o.color), emissiveIntensity: 0.6, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide });
+        const glow = this.mat(o.color, { emissive: new THREE.Color(o.color), emissiveIntensity: 0.6, transparent: true, opacity: sx > 6 ? 0.05 : 0.12, depthWrite: false, side: THREE.DoubleSide });
         mats.push(glow);
-        add(new THREE.CylinderGeometry(sx / 2, sx / 2, 1.6, 40, 1, true), glow, [0, 0.8, 0], false);
+        add(new THREE.CylinderGeometry(sx / 2, sx / 2, sx > 6 ? 0.5 : 1.6, 40, 1, true), glow, [0, sx > 6 ? 0.25 : 0.8, 0], false);
         break;
       }
       case 'gun': {

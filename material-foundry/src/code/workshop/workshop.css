@@ -2462,3 +2462,29 @@
   color: #fff;
   z-index: 3;
 }
+
+/* Racing HUD */
+.sh-speedo {
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: rgba(15, 20, 26, 0.55);
+  font-size: 15px;
+}
+.sh-speedo b {
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.sh-race-tools {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sh-paint {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  cursor: pointer;
+  padding: 0;
+}
