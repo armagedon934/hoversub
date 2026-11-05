@@ -343,7 +343,7 @@ export class Scene3D {
     for (const o of w.objects) {
       const e = this.entries.get(o.id) ?? this.ensure(o);
       if (!e) continue;
-      e.node.visible = o.alive && !o.hidden && !(w.spectate?.mode === 'eyes' && w.isPartOf(o, w.spectate.bot) && /Head/.test(o.name));
+      e.node.visible = o.alive && !o.hidden && !(w.spectate?.mode === 'eyes' && w.isPartOf(o, w.spectate.bot));
       if (!e.node.visible) continue;
       toPos(o.pos, e.node.position);
       toQuat(o.rot, e.node.quaternion);

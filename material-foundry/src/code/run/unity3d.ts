@@ -101,7 +101,7 @@ const qInv = (q: Q): Q => ({ x: -q.x, y: -q.y, z: -q.z, w: q.w });
 
 // ------------------------------------------------------------------------------------ world
 
-export type Shape3 = 'box' | 'capsule' | 'sphere' | 'humanoid' | 'gun' | 'point' | 'none' | 'target' | 'light' | 'zone';
+export type Shape3 = 'box' | 'capsule' | 'sphere' | 'humanoid' | 'gun' | 'point' | 'none' | 'target' | 'light' | 'zone' | 'car' | 'wheel' | 'tree' | 'cylinder';
 
 export interface Spec3 {
   name: string;
@@ -122,6 +122,10 @@ export interface Spec3 {
   regen?: number;
   /** Armour plates: a hit weaker than this does nothing. */
   armor?: number;
+  /** A ghost car: no collisions, see-through. */
+  ghost?: boolean;
+  /** 0…1, see-through when less than 1. */
+  opacity?: number;
 }
 
 export interface Obj3 {
@@ -158,6 +162,14 @@ export interface Obj3 {
   armor?: number;
   /** The frame in which a script last turned this object (built-in animation leaves it alone then). */
   touchedFrame?: number;
+  /** See-through amount (1 = solid). */
+  opacity?: number;
+  /** A deformable mesh (car body): vertices in local space, triangles, and a version that grows on change. */
+  mesh?: { verts: V3[]; base: V3[]; tris: number[]; version: number };
+  /** Cars: speed and steering seen from outside, the last position, contact with a barrier. */
+  car?: { ghost: boolean; lastPos: V3; touching: boolean; steer: number; spin: number; steer2?: number };
+  /** Spinning parts that fell off (degrees per second around x, y, z). */
+  spinVel?: V3;
 }
 
 /**
@@ -251,6 +263,69 @@ export interface Level3 {
   botBrain?: 'builtin' | 'script';
   /** Who moves the arms and legs of the bots: the built-in walk (default) or the scripts. */
   botLegs?: 'builtin' | 'script';
+  /** 'race': the player is a car, the camera chases it. */
+  mode?: 'fps' | 'race';
+  /** A closed race track: centre line points (x, z), width in metres. */
+  track?: Track3;
+  /** Race mode: a built-in chase camera (default true). */
+  chaseCamera?: boolean;
+}
+
+export interface Track3 {
+  points: [number, number][];
+  width: number;
+}
+
+/** A closed Catmull-Rom curve through the points, sampled every ~1.5 m. */
+export function sampleTrack(t: Track3): { pts: V3[]; s: number[]; len: number } {
+  const P = t.points;
+  const n = P.length;
+  const raw: V3[] = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = P[(i - 1 + n) % n];
+    const p1 = P[i];
+    const p2 = P[(i + 1) % n];
+    const p3 = P[(i + 2) % n];
+    const segLen = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    const steps = Math.max(2, Math.ceil(segLen / 1.5));
+    for (let k = 0; k < steps; k++) {
+      const u = k / steps;
+      const u2 = u * u;
+      const u3 = u2 * u;
+      const f = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3);
+      raw.push(v3(f(p0[0], p1[0], p2[0], p3[0]), 0, f(p0[1], p1[1], p2[1], p3[1])));
+    }
+  }
+  const s: number[] = [0];
+  for (let i = 1; i <= raw.length; i++) s.push(s[i - 1] + Math.hypot(raw[i % raw.length].x - raw[i - 1].x, raw[i % raw.length].z - raw[i - 1].z));
+  return { pts: raw, s, len: s[raw.length] };
+}
+
+/** A box made of a grid of vertices (so it can be dented), local coordinates. */
+function gridBox(hx: number, hy: number, hz: number, nx: number, ny: number, nz: number): { verts: V3[]; tris: number[] } {
+  const verts: V3[] = [];
+  const tris: number[] = [];
+  const face = (o: V3, u: V3, v: V3, nu: number, nv: number) => {
+    const start = verts.length;
+    for (let j = 0; j <= nv; j++)
+      for (let i = 0; i <= nu; i++) verts.push(v3(o.x + (u.x * i) / nu + (v.x * j) / nv, o.y + (u.y * i) / nu + (v.y * j) / nv, o.z + (u.z * i) / nu + (v.z * j) / nv));
+    for (let j = 0; j < nv; j++)
+      for (let i = 0; i < nu; i++) {
+        const a = start + j * (nu + 1) + i;
+        const b = a + 1;
+        const c = a + nu + 1;
+        const d = c + 1;
+        tris.push(a, c, b, b, c, d);
+      }
+  };
+  // +z front, -z back, ±x sides, top, bottom (outward winding for a left-handed world is fixed by the renderer)
+  face(v3(-hx, -hy, hz), v3(2 * hx, 0, 0), v3(0, 2 * hy, 0), nx, ny);
+  face(v3(hx, -hy, -hz), v3(-2 * hx, 0, 0), v3(0, 2 * hy, 0), nx, ny);
+  face(v3(hx, -hy, hz), v3(0, 0, -2 * hz), v3(0, 2 * hy, 0), nz, ny);
+  face(v3(-hx, -hy, -hz), v3(0, 0, 2 * hz), v3(0, 2 * hy, 0), nz, ny);
+  face(v3(-hx, hy, hz), v3(2 * hx, 0, 0), v3(0, 0, -2 * hz), nx, nz);
+  face(v3(-hx, -hy, -hz), v3(2 * hx, 0, 0), v3(0, 0, 2 * hz), nx, nz);
+  return { verts, tris };
 }
 
 export interface DemoStep3 {
@@ -267,6 +342,30 @@ export interface Frame3 {
 }
 
 const host = (kind: string, ref: unknown): HostV => ({ k: 'host', kind, ref });
+interface Rgba {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+const NAMED: Record<string, Rgba> = { red: { r: 1, g: 0, b: 0, a: 1 }, green: { r: 0, g: 1, b: 0, a: 1 }, blue: { r: 0, g: 0, b: 1, a: 1 }, white: { r: 1, g: 1, b: 1, a: 1 }, black: { r: 0, g: 0, b: 0, a: 1 }, yellow: { r: 1, g: 0.92, b: 0.016, a: 1 }, cyan: { r: 0, g: 1, b: 1, a: 1 }, magenta: { r: 1, g: 0, b: 1, a: 1 }, gray: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, grey: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, clear: { r: 0, g: 0, b: 0, a: 0 } };
+/** A Unity Color from a script value (new Color(…), Color.red …). */
+function rgbaOf(v: V): Rgba | null {
+  if (v && typeof v === 'object' && v.k === 'host' && v.kind === 'color') return v.ref as Rgba;
+  if (v && typeof v === 'object' && v.k === 'enum' && v.type === 'Color') return NAMED[v.name] ?? null;
+  return null;
+}
+const toHex = (c: Rgba) => '#' + [c.r, c.g, c.b].map((x) => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join('');
+const fromHex = (h: string): Rgba => ({ r: parseInt(h.slice(1, 3), 16) / 255, g: parseInt(h.slice(3, 5), 16) / 255, b: parseInt(h.slice(5, 7), 16) / 255, a: 1 });
+function hsv(h: number, sat: number, v: number): Rgba {
+  const i = Math.floor(((h % 1) + 1) % 1 * 6);
+  const f = (((h % 1) + 1) % 1) * 6 - i;
+  const p = v * (1 - sat);
+  const q = v * (1 - f * sat);
+  const t = v * (1 - (1 - f) * sat);
+  const [r, g, b] = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
+  return { r, g, b, a: 1 };
+}
 const vv = (a: V3): VecV => ({ k: 'vec', x: a.x, y: a.y, z: a.z, dim: 3 });
 const asV3 = (v: V): V3 | null => (v && typeof v === 'object' && v.k === 'vec' ? v3(v.x, v.y, v.z) : null);
 const quatOf = (v: V): Q | null => (v && typeof v === 'object' && v.k === 'host' && v.kind === 'quat3' ? (v.ref as Q) : null);
@@ -339,18 +438,32 @@ export class World3D {
     this.objects = [];
     this.nextId = 1;
     const L = this.level;
-    this.player = this.add({ name: 'Player', tag: 'Player', shape: L.player.visibleBody ? 'humanoid' : 'capsule', pos: L.player.pos, size: [0.6, 1.8, 0.6] });
-    this.player.cc = { grounded: false, height: 1.8, radius: 0.3 };
-    this.player.solid = true;
+    if (L.track) {
+      const t = sampleTrack(L.track);
+      this.trackPts = t.pts;
+      this.trackS = t.s;
+      this.trackLen = t.len;
+    }
+    const race = L.mode === 'race';
+    this.player = race
+      ? this.add({ name: 'Player', tag: 'Player', shape: 'car', pos: L.player.pos, size: [1.9, 1.3, 4.3], color: '#e8483b' })
+      : this.add({ name: 'Player', tag: 'Player', shape: L.player.visibleBody ? 'humanoid' : 'capsule', pos: L.player.pos, size: [0.6, 1.8, 0.6] });
+    if (!race) {
+      this.player.cc = { grounded: false, height: 1.8, radius: 0.3 };
+      this.player.solid = true;
+    }
     this.player.health = { value: L.player.health ?? 100, max: L.player.health ?? 100 };
-    this.player.hidden = !L.player.visibleBody;
+    this.player.hidden = !L.player.visibleBody && !race;
     this.player.rot = qEuler(0, L.player.yaw ?? 0, 0);
     this.head = this.add({ name: 'Head', shape: 'none', pos: [0, 0, 0] });
     this.head.parent = this.player;
     this.head.local = { pos: v3(0, 0.7, 0), rot: QI };
     this.camera = this.add({ name: 'Main Camera', tag: 'MainCamera', shape: 'none', pos: [0, 0, 0] });
-    this.camera.parent = this.head;
-    this.camera.local = { pos: v3(), rot: QI };
+    if (!race) {
+      this.camera.parent = this.head;
+      this.camera.local = { pos: v3(), rot: QI };
+    }
+    this.chase.pos = null;
     this.camera.fov = 70;
     if (L.player.gun) {
       this.gun = this.add({ name: 'Gun', tag: 'Untagged', shape: 'gun', pos: [0, 0, 0] });
@@ -436,7 +549,32 @@ export class World3D {
     }
     this.objects.push(o);
     if (s.shape === 'humanoid') o.bones = this.makeBones(o);
+    if (s.shape === 'car') this.makeCar(o, !!s.ghost);
+    if (s.opacity !== undefined) o.opacity = s.opacity;
     return o;
+  }
+
+  /** A car: a body that can be dented, a cabin, bumpers, a spoiler and four wheels (children). */
+  private makeCar(o: Obj3, ghost: boolean): void {
+    const g = gridBox(o.half.x, o.half.y * 0.55, o.half.z, 4, 2, 8);
+    o.mesh = { verts: g.verts.map((v) => ({ ...v })), base: g.verts.map((v) => ({ ...v })), tris: g.tris, version: 0 };
+    o.car = { ghost, lastPos: { ...o.pos }, touching: false, steer: 0, spin: 0 };
+    o.solid = false;
+    if (ghost) o.opacity = o.opacity ?? 0.5;
+    const part = (name: string, shape: Shape3, pos: [number, number, number], size: [number, number, number], color: string) => {
+      const p = this.add({ name, shape, pos: [0, 0, 0], size, color, solid: false });
+      p.parent = o;
+      p.local = { pos: v3(...pos), rot: QI };
+      if (ghost) p.opacity = 0.5;
+      return p;
+    };
+    const hx = o.half.x;
+    const hz = o.half.z;
+    part('Cabin', 'box', [0, o.half.y * 0.75, -hz * 0.12], [hx * 1.6, o.half.y * 0.9, hz * 0.95], '#1d2633');
+    part('Bumper', 'box', [0, -o.half.y * 0.25, hz + 0.12], [hx * 1.9, 0.28, 0.24], '#2a2f36');
+    part('RearBumper', 'box', [0, -o.half.y * 0.25, -hz - 0.12], [hx * 1.9, 0.28, 0.24], '#2a2f36');
+    part('Spoiler', 'box', [0, o.half.y * 0.85, -hz + 0.2], [hx * 1.8, 0.08, 0.4], '#2a2f36');
+    for (const [n, x, z] of [['WheelFL', -1, 1], ['WheelFR', 1, 1], ['WheelRL', -1, -1], ['WheelRR', 1, -1]] as const) part(n, 'wheel', [x * (hx + 0.05), -o.half.y * 0.55, z * hz * 0.62], [0.32, 0.72, 0.72], '#1a1a1a');
   }
 
   /** A simple humanoid made of boxes: hips, spine, head, arms, legs (rotatable joints). */
@@ -613,7 +751,9 @@ export class World3D {
       for (const o of this.objects)
         if (o.regen && o.alive && o.health && o.health.value > 0 && o.health.value < o.health.max && this.time - (o.lastHitAt ?? 0) > o.regen) o.health.value = o.health.max;
       this.callAll('LateUpdate');
+      this.vehicles();
       this.follow();
+      if (this.level.mode === 'race' && this.level.chaseCamera !== false && !this.spectate) this.chaseCam();
       this.triggers();
       this.time += this.sdt;
       this.pressed.clear();
@@ -741,6 +881,10 @@ export class World3D {
       if (!o.alive || !o.rb) continue;
       if (o.rb.useGravity) o.vel.y -= 9.81 * this.sdt;
       o.rb.grounded = this.moveCollide(o, mul(o.vel, this.sdt));
+      if (o.spinVel) {
+        o.rot = qMul(o.rot, qEuler(o.spinVel.x * this.sdt, o.spinVel.y * this.sdt, o.spinVel.z * this.sdt));
+        if (o.rb.grounded) o.spinVel = mul(o.spinVel, 0.85);
+      }
       if (o.rb.grounded) {
         if (o.vel.y < 0) o.vel.y = 0;
         o.vel.x *= 0.9;
@@ -756,10 +900,15 @@ export class World3D {
     const d = norm(dir);
     let best: { obj: Obj3; point: V3; normal: V3; distance: number } | null = null;
     const skip = new Set(ignore);
+    // like Unity: a ray that starts inside a body does not hit that body — nor its own parts (bumper, wheels…)
+    for (const o of this.objects)
+      if (o.alive && !o.parent && (o.car || o.bot || o === this.player) && Math.abs(origin.x - o.pos.x) < o.half.x && Math.abs(origin.y - o.pos.y) < o.half.y && Math.abs(origin.z - o.pos.z) < o.half.z)
+        for (const x of this.objects) if (this.isPartOf(x, o)) skip.add(x);
     for (const o of this.objects) {
       if (!o.alive || o.shape === 'point' || o.shape === 'none' || o.shape === 'light' || o.shape === 'zone' || o.shape === 'gun' || skip.has(o) || (o.parent && skip.has(o.parent))) continue;
       // body parts are drawn, but the ray hits the whole body (its box)
       if (o.parent && (o.parent.bones || o.parent.parent?.bones || o.parent.parent?.parent?.bones)) continue;
+      if (o.car?.ghost || (o.parent?.car?.ghost)) continue;
       const { min, max } = this.aabb(o);
       // like Unity: a ray that starts inside a collider does not hit that collider (the shooter itself)
       if (origin.x > min.x && origin.x < max.x && origin.y > min.y && origin.y < max.y && origin.z > min.z && origin.z < max.z) continue;
@@ -786,10 +935,18 @@ export class World3D {
       if (!ok || tmin > maxDist) continue;
       if (!best || tmin < best.distance) best = { obj: o, point: add(origin, mul(d, tmin)), normal: n, distance: tmin };
     }
-    // the floor
+    // race track barriers
+    const bh = this.rayBarrier(origin, d, best ? best.distance : maxDist);
+    if (bh) best = { obj: this.surface('Barrier'), point: bh.point, normal: bh.normal, distance: bh.t };
+    // the floor (on a race track: asphalt or grass)
     if (d.y < 0) {
       const t = (this.floorY() - origin.y) / d.y;
-      if (t >= 0 && t <= maxDist && (!best || t < best.distance)) best = { obj: this.floorObj(), point: add(origin, mul(d, t)), normal: v3(0, 1, 0), distance: t };
+      if (t >= 0 && t <= maxDist && (!best || t < best.distance)) {
+        const point = add(origin, mul(d, t));
+        let obj = this.floorObj();
+        if (this.trackPts.length) obj = this.surface(Math.abs(this.trackInfo(point).lateral) <= (this.level.track!.width / 2) ? 'Road' : 'Grass');
+        best = { obj, point, normal: v3(0, 1, 0), distance: t };
+      }
     }
     return best;
   }
@@ -895,6 +1052,150 @@ export class World3D {
         if (o.bones?.Spine?.local) o.bones.Spine.local.rot = k < 1 ? qEuler(-18 * (1 - k), 8 * (1 - k), 0) : QI;
       }
     }
+  }
+
+  // ------------------------------------------------------------------------------ race track
+
+  trackPts: V3[] = [];
+  trackS: number[] = [];
+  trackLen = 0;
+  private barrierObj?: Obj3;
+  private surfaceObjs?: { road: Obj3; grass: Obj3 };
+
+  /** Where on the track a point is: the nearest centre-line index, distance along, sideways offset, direction. */
+  trackInfo(p: V3, near?: number): { i: number; along: number; lateral: number; dir: V3 } {
+    const P = this.trackPts;
+    const n = P.length;
+    let best = Infinity;
+    let bi = 0;
+    let bt = 0;
+    const scan = (i: number) => {
+      const a = P[i];
+      const b = P[(i + 1) % n];
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2));
+      const d = (a.x + dx * t - p.x) ** 2 + (a.z + dz * t - p.z) ** 2;
+      if (d < best) {
+        best = d;
+        bi = i;
+        bt = t;
+      }
+    };
+    if (near !== undefined) for (let k = -30; k <= 30; k++) scan((((near + k) % n) + n) % n);
+    else for (let i = 0; i < n; i++) scan(i);
+    const a = P[bi];
+    const b = P[(bi + 1) % n];
+    const dir = norm(v3(b.x - a.x, 0, b.z - a.z));
+    // positive lateral = to the right of the driving direction (Unity: right = (z, -x))
+    const cx = a.x + (b.x - a.x) * bt;
+    const cz = a.z + (b.z - a.z) * bt;
+    const lateral = (p.x - cx) * dir.z - (p.z - cz) * dir.x;
+    return { i: bi, along: this.trackS[bi] + (this.trackS[bi + 1] - this.trackS[bi]) * bt, lateral, dir };
+  }
+
+  /** How far the barriers are from the centre line. */
+  get barrierOffset(): number {
+    return (this.level.track?.width ?? 12) / 2 + 0.6;
+  }
+
+  private surface(tag: 'Road' | 'Grass' | 'Barrier'): Obj3 {
+    const mk = (name: string, t: string): Obj3 => ({ id: -1, name, tag: t, shape: 'box', pos: v3(), rot: QI, scale: v3(1, 1, 1), half: v3(1, 1, 1), color: '#777', solid: true, trigger: false, alive: true, hidden: true, emissive: false, vel: v3() });
+    this.surfaceObjs ??= { road: mk('Road', 'Road'), grass: mk('Grass', 'Grass') };
+    this.barrierObj ??= mk('Barrier', 'Barrier');
+    return tag === 'Barrier' ? this.barrierObj : tag === 'Road' ? this.surfaceObjs.road : this.surfaceObjs.grass;
+  }
+
+  /** A ray against the barrier walls (two lines along the track), 2D in x/z, up to 1.1 m high. */
+  private rayBarrier(origin: V3, d: V3, maxDist: number): { t: number; normal: V3; point: V3 } | null {
+    if (!this.trackPts.length) return null;
+    const near = this.trackInfo(origin).i;
+    const n = this.trackPts.length;
+    const off = this.barrierOffset;
+    let best: { t: number; normal: V3; point: V3 } | null = null;
+    const reach = Math.ceil(maxDist / 1.4) + 4;
+    for (let k = -reach; k <= reach; k++) {
+      const i = (((near + k) % n) + n) % n;
+      const a = this.trackPts[i];
+      const b = this.trackPts[(i + 1) % n];
+      const dir = norm(v3(b.x - a.x, 0, b.z - a.z));
+      const right = v3(dir.z, 0, -dir.x);
+      for (const side of [-1, 1]) {
+        const ax = a.x + right.x * off * side;
+        const az = a.z + right.z * off * side;
+        const ex = b.x + right.x * off * side - ax;
+        const ez = b.z + right.z * off * side - az;
+        const den = d.x * ez - d.z * ex;
+        if (Math.abs(den) < 1e-9) continue;
+        const t = ((ax - origin.x) * ez - (az - origin.z) * ex) / den;
+        const u = ((ax - origin.x) * d.z - (az - origin.z) * d.x) / den;
+        if (t <= 1e-4 || t > maxDist || u < -0.02 || u > 1.02) continue;
+        const y = origin.y + d.y * t;
+        if (y < 0 || y > 1.1) continue;
+        if (!best || t < best.t) best = { t, normal: mul(right, -side), point: add(origin, mul(d, t)) };
+      }
+    }
+    return best;
+  }
+
+  /** Cars: speed from movement, barriers push them back and report a collision to their scripts. */
+  private vehicles(): void {
+    if (!this.trackPts.length) return;
+    const lim = this.barrierOffset - 1.0;
+    for (const o of this.objects) {
+      const c = o.car;
+      if (!c || !o.alive) continue;
+      const dt = Math.max(1e-6, this.sdt);
+      const v = v3((o.pos.x - c.lastPos.x) / dt, 0, (o.pos.z - c.lastPos.z) / dt);
+      o.vel = v;
+      if (!c.ghost) {
+        const info = this.trackInfo(o.pos);
+        if (Math.abs(info.lateral) > lim) {
+          const side = Math.sign(info.lateral);
+          const outward = v3(info.dir.z * side, 0, -info.dir.x * side);
+          const push = Math.abs(info.lateral) - lim;
+          o.pos = sub(o.pos, mul(outward, push));
+          const impact = Math.max(0, v.x * outward.x + v.z * outward.z);
+          if (!c.touching && impact > 0.3) {
+            const point = add(o.pos, mul(outward, o.half.x));
+            const col = { point, normal: mul(outward, -1), relativeVelocity: mul(outward, -impact), impact, other: this.surface('Barrier') };
+            for (const inst of this.insts) if (inst.obj === o) this.call(inst, 'OnCollisionEnter', [host('collision', col)]);
+            this.lastCollision = { obj: o, impact, at: this.time };
+          }
+          c.touching = true;
+        } else c.touching = false;
+      }
+      // the wheels turn with the speed; the front ones follow the turning
+      const fwd = qRotate(o.rot, v3(0, 0, 1));
+      const sp = v.x * fwd.x + v.z * fwd.z;
+      c.spin = (c.spin + (sp / 0.36) * dt * (180 / Math.PI)) % 360;
+      const yawNow = qToEuler(o.rot).y;
+      const yawRate = (((yawNow - (c.steer2 ?? yawNow) + 540) % 360) - 180) / dt;
+      c.steer2 = yawNow;
+      c.steer = Math.max(-28, Math.min(28, c.steer * 0.8 + Math.max(-28, Math.min(28, yawRate * 0.25)) * 0.2));
+      for (const w of this.objects)
+        if (w.parent === o && w.shape === 'wheel' && w.local && w.touchedFrame !== this.frameNo) {
+          const front = w.name.startsWith('WheelF');
+          w.local.rot = qMul(qEuler(0, front ? c.steer : 0, 0), qEuler(c.spin, 0, 0));
+        }
+      c.lastPos = { ...o.pos };
+    }
+  }
+
+  lastCollision: { obj: Obj3; impact: number; at: number } | null = null;
+  private chase = { pos: null as V3 | null };
+
+  /** The built-in chase camera of race mode: behind and above the car, a little late — feels fast. */
+  private chaseCam(): void {
+    const car = this.player;
+    const fwd = qRotate(qEuler(0, qToEuler(car.rot).y, 0), v3(0, 0, 1));
+    const want = add(sub(car.pos, mul(fwd, 7)), v3(0, 2.8, 0));
+    this.chase.pos = this.chase.pos ? add(this.chase.pos, mul(sub(want, this.chase.pos), Math.min(1, 6 * this.sdt))) : want;
+    this.camera.pos = this.chase.pos;
+    this.camera.rot = qLook(sub(add(car.pos, add(mul(fwd, 3), v3(0, 0.8, 0))), this.chase.pos));
+    const speed = Math.hypot(car.vel.x, car.vel.z);
+    this.camera.fov = 62 + Math.min(18, speed * 0.35);
   }
 
   /** Where the player last fired (bots with ears react to it). */
@@ -1208,6 +1509,11 @@ export class World3D {
           return o.health ? host('health', o) : null;
         case 'BotBrain':
           return o.bot ? host('brain', o) : null;
+        case 'Renderer':
+        case 'MeshRenderer':
+          return host('renderer', o);
+        case 'MeshFilter':
+          return o.mesh ? host('meshfilter', o) : null;
         case 'Animator':
           return host('animator', o);
         case 'AudioSource':
@@ -1227,6 +1533,8 @@ export class World3D {
         if (type === 'Health' || type === 'Damageable') return !!x.health;
         if (type === 'Rigidbody') return !!x.rb;
         if (type === 'BotBrain') return !!x.bot;
+        if (type === 'Renderer' || type === 'MeshRenderer') return x.shape !== 'none' && x.shape !== 'point';
+        if (type === 'MeshFilter') return !!x.mesh;
         if (type === 'Camera') return x === world.camera || x === world.player;
         if (['Transform', 'Animator', 'AudioSource', 'Collider', 'BoxCollider', 'CapsuleCollider'].includes(type)) return true;
         return world.insts.some((i) => i.obj === x && i.cls.name === type);
@@ -1274,7 +1582,11 @@ export class World3D {
           case 'CursorLockMode':
           case 'Object':
           case 'Application':
+          case 'RaceTrack':
+          case 'PrimitiveType':
             return { k: 'type', name };
+          case 'RaceTrack.Length':
+            return world.trackLen;
           case 'Quaternion.identity':
             return host('quat3', QI);
           case 'Camera.main':
@@ -1301,6 +1613,7 @@ export class World3D {
         if (type === 'WaitForEndOfFrame' || type === 'WaitForFixedUpdate') return host('wait', 0);
         if (type === 'Ray') return host('ray', { origin: asV3(args[0]) ?? v3(), dir: asV3(args[1]) ?? v3(0, 0, 1) });
         if (type === 'RaycastHit') return host('hit3', null);
+        if (type === 'Color') return host('color', { r: num(args[0]), g: num(args[1]), b: num(args[2]), a: args.length > 3 ? num(args[3]) : 1 });
         return NOT_FOUND;
       },
       arith(op: string, a: V, b: V): V | typeof NOT_FOUND {
@@ -1345,6 +1658,39 @@ export class World3D {
           case 'Quaternion.Slerp':
           case 'Quaternion.Lerp':
             return host('quat3', qSlerp(quatOf(args[0]) ?? QI, quatOf(args[1]) ?? QI, Math.min(1, Math.max(0, num(args[2])))));
+          case 'RaceTrack.DistanceAlong': {
+            const p = asV3(args[0]);
+            return p && world.trackPts.length ? world.trackInfo(p).along : 0;
+          }
+          case 'RaceTrack.DistanceFromCenter': {
+            const p = asV3(args[0]);
+            return p && world.trackPts.length ? world.trackInfo(p).lateral : 0;
+          }
+          case 'RaceTrack.DirectionAt': {
+            const p = asV3(args[0]);
+            return vv(p && world.trackPts.length ? world.trackInfo(p).dir : v3(0, 0, 1));
+          }
+          case 'RaceTrack.PointAhead': {
+            const p = asV3(args[0]);
+            if (!p || !world.trackPts.length) return vv(v3());
+            const info = world.trackInfo(p);
+            let s = (info.along + num(args[1], 10)) % world.trackLen;
+            if (s < 0) s += world.trackLen;
+            let i = 0;
+            while (i < world.trackPts.length - 1 && world.trackS[i + 1] < s) i++;
+            const a = world.trackPts[i];
+            const b = world.trackPts[(i + 1) % world.trackPts.length];
+            const u = (s - world.trackS[i]) / Math.max(1e-6, world.trackS[i + 1] - world.trackS[i]);
+            return vv(v3(a.x + (b.x - a.x) * u, p.y, a.z + (b.z - a.z) * u));
+          }
+          case 'Color.HSVToRGB':
+            return host('color', hsv(num(args[0]), num(args[1]), num(args[2])));
+          case 'Color.Lerp': {
+            const a = rgbaOf(args[0]) ?? NAMED.white;
+            const b = rgbaOf(args[1]) ?? NAMED.white;
+            const t = Math.max(0, Math.min(1, num(args[2])));
+            return host('color', { r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t, a: a.a + (b.a - a.a) * t });
+          }
           case 'Quaternion.RotateTowards': {
             // turn from a to b, but not more than maxDegrees (a speed limit for turning)
             const a = quatOf(args[0]) ?? QI;
@@ -1510,6 +1856,41 @@ export class World3D {
           case 'uitext':
             if (name === 'text') return (target.ref as { text: string }).text;
             break;
+          case 'renderer':
+            if (name === 'material' || name === 'sharedMaterial') return host('material', o);
+            if (name === 'enabled') return !o.hidden;
+            break;
+          case 'material':
+            if (name === 'color') return host('color', { ...fromHex(o.color), a: o.opacity ?? 1 });
+            break;
+          case 'color': {
+            const c = target.ref as Rgba;
+            if (name === 'r' || name === 'g' || name === 'b' || name === 'a') return c[name];
+            break;
+          }
+          case 'meshfilter':
+            if (name === 'mesh' || name === 'sharedMesh') return host('mesh', o);
+            break;
+          case 'mesh':
+            if (name === 'vertices') return { k: 'arr', items: o.mesh!.verts.map((v) => vv(v)), elem: 'Vector3' };
+            if (name === 'vertexCount') return o.mesh!.verts.length;
+            break;
+          case 'collision': {
+            const c = target.ref as { point: V3; normal: V3; relativeVelocity: V3; impact: number; other: Obj3 };
+            if (name === 'relativeVelocity') return vv(c.relativeVelocity);
+            if (name === 'impulse') return vv(mul(c.relativeVelocity, -1200));
+            if (name === 'collider' || name === 'transform') return host(name === 'collider' ? 'collider' : 'transform', c.other);
+            if (name === 'gameObject') return host('gameObject', c.other);
+            if (name === 'contactCount') return 1;
+            if (name === 'contacts') return { k: 'arr', items: [host('contact', c)], elem: 'ContactPoint' };
+            break;
+          }
+          case 'contact': {
+            const c = target.ref as { point: V3; normal: V3 };
+            if (name === 'point') return vv(c.point);
+            if (name === 'normal') return vv(c.normal);
+            break;
+          }
           case 'brain': {
             const b = o.bot!;
             if (name in b.profile) return b.profile[name as keyof BotProfile];
@@ -1573,6 +1954,10 @@ export class World3D {
           o.vel = vec;
           return true;
         }
+        if (target.kind === 'rigidbody' && name === 'angularVelocity' && vec) {
+          o.spinVel = mul(vec, 57.3);
+          return true;
+        }
         if (target.kind === 'rigidbody' && name === 'useGravity' && o.rb) {
           o.rb.useGravity = value === true;
           return true;
@@ -1595,6 +1980,32 @@ export class World3D {
             }
             if (o === world.player) world.head.local!.pos.y = Math.max(0.2, h / 2 - 0.2);
           } else o.cc.radius = value;
+          return true;
+        }
+        if (target.kind === 'material' && name === 'color') {
+          const c = rgbaOf(value);
+          if (c) {
+            o.color = toHex(c);
+            o.opacity = c.a;
+            // the whole car (cabin, bumpers…) follows the see-through amount
+            for (const x of world.objects) if (x.parent === o && x.shape !== 'none') x.opacity = c.a;
+          }
+          return true;
+        }
+        if (target.kind === 'renderer' && name === 'enabled') {
+          o.hidden = value === false;
+          return true;
+        }
+        if (target.kind === 'mesh' && name === 'vertices' && value && typeof value === 'object' && value.k === 'arr' && o.mesh) {
+          const vs = value.items.map((x) => asV3(x) ?? v3());
+          if (vs.length === o.mesh.verts.length) {
+            o.mesh.verts = vs;
+            o.mesh.version++;
+          }
+          return true;
+        }
+        if (target.kind === 'color' && /^[rgba]$/.test(name) && typeof value === 'number') {
+          (target.ref as Rgba)[name as keyof Rgba] = value;
           return true;
         }
         if (target.kind === 'brain' && typeof value === 'number' && o.bot && name in o.bot.profile) {
@@ -1681,6 +2092,41 @@ export class World3D {
             return vv(qRotate(o.rot, asV3(args[0]) ?? v3(num(args[0]), num(args[1]), num(args[2]))));
           case 'transform.InverseTransformDirection':
             return vv(qRotate(qInv(o.rot), asV3(args[0]) ?? v3()));
+          case 'transform.InverseTransformPoint': {
+            const p = asV3(args[0]) ?? v3();
+            const l = qRotate(qInv(o.rot), sub(p, o.pos));
+            return vv(v3(l.x / (o.scale.x || 1), l.y / (o.scale.y || 1), l.z / (o.scale.z || 1)));
+          }
+          case 'transform.SetParent': {
+            const parent = objOf(args[0]);
+            if (!parent) {
+              // detach: keep where it is in the world
+              o.parent = undefined;
+              o.local = undefined;
+            } else {
+              o.parent = parent;
+              o.local = { pos: qRotate(qInv(parent.rot), sub(o.pos, parent.pos)), rot: qMul(qInv(parent.rot), o.rot) };
+            }
+            return undefined;
+          }
+          case 'gameObject.AddComponent':
+          case 'transform.AddComponent': {
+            const t = /<(\w+)>/.exec(name)?.[1] ?? '';
+            if (t === 'Rigidbody') {
+              o.rb = { useGravity: true, grounded: false };
+              if (o.parent) {
+                o.parent = undefined;
+                o.local = undefined;
+              }
+              return host('rigidbody', o);
+            }
+            return component(t, o, line);
+          }
+          case 'mesh.RecalculateNormals':
+          case 'mesh.RecalculateBounds':
+            return undefined;
+          case 'collision.GetContact':
+            return host('contact', target.ref);
           case 'transform.TransformPoint':
             return vv(add(o.pos, qRotate(o.rot, asV3(args[0]) ?? v3())));
           case 'transform.Find': {
@@ -1725,6 +2171,11 @@ export class World3D {
             const d = sub(o.pos, at);
             const k = Math.max(0, 1 - len(d) / radius);
             o.vel = add(o.vel, mul(norm(add(d, v3(0, 0.5, 0))), (force * k) / 10));
+            return undefined;
+          }
+          case 'rigidbody.AddTorque': {
+            const v = asV3(args[0]) ?? v3();
+            o.spinVel = add(o.spinVel ?? v3(), mul(v, 57.3));
             return undefined;
           }
           case 'rigidbody.MovePosition': {
