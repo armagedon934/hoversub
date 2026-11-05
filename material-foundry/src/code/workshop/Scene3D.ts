@@ -77,6 +77,18 @@ function ringsTexture(): THREE.CanvasTexture {
   return t;
 }
 
+export interface VisionLabel {
+  /** Position on the screen, 0…1. */
+  x: number;
+  y: number;
+  state: string;
+  name: string;
+  reactLeft: number;
+  aimErr: number;
+}
+
+const STATE_COLOR: Record<string, number[]> = { patrol: [0.35, 0.9, 0.45], react: [1, 0.85, 0.2], attack: [1, 0.3, 0.25], search: [0.35, 0.65, 1], chase: [0.35, 0.65, 1] };
+
 interface Entry {
   obj: Obj3;
   node: THREE.Object3D;
@@ -126,8 +138,8 @@ export class Scene3D {
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.03;
     this.scene.add(this.hemi, this.sun, this.sun.target, this.flash, this.camera);
-    this.lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(128 * 6), 3));
-    this.lineGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(128 * 6), 3));
+    this.lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(600 * 6), 3));
+    this.lineGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(600 * 6), 3));
     this.lines = new THREE.LineSegments(this.lineGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, fog: false }));
     this.lines.frustumCulled = false;
     this.scene.add(this.lines);
@@ -309,7 +321,10 @@ export class Scene3D {
   }
 
   /** Copies positions/rotations/colours from the world and draws a frame. */
-  render(w: World3D): void {
+  /** Shows how bots see: field of view, where they look, their state (like Unity's Gizmos). */
+  vision = false;
+
+  render(w: World3D): VisionLabel[] {
     if (w !== this.world) this.setWorld(w);
     const canvas = this.renderer.domElement;
     const width = canvas.clientWidth || 1;
@@ -319,15 +334,16 @@ export class Scene3D {
     }
     this.camera.aspect = width / height;
     // Unity's fieldOfView is vertical, like three.js
-    this.camera.fov = w.camera.fov ?? 70;
+    const eye = w.eye();
+    this.camera.fov = eye.fov;
     this.camera.updateProjectionMatrix();
-    toPos(w.camera.pos, this.camera.position);
-    toQuat(w.camera.rot, this.camera.quaternion);
+    toPos(eye.pos, this.camera.position);
+    toQuat(eye.rot, this.camera.quaternion);
 
     for (const o of w.objects) {
       const e = this.entries.get(o.id) ?? this.ensure(o);
       if (!e) continue;
-      e.node.visible = o.alive && !o.hidden;
+      e.node.visible = o.alive && !o.hidden && !(w.spectate?.mode === 'eyes' && w.isPartOf(o, w.spectate.bot) && /Head/.test(o.name));
       if (!e.node.visible) continue;
       toPos(o.pos, e.node.position);
       toQuat(o.rot, e.node.quaternion);
@@ -360,7 +376,31 @@ export class Scene3D {
     let lastPlayerShot = -1;
     const segs = [...w.shots.map((s) => ({ from: !s.byBot && tip ? tip.pos : s.from, to: s.to, age: w.time - s.at, c: s.byBot ? [1, 0.45, 0.35] : [1, 0.9, 0.55] })), ...w.rays.map((r) => ({ from: r.from, to: r.to, age: 0, c: r.color === 'red' ? [1, 0.2, 0.2] : r.color === 'green' ? [0.2, 1, 0.3] : [1, 1, 1] }))];
     for (const s of w.shots) if (!s.byBot) lastPlayerShot = Math.max(lastPlayerShot, s.at);
-    for (const s of segs.slice(-128)) {
+    const labels: VisionLabel[] = [];
+    if (this.vision) {
+      for (const r of w.sightRays) segs.push({ from: r.from, to: r.to, age: 0, c: r.color === 'red' ? [1, 0.25, 0.2] : [1, 0.9, 0.2] });
+      for (const b of w.watchable()) {
+        const bot = b.bot!;
+        const p = bot.profile;
+        const col = STATE_COLOR[bot.state] ?? [1, 1, 1];
+        const eyeP = { x: b.pos.x, y: b.pos.y + 0.72, z: b.pos.z };
+        const yaw = Math.atan2(2 * (b.rot.w * b.rot.y + b.rot.x * b.rot.z), 1 - 2 * (b.rot.y * b.rot.y + b.rot.x * b.rot.x));
+        const reach = Math.min(p.sight, 14);
+        // the edges of the field of view and an arc between them
+        const pts: { x: number; y: number; z: number }[] = [];
+        for (let k = 0; k <= 12; k++) {
+          const a = yaw + ((k / 12) * 2 - 1) * ((p.viewAngle * Math.PI) / 180);
+          pts.push({ x: eyeP.x + Math.sin(a) * reach, y: eyeP.y, z: eyeP.z + Math.cos(a) * reach });
+        }
+        segs.push({ from: eyeP, to: pts[0], age: 0, c: col }, { from: eyeP, to: pts[12], age: 0, c: col });
+        for (let k = 0; k < 12; k++) segs.push({ from: pts[k], to: pts[k + 1], age: 0, c: col.map((x) => x * 0.6) });
+        if (bot.lookAt) segs.push({ from: eyeP, to: bot.lookAt, age: 0, c: [1, 1, 1] });
+        // a label above the head (projected to the screen)
+        this.tmpV.set(b.pos.x, b.pos.y + 1.35, -b.pos.z).project(this.camera);
+        if (this.tmpV.z < 1) labels.push({ x: (this.tmpV.x + 1) / 2, y: (1 - this.tmpV.y) / 2, state: bot.state, name: b.name, reactLeft: bot.state === 'react' ? Math.max(0, bot.reactUntil - w.time) : 0, aimErr: bot.aimErr });
+      }
+    }
+    for (const s of segs.slice(-600)) {
       const k = Math.max(0, 1 - s.age / 0.12);
       if (k <= 0) continue;
       // a short streak moving along the shot looks like a bullet
@@ -399,6 +439,7 @@ export class Scene3D {
     this.hemi.intensity = 0.55 + 0.6 * p;
     this.sun.intensity = 0.2 + 1.45 * p;
     this.renderer.render(this.scene, this.camera);
+    return labels;
   }
 
   /** Draws the world and reads one pixel (x, y from 0 to 1) — for automated checks of the look. */

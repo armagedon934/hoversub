@@ -33,6 +33,8 @@ import { blankHighlighter, createEditor, type WorkshopEditor } from './editor';
 import { useWorkshop } from './store';
 import { Scene3D } from './Scene3D';
 import { setSfx, sfx, sfxOn } from './sfx';
+import { BotBrainPanel, LiveInspector, SpectatorBar, VisionLabels } from './GamePanels';
+import type { VisionLabel } from './Scene3D';
 import { useShooter } from './shooterProgress';
 
 // ------------------------------------------------------------------------------------ input
@@ -120,6 +122,12 @@ export default function Shooter() {
   const [sound, setSound] = useState(sfxOn());
   const [wordOpen, setWordOpen] = useState<number | null>(null);
   const [webgl, setWebgl] = useState(true);
+  const [vision, setVision] = useState(false);
+  const [labels, setLabels] = useState<VisionLabel[]>([]);
+  const [tick, setTick] = useState(0);
+  const loopRef = useRef<((t: number) => void) | null>(null);
+  const visionRef = useRef(false);
+  const [panel, setPanel] = useState<'inspector' | 'brain' | null>(null);
 
   ensureMainThreadTreeSitter();
 
@@ -317,10 +325,18 @@ export default function Shooter() {
       let message = '';
       let errLine = -1;
       const sens = useShooter.getState().sens;
-      while (acc >= w.dt && status === 'playing') {
+      const watching = () => !!w.spectate && (status === 'playing' || status === 'lost');
+      while (acc >= w.dt && (status === 'playing' || watching())) {
         const i = input.current;
         let step: DemoStep3;
-        if (demoRef.current && mission) step = mission.demo(w.time, w, runRef.current);
+        if (w.spectate) {
+          // watching bots: your own controls rest
+          step = { until: 1e9 };
+          i.tapped.clear();
+          i.tappedB.clear();
+          i.dx = 0;
+          i.dy = 0;
+        } else if (demoRef.current && mission) step = mission.demo(w.time, w, runRef.current);
         else {
           step = { until: 1e9, keys: [...new Set([...i.keys, ...i.tapped])], buttons: [...new Set([...i.buttons, ...i.tappedB])], mouse: [i.dx * 0.1 * sens, -i.dy * 0.1 * sens] };
           i.tapped.clear();
@@ -329,7 +345,7 @@ export default function Shooter() {
           i.dy = 0;
         }
         const r = w.step(step);
-        status = r.status;
+        status = r.status === 'lost' && w.spectate ? 'playing' : r.status;
         message = r.message ?? '';
         errLine = r.error?.line ?? -1;
         acc -= w.dt;
@@ -357,8 +373,13 @@ export default function Shooter() {
         powerRef.current = Math.min(1, powerRef.current + 0.012);
         sceneRef.current?.setPower(powerRef.current);
       }
-      sceneRef.current?.render(w);
-      if (++n % 5 === 0 || status !== 'playing') setHud(readHud(w, mission ? checkGoals(mission, w, runRef.current) : [w.redLeft() === 0]));
+      if (sceneRef.current) sceneRef.current.vision = visionRef.current;
+      const lb = sceneRef.current?.render(w) ?? [];
+      if (++n % 5 === 0 || status !== 'playing') {
+        setHud(readHud(w, mission ? checkGoals(mission, w, runRef.current) : [w.redLeft() === 0]));
+        setLabels(lb);
+        if (n % 30 === 0) setTick((t) => t + 1);
+      }
       if (status === 'playing') {
         raf.current = requestAnimationFrame(loop);
         return;
@@ -375,6 +396,10 @@ export default function Shooter() {
         setTries((t) => t + 1);
       }
     };
+    loopRef.current = (now: number) => {
+      last = now;
+      loop(now);
+    };
     const onWin = () => {
       setPhase('won');
       if (mission) setHud(readHud(w, checkGoals(mission, w, runRef.current)));
@@ -390,6 +415,20 @@ export default function Shooter() {
     raf.current = requestAnimationFrame(loop);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mission, free, freeScripts, levelOf, stop, sound, addXp]);
+
+  /** After being knocked out: keep the round running and watch the bots. */
+  const watchBots = () => {
+    const w = worldRef.current;
+    if (!w) return;
+    const bots = w.watchable();
+    if (!bots.length) return;
+    w.spectate ??= { bot: bots[0], mode: 'follow' };
+    setVision(true);
+    visionRef.current = true;
+    setPhase('playing');
+    setTick((t) => t + 1);
+    if (!raf.current && loopRef.current) raf.current = requestAnimationFrame((t) => loopRef.current?.(t));
+  };
 
   const restart = () => {
     stop();
@@ -607,13 +646,15 @@ export default function Shooter() {
               onContextMenu={(e) => e.preventDefault()}
             />
             {!webgl ? <div className="sh-overlay">{tr('3D graphics (WebGL) are not available on this computer.', 'На этом компьютере недоступна 3D-графика (WebGL).')}</div> : null}
-            <HudView hud={hud} mission={mission} phase={phase} hasGun={!!worldRef.current?.gun} />
+            <HudView hud={hud} mission={mission} phase={phase} hasGun={!!worldRef.current?.gun && !worldRef.current?.spectate} />
+            {vision ? <VisionLabels labels={labels} /> : null}
+            {worldRef.current?.spectate ? <div className="gp-watching">👁 {tr('Watching', 'Наблюдаешь')}: <b>{worldRef.current.spectate.bot.name}</b></div> : null}
             {phase === 'edit' ? (
               <div className="sh-overlay soft" data-testid="sh-idle">
                 {offline ? <b>{tr('Suit systems are offline', 'Системы костюма отключены')}</b> : null}
                 <span>{tr('Fill the blanks on the left and press "Upload the script"', 'Заполни пропуски слева и нажми «Загрузить прошивку»')}</span>
               </div>
-            ) : phase === 'playing' && !locked && !demo && usesMouse ? (
+            ) : phase === 'playing' && !locked && !demo && usesMouse && !worldRef.current?.spectate ? (
               <button className="sh-overlay hint" onClick={lockMouse} data-testid="sh-click">
                 <Crosshair size={18} /> {tr('Click the game to control it with the mouse (Esc — release)', 'Нажми на игру, чтобы управлять мышью (Esc — отпустить)')}
               </button>
@@ -641,9 +682,16 @@ export default function Shooter() {
               <div className="sh-overlay lost" data-testid="sh-lost">
                 <b>💥 {tr('You are out of the fight', 'Ты выбыл из боя')}</b>
                 <span>{tr('Nothing bad: in shooters this happens all the time. Use cover and try again.', 'Ничего страшного: в шутерах это бывает постоянно. Прячься за укрытиями и попробуй ещё.')}</span>
-                <button className="btn primary" onClick={() => void play()}>
-                  <RotateCcw size={15} /> {tr('Again', 'Ещё раз')}
-                </button>
+                <div className="sh-row">
+                  <button className="btn primary" onClick={() => void play()}>
+                    <RotateCcw size={15} /> {tr('Again', 'Ещё раз')}
+                  </button>
+                  {worldRef.current?.watchable().length ? (
+                    <button className="btn" onClick={watchBots} data-testid="sh-watch">
+                      👁 {tr('Watch the bots', 'Наблюдать за ботами')}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : phase === 'error' ? (
               <div className="sh-overlay lost">
@@ -681,6 +729,34 @@ export default function Shooter() {
               {sound ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
           </div>
+          {phase !== 'edit' ? (
+            <div className="gp-panels">
+              <SpectatorBar
+                world={worldRef.current}
+                vision={vision}
+                setVision={(v) => {
+                  setVision(v);
+                  visionRef.current = v;
+                }}
+                onChange={() => {
+                  setTick((t) => t + 1);
+                  if (worldRef.current?.spectate && phase === 'lost') watchBots();
+                }}
+              />
+              <div className="gp-row">
+                <button className={`btn small${panel === 'inspector' ? ' on' : ''}`} onClick={() => setPanel(panel === 'inspector' ? null : 'inspector')} data-testid="open-inspector">
+                  🎚 {tr('Inspector (live numbers)', 'Inspector (числа вживую)')}
+                </button>
+                {worldRef.current?.watchable().length && worldRef.current.level.botBrain !== 'script' ? (
+                  <button className={`btn small${panel === 'brain' ? ' on' : ''}`} onClick={() => setPanel(panel === 'brain' ? null : 'brain')} data-testid="open-brain">
+                    🧠 {tr('Bot brain', 'Мозг ботов')}
+                  </button>
+                ) : null}
+              </div>
+              {panel === 'inspector' ? <LiveInspector world={worldRef.current} tick={tick} /> : null}
+              {panel === 'brain' ? <BotBrainPanel world={worldRef.current} tick={tick} /> : null}
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

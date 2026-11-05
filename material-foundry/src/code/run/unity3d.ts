@@ -1781,6 +1781,22 @@ export class World3D {
     return { pos: this.camera.pos, rot: this.camera.rot, fov: this.camera.fov ?? 70 };
   }
 
+  /** Public number fields of the learner's script (the first one loaded): the live Inspector. */
+  learnerFields(): { name: string; cell: Cell; owner: string }[] {
+    const first = this.programs[0]?.program;
+    const out: { name: string; cell: Cell; owner: string }[] = [];
+    for (const inst of this.insts) {
+      if (inst.program !== first || !inst.self) continue;
+      for (const [name, cell] of inst.self.fields) {
+        if (typeof cell.v !== 'number') continue;
+        if (!new RegExp(`public\\s+(?:float|int)\\s+${name}\\b`).test(this.programs[0].spec.source)) continue;
+        out.push({ name, cell, owner: inst.obj.name });
+      }
+      break;
+    }
+    return out;
+  }
+
   /** Bots that can be watched (alive, built-in or scripted). */
   watchable(): Obj3[] {
     return this.objects.filter((o) => o.bot && o.alive && o.bot.state !== 'dead');

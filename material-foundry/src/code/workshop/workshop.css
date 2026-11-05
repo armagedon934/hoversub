@@ -2396,3 +2396,69 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Panels under the 3D game */
+.gp-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 38vh;
+}
+.gp-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gp-panel h4 {
+  margin: 0 0 4px;
+  font-size: 0.9em;
+  color: var(--text-2);
+}
+.gp-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.gp-label {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  color: #fff;
+  background: rgba(20, 24, 30, 0.7);
+  border-left: 3px solid #fff;
+  z-index: 2;
+}
+.gp-label.st-patrol {
+  border-color: #5ae672;
+}
+.gp-label.st-react {
+  border-color: #ffd933;
+}
+.gp-label.st-attack {
+  border-color: #ff4d40;
+}
+.gp-label.st-search,
+.gp-label.st-chase {
+  border-color: #59a6ff;
+}
+.gp-watching {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: rgba(15, 20, 26, 0.6);
+  color: #fff;
+  z-index: 3;
+}
