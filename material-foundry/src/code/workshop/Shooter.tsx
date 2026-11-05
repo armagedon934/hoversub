@@ -25,7 +25,7 @@ import {
 } from '../run/shooter';
 import { World3D, type DemoStep3 } from '../run/unity3d';
 import { useLearn } from '../learn/progress';
-import { ReaderModal } from '../learn/CodeReader';
+import { ReaderModal } from '../learn/ReaderView';
 import { speak } from '../memory/speech';
 import { useResume } from '../memory/resume';
 import { blankHighlighter, createEditor, type WorkshopEditor } from './editor';

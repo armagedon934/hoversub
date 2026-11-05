@@ -16,7 +16,7 @@ import { createEditor, type WorkshopEditor } from '../workshop/editor';
 import { TraceView } from '../workshop/TraceView';
 import { useWorkshop } from '../workshop/store';
 import { COURSES, type Course, type CourseLesson, type Quiz } from './courses';
-import { ReaderModal } from './CodeReader';
+import { ReaderModal } from './ReaderView';
 import { useLearn } from './progress';
 
 type Stage = 'read' | 'watch' | 'quiz' | 'task' | 'done';

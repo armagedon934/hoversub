@@ -19,7 +19,7 @@ import { useResume } from '../memory/resume';
 import { useCode } from '../ui/store';
 import { createEditor, type WorkshopEditor } from './editor';
 import { useWorkshop } from './store';
-import { ReaderModal } from '../learn/CodeReader';
+import { ReaderModal } from '../learn/ReaderView';
 import { parseCSharp, syntaxProblems } from '../run/runner';
 
 // ------------------------------------------------------------------------------------ progress

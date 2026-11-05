@@ -23,7 +23,7 @@ import { RECIPES, recipeFileName, recipeLineNotes, recipeWithComments, searchRec
 import { EXT, langOfName, template, useWorkshop, type WsFile } from './store';
 import { TraceView } from './TraceView';
 import { useNotebook } from '../memory/notebook';
-import { ReaderModal } from '../learn/CodeReader';
+import { ReaderModal } from '../learn/ReaderView';
 
 const LANG_LABEL: Record<WsFile['lang'], string> = { cs: 'C#', py: 'Python', js: 'JavaScript', cpp: 'C++', c: 'C' };
 const LANGUAGE_ID: Record<WsFile['lang'], string> = { cs: 'csharp', py: 'python', js: 'javascript', cpp: 'cpp', c: 'c' };
