@@ -55,10 +55,10 @@ async function main() {
     await page.screenshot({ path: join(SHOTS, '00-desktop-materials.png') });
     check('Window opens the app from app:// (no server, no internet)', page.url().startsWith('app://local/'), page.url());
     await page.getByTestId('mode-code').click();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
     await page.getByTestId('open-settings').click();
     await page.getByTestId('lang-ru').click();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
     await page.screenshot({ path: join(SHOTS, '01-desktop-welcome.png') });
 
     const iso = await page.evaluate(() => ({ require: typeof (window as unknown as { require?: unknown }).require, process: typeof (window as unknown as { process?: unknown }).process, bridge: Object.keys((window as unknown as { mfDesktop?: object }).mfDesktop ?? {}) }));
@@ -75,7 +75,7 @@ async function main() {
     check('Files outside the app folder cannot be read', escaped !== 200, String(escaped));
 
     // Workshop: C# with input.
-    await page.getByTestId('start-workshop').click();
+    await page.getByTestId('view-workshop').click();
     await page.getByTestId('ws-new').click();
     await page.getByTestId('ws-new-cs').click();
     const setEditor = async (text: string) => {
@@ -101,6 +101,8 @@ async function main() {
     await page.screenshot({ path: join(SHOTS, '02-desktop-python.png') });
 
     // Mini-Unity level.
+    // the map's locks: Mini-Unity is a later district, so open everything for this check
+    await page.evaluate(() => (window as unknown as { __mf: { code: { getState: () => { setPrefs: (p: object) => void } } } }).__mf.code.getState().setPrefs({ lockAhead: false }));
     await page.getByTestId('view-games').click();
     await page.getByTestId('view-unity').click();
     await page.getByTestId('mu-level-hello').click();

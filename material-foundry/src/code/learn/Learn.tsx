@@ -26,6 +26,8 @@ import {
 import { XP_PER_LEVEL, key, useLearn } from './progress';
 import { useReview } from '../memory/review';
 import { useResume } from '../memory/resume';
+import { usePathLock } from './LearningPath';
+import { fx } from '../ui/fx';
 import { Speak } from '../memory/MemoryViews';
 
 /** Questions of a finished lesson become review cards, so they come back in a few days. */
@@ -287,7 +289,7 @@ export function Animator({ lesson, track, onDone }: { lesson: Lesson; track: Tra
 interface GameProps {
   lesson: Lesson;
   track: TrackId;
-  onSolved: (firstTry: boolean) => void;
+  onSolved: (firstTry: boolean, el?: HTMLElement) => void;
 }
 
 function Feedback({ ok, why, tries }: { ok: boolean | null; why: Text2; tries: number }) {
@@ -312,11 +314,12 @@ function ChoiceGame({ game, lesson, track, onSolved }: GameProps & { game: Extra
   const [chosen, setChosen] = useState<number | null>(null);
   const solved = chosen === game.answer;
   const lines = useMemo(() => codeLines(lesson, track), [lesson, track]);
-  const choose = (k: number) => {
+  const choose = (k: number, el: HTMLElement) => {
     if (solved) return;
     setChosen(k);
     setTries(tries + 1);
-    if (k === game.answer) onSolved(tries === 0);
+    if (k === game.answer) onSolved(tries === 0, el);
+    else fx.wrong(el);
   };
   return (
     <div className="ln-game" data-testid="game-choice">
@@ -324,7 +327,7 @@ function ChoiceGame({ game, lesson, track, onSolved }: GameProps & { game: Extra
       <CodeBlock lines={lines} />
       <div className="ln-options">
         {game.options.map((o, k) => (
-          <button key={k} className={`ln-opt${chosen === k ? (k === game.answer ? ' good' : ' bad') : ''}${solved && k === game.answer ? ' good' : ''}`} onClick={() => choose(k)} disabled={solved} data-testid="game-option">
+          <button key={k} className={`ln-opt${chosen === k ? (k === game.answer ? ' good' : ' bad') : ''}${solved && k === game.answer ? ' good' : ''}`} onClick={(e) => choose(k, e.currentTarget)} disabled={solved} data-testid="game-option">
             <pre>{pick(o)}</pre>
           </button>
         ))}
@@ -351,6 +354,7 @@ function BugGame({ game, lesson, track, onSolved }: GameProps & { game: Extract<
     setMark({ line, good });
     setTries(tries + 1);
     if (good) onSolved(tries === 0);
+    else fx.wrong(document.querySelector('[data-testid=game-bug]'));
   };
   return (
     <div className="ln-game" data-testid="game-bug">
@@ -387,6 +391,7 @@ function OrderGame({ game, lesson, track, onSolved }: GameProps & { game: Extrac
     setResult(ok);
     setTries((t) => t + 1);
     if (ok) onSolved(tries === 0);
+    else fx.wrong(document.querySelector('[data-testid=game-order]'));
   }, [done, picked, result, tries, onSolved]);
 
   return (
@@ -489,12 +494,16 @@ function LessonPlayer({ lesson, track, onExit, onNext }: { lesson: Lesson; track
     { s: 'done', label: tr('4. Done', '4. Готово') },
   ];
 
-  const onSolved = (firstTry: boolean) => {
+  const onSolved = (firstTry: boolean, el?: HTMLElement) => {
     setSolved(true);
     if (!firstTry) setMistakes((m) => m + 1);
     const xp = firstTry ? 10 : 5;
     setEarned((e) => e + xp);
     addXp(xp);
+    const at = el ?? document.querySelector<HTMLElement>('.ln-play .ln-game');
+    fx.spark(at);
+    fx.float(`+${xp} XP`, at);
+    fx.streak(firstTry);
   };
 
   const nextGame = () => {
@@ -506,6 +515,14 @@ function LessonPlayer({ lesson, track, onExit, onNext }: { lesson: Lesson; track
       finishLesson(track, lesson.id, stars);
       addLessonCards(lesson, track);
       setStage('done');
+      fx.lesson({
+        icon: lesson.icon,
+        title: pick(lesson.title),
+        anchor: pick(lesson.goal),
+        stars,
+        xp: earned + 20,
+        next: onNext ? { label: tr('Next lesson', 'Следующий урок'), go: onNext } : undefined,
+      });
     }
   };
 
@@ -609,6 +626,7 @@ function LessonPlayer({ lesson, track, onExit, onNext }: { lesson: Lesson; track
 // The Learn screen
 
 export function Learn() {
+  const lock = usePathLock();
   const track = useLearn((s) => s.track);
   const setTrack = useLearn((s) => s.setTrack);
   const lessonId = useLearn((s) => s.lessonId);
@@ -621,10 +639,10 @@ export function Learn() {
         <div className="ln-home">
           <h1>{tr('Learn to read code — by playing', 'Учись понимать код — играя')}</h1>
           <p className="ln-lead">{tr('Short lessons (about 3 minutes). Each one: a tiny piece of a game, an animation of how it runs, and quick games.', 'Короткие уроки (примерно 3 минуты). В каждом: кусочек игры, анимация того, как он работает, и быстрые мини-игры.')}</p>
-          <h2 className="ln-step-title">{tr('Step 1: choose a language', 'Шаг 1: выбери язык')}</h2>
+          <h2 className="ln-step-title">{tr('Your main language: C# (Unity)', 'Твой главный язык: C# (Unity)')}</h2>
           <div className="ln-tracks">
-            {TRACKS.map((t) => (
-              <button key={t.id} className="ln-track" style={{ borderColor: t.color }} onClick={() => setTrack(t.id)} data-testid={`track-${t.id}`}>
+            {TRACKS.filter((t) => t.id === 'cs').map((t) => (
+              <button key={t.id} className="ln-track main" style={{ borderColor: t.color }} onClick={() => setTrack(t.id)} data-testid={`track-${t.id}`}>
                 <span className="ln-track-name" style={{ color: t.color }}>
                   {t.name}
                 </span>
@@ -635,8 +653,24 @@ export function Learn() {
               </button>
             ))}
           </div>
+          <details className="ln-other-langs">
+            <summary>{tr('Other languages — optional', 'Другие языки — по желанию')}</summary>
+            <div className="ln-tracks">
+              {TRACKS.filter((t) => t.id !== 'cs').map((t) => (
+                <button key={t.id} className="ln-track" style={{ borderColor: t.color }} onClick={() => setTrack(t.id)} data-testid={`track-${t.id}`}>
+                  <span className="ln-track-name" style={{ color: t.color }}>
+                    {t.name}
+                  </span>
+                  <span>{pick(t.about)}</span>
+                  <span className="muted small">
+                    {lessonsFor(t.id).length} {tr('lessons', 'уроков')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </details>
           <p className="ln-tip">
-            💡 {tr('Not sure? Python is the easiest start. For Unity games choose C#, for Unreal Engine choose C++. The ideas are the same everywhere, and you can switch any time.', 'Не знаешь, что выбрать? Python — самый лёгкий старт. Для игр на Unity — C#, для Unreal Engine — C++. Идеи везде одинаковые, язык можно сменить в любой момент.')}
+            💡 {tr('For Unity games it is C# — your main path. The ideas are the same in every language, so the others are just for curiosity.', 'Для игр на Unity нужен C# — это твой главный путь. Идеи во всех языках одинаковые, так что остальные — просто для интереса.')}
           </p>
         </div>
       </div>
@@ -658,6 +692,7 @@ export function Learn() {
   }
 
   const nextUp = list.find((l) => !done[key(track, l.id)]) ?? null;
+  const isLocked = (id: string) => track === 'cs' && lock.lockedIn('bricks', id);
   return (
     <div className="ln" data-testid="learn">
       <div className="ln-home">
@@ -685,8 +720,13 @@ export function Learn() {
             const r = done[key(track, l.id)];
             return (
               <li key={l.id}>
-                <button className={`ln-path-item${r ? ' done' : ''}${l === nextUp ? ' next' : ''}`} onClick={() => openLesson(l.id)} data-testid="lesson-card">
-                  <span className="ln-path-n">{i + 1}</span>
+                <button
+                  className={`ln-path-item${r ? ' done' : ''}${l === nextUp ? ' next' : ''}${isLocked(l.id) ? ' locked' : ''}`}
+                  onClick={(e) => (isLocked(l.id) ? (fx.wrong(e.currentTarget), useCode.getState().toast('info', tr('Locked: finish the lesson before it first.', 'Закрыто: сначала пройди урок перед ним.'))) : openLesson(l.id))}
+                  aria-disabled={isLocked(l.id)}
+                  data-testid="lesson-card"
+                >
+                  <span className="ln-path-n">{isLocked(l.id) ? '🔒' : i + 1}</span>
                   <span className="ln-path-icon" aria-hidden>
                     {l.icon}
                   </span>

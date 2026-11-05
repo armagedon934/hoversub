@@ -20,6 +20,7 @@
     "e2e:workshop": "tsx scripts/e2e-workshop.ts",
     "e2e:shooter": "tsx scripts/e2e-shooter.ts",
     "e2e:games": "tsx scripts/e2e-games.ts",
+    "e2e:path": "tsx scripts/e2e-path.ts",
     "e2e:desktop": "tsx scripts/e2e-desktop.ts",
     "desktop:win": "npm run build && cd desktop && npm install && npm run dist:win"
   },

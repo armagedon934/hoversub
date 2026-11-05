@@ -16,7 +16,9 @@ import { useLearn } from '../learn/progress';
 import { ReaderModal } from '../learn/ReaderView';
 import { speak } from '../memory/speech';
 import { useResume } from '../memory/resume';
-import { blankHighlighter, createEditor, type WorkshopEditor } from './editor';
+import { lockedClick, usePathLock } from '../learn/LearningPath';
+import { fx } from '../ui/fx';
+import { blankHighlighter, createEditor, jumpToBlank, type WorkshopEditor } from './editor';
 import { useWorkshop } from './store';
 import { Scene3D } from './Scene3D';
 import { engineHum, setSfx, sfx, sfxOn } from './sfx';
@@ -406,10 +408,22 @@ export function Campaign3D({ c }: { c: Campaign }) {
       playUi('success');
       if (mission) {
         const p = useShooter.getState();
-        if (!p.done.includes(mission.id)) {
+        const first = !p.done.includes(mission.id);
+        if (first) {
           p.set({ done: [...p.done, mission.id] });
           addXp(c.xp);
         }
+        const i = c.missions.indexOf(mission);
+        const nx = c.missions[i + 1];
+        const w0 = mission.words[0];
+        fx.lesson({
+          icon: mission.icon,
+          title: pick(mission.title),
+          anchor: w0 ? `${w0.word} — ${pick(w0.say)}` : pick(mission.ability),
+          moment: pick(mission.ability),
+          xp: first ? c.xp : undefined,
+          next: nx ? { label: tr('Next mission', 'Следующая миссия'), go: () => useShooter.getState().set({ current: nx.id }) } : undefined,
+        });
       }
     };
     raf.current = requestAnimationFrame(loop);
@@ -474,6 +488,7 @@ export function Campaign3D({ c }: { c: Campaign }) {
   };
 
   const goto = (id: string) => prog.set({ current: id });
+  const lock = usePathLock();
   const idx = mission ? MISSIONS.indexOf(mission) : -1;
   const next = idx >= 0 && idx < MISSIONS.length - 1 ? MISSIONS[idx + 1] : null;
   const done = new Set(prog.done);
@@ -495,8 +510,15 @@ export function Campaign3D({ c }: { c: Campaign }) {
               </span>
               <span className="sh-ch-missions">
                 {ms.map((m) => (
-                  <button key={m.id} className={`sh-dot${m.id === mission?.id ? ' on' : ''}${done.has(m.id) ? ' done' : ''}`} onClick={() => goto(m.id)} title={`${MISSIONS.indexOf(m) + 1}. ${pick(m.title)}`} data-testid={`sh-mission-${m.id}`}>
-                    {done.has(m.id) ? '✓' : m.icon}
+                  <button
+                    key={m.id}
+                    className={`sh-dot${m.id === mission?.id ? ' on' : ''}${done.has(m.id) ? ' done' : ''}${lock.locked(m.id) ? ' locked' : ''}`}
+                    onClick={(e) => (lock.locked(m.id) ? lockedClick(e.currentTarget) : goto(m.id))}
+                    title={`${MISSIONS.indexOf(m) + 1}. ${pick(m.title)}`}
+                    aria-disabled={lock.locked(m.id)}
+                    data-testid={`sh-mission-${m.id}`}
+                  >
+                    {done.has(m.id) ? '✓' : lock.locked(m.id) ? '🔒' : m.icon}
                   </button>
                 ))}
               </span>
@@ -558,16 +580,21 @@ export function Campaign3D({ c }: { c: Campaign }) {
               <Play size={17} /> {free ? tr('Play', 'Играть') : phase === 'playing' ? tr('Upload again', 'Загрузить заново') : tr('Upload the script', 'Загрузить прошивку')}
             </button>
             {!free && blanksLeft > 0 ? (
-              <span className={`sh-blanks${blankWarn ? ' warn' : ''}`} data-testid="sh-blanks">
-                ✏️ {tr(`Blanks to fill: ${blanksLeft}`, `Пропусков: ${blanksLeft}`)}
-              </span>
+              <button
+                className={`sh-blanks${blankWarn ? ' warn' : ''}`}
+                data-testid="sh-blanks"
+                title={tr('Selects the next blank — just type', 'Выделяет следующий пропуск — просто печатай')}
+                onClick={() => edRef.current && jumpToBlank(edRef.current.view)}
+              >
+                ✏️ {tr(`Blanks to fill: ${blanksLeft} — click or Tab`, `Пропусков: ${blanksLeft} — нажми или Tab`)}
+              </button>
             ) : !free ? (
               <span className="sh-blanks ok">✅ {tr('All blanks filled', 'Все пропуски заполнены')}</span>
             ) : null}
           </div>
           {blankWarn ? (
             <p className="sh-note" data-testid="sh-blank-warn">
-              {tr('First fill every ___ (they are highlighted). The cursor is on the first one.', 'Сначала заполни все ___ (они подсвечены). Курсор уже стоит на первом.')}
+              {tr('First fill every ___. The first one is already selected — just type; Tab goes to the next.', 'Сначала заполни все ___. Первый уже выделен — просто печатай; Tab — к следующему.')}
             </p>
           ) : null}
           <div className="sh-tools">
@@ -796,11 +823,26 @@ function HudView({ hud, mission, phase, hasGun, race, freeGoal }: { hud: Hud; mi
   const recentKill = hud.time - hud.killAt < 0.5;
   const hurt = Math.max(0, 1 - (hud.time - hud.hurtAt) / 0.6);
   const goals = mission ? mission.goals : [{ text: freeGoal }];
+  const goalEls = useRef<(HTMLDivElement | null)[]>([]);
+  const prevGoals = useRef<{ id: string; v: boolean[] }>({ id: '', v: [] });
+  const goalKey = hud.goals.map((g) => (g ? 1 : 0)).join('');
+  useEffect(() => {
+    const id = mission?.id ?? 'free';
+    const prev = prevGoals.current.id === id ? prevGoals.current.v : hud.goals.map(() => false);
+    hud.goals.forEach((g, i) => {
+      if (g && !prev[i] && prevGoals.current.id === id) {
+        fx.spark(goalEls.current[i]);
+        fx.streak(true);
+      }
+    });
+    prevGoals.current = { id, v: [...hud.goals] };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goalKey, mission?.id]);
   return (
     <div className="sh-hud" aria-live="polite">
       <div className="sh-goals" data-testid="sh-goals">
         {goals.map((g, i) => (
-          <div key={i} className={hud.goals[i] ? 'done' : ''} data-testid="sh-goal">
+          <div key={i} ref={(el) => void (goalEls.current[i] = el)} className={hud.goals[i] ? 'done' : ''} data-testid="sh-goal">
             {hud.goals[i] ? '✓' : '○'} {pick(g.text)}
           </div>
         ))}

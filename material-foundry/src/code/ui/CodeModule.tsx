@@ -6,7 +6,7 @@
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { Bot, Brain, Joystick, Route, BookOpenText, Code2, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
+import { Bot, Brain, Joystick, BookOpenText, Code2, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -24,8 +24,10 @@ import { THEMES, themeById } from './themes';
 import { loudness, playUi, UI_SOUNDS, useSound, type UiSound } from './uiSound';
 import { sfx } from '../workshop/sfx';
 import { CoursesView } from '../learn/CourseView';
-import { LearningPath, nextStep, usePathStages } from '../learn/LearningPath';
-import { DailyGoal, Trainers } from '../learn/Trainers';
+import { LearningPath, LockedScreen, PathWatcher, usePathLock } from '../learn/LearningPath';
+import { AbcView } from '../learn/AbcView';
+import { FxLayer } from './FxLayer';
+import { Trainers } from '../learn/Trainers';
 import { Learn } from '../learn/Learn';
 import { getCodeClient } from '../worker/client';
 import { ChangesView } from './ChangesView';
@@ -71,40 +73,20 @@ function shortcuts(): [string, string][] {
   ];
 }
 
+/** Free mode: tools that are not lessons (your own code, an example, the error translator). */
 function Welcome() {
   const setView = useCode((s) => s.setView);
   const openExample = useCode((s) => s.openExample);
   const busy = useCode((s) => s.busy);
   return (
     <div className="welcome" data-testid="code-welcome">
-      <h1>{tr('Understand code — without fear', 'Понимать код — без страха')}</h1>
-      <p className="welcome-lead">{tr('Choose where to start — the big cards are the main ones. You can always come back here with "Start".', 'Выбери, с чего начать: главное — три большие карточки. Сюда всегда можно вернуться кнопкой «Начало».')}</p>
-      <ResumeCard />
-      <div className="welcome-goal">
-        <DailyGoal compact />
-        <button className="btn" onClick={() => { useLearnHub.set('trainers'); setView('learn'); }} data-testid="start-trainers">
-          🐞 🔮 🔄 {tr('Trainers — 5 minutes', 'Тренажёры — 5 минут')}
-        </button>
-      </div>
-      <PathCard />
-      <button className="start-hero" onClick={() => setView('shooter')} data-testid="start-shooter">
-        <span className="start-hero-emoji" aria-hidden>
-          🎯
-        </span>
-        <span className="start-hero-text">
-          <b>{tr('Shooter from zero — learn C# for Unity by playing', 'Шутер с нуля — учи C# для Unity, играя')}</b>
-          <span>{tr('A 3D game: your soldier\'s suit is off. Every mission you write a few words of real Unity code and get a new ability — legs, eyes, weapon, bots, atmosphere. 25 missions → your own shooter with bots and a map.', '3D-игра: костюм твоего бойца выключен. В каждой миссии ты дописываешь несколько слов настоящего кода Unity и получаешь новую способность — ноги, глаза, оружие, ботов, атмосферу. 25 миссий → свой шутер с ботами и картой.')}</span>
-        </span>
-        <span className="start-hero-go">▶</span>
+      <button className="btn" onClick={() => setView('path')} data-testid="tools-back">
+        ← 🗺 {tr('Back to my path', 'Назад к моему пути')}
       </button>
-      <div className="start-cards" data-guide="start">
-        <button className="start-card" onClick={() => setView('learn')} data-testid="start-learn">
-          <span className="start-emoji" aria-hidden>
-            🎮
-          </span>
-          <b>{tr('Learn from zero', 'Учиться с нуля')}</b>
-          <span>{tr('Short lessons with animations and mini-games. C#, C++, C, Python, JavaScript.', 'Короткие уроки с анимацией и мини-играми. C#, C++, C, Python, JavaScript.')}</span>
-        </button>
+      <h1>🧰 {tr('Free mode', 'Свободный режим')}</h1>
+      <p className="welcome-lead">{tr('Tools that are not lessons. Learning in order is on "My path".', 'Инструменты вне уроков. Учёба по порядку — во вкладке «Мой путь».')}</p>
+      <ResumeCard />
+      <div className="start-cards small-cards" data-guide="start">
         <button className="start-card" onClick={() => setView('workshop')} data-testid="start-workshop">
           <span className="start-emoji" aria-hidden>
             🛠
@@ -112,15 +94,6 @@ function Welcome() {
           <b>{tr('Write my own code', 'Писать свой код')}</b>
           <span>{tr('An editor that guesses what comes next, explains every word, finds mistakes and runs your program safely.', 'Редактор, который угадывает, что дальше, объясняет каждое слово, находит ошибки и безопасно запускает программу.')}</span>
         </button>
-        <button className="start-card" onClick={() => setView('unity')} data-testid="start-unity">
-          <span className="start-emoji" aria-hidden>
-            🕹
-          </span>
-          <b>{tr('Mini-Unity', 'Мини-Unity')}</b>
-          <span>{tr('Write real Unity C# scripts and watch them move a hero. 14 levels from Start() to coroutines and raycasts.', 'Пиши настоящие C#-скрипты Unity и смотри, как они двигают героя. 14 уровней: от Start() до корутин и лучей.')}</span>
-        </button>
-      </div>
-      <div className="start-cards small-cards">
         <button className="start-card" onClick={() => void openExample()} disabled={!!busy} data-testid="open-example">
           <span className="start-emoji" aria-hidden>
             🔍
@@ -142,6 +115,13 @@ function Welcome() {
           </span>
           <b>{tr('Translate an error', 'Перевести ошибку')}</b>
           <span>{tr('Paste red text from Unity, Visual Studio or Python — get plain words and a fix.', 'Вставь красный текст из Unity, Visual Studio или Python — получи простое объяснение и исправление.')}</span>
+        </button>
+        <button className="start-card" onClick={() => setView('learn')} data-testid="start-learn">
+          <span className="start-emoji" aria-hidden>
+            🌍
+          </span>
+          <b>{tr('Other languages (optional)', 'Другие языки (по желанию)')}</b>
+          <span>{tr('The same short lessons in C++, C, Python, JavaScript; Unreal C++ course.', 'Те же короткие уроки на C++, C, Python, JavaScript; курс Unreal C++.')}</span>
         </button>
       </div>
       <ul className="welcome-points">
@@ -196,33 +176,6 @@ function SoundSettings() {
           ))
         : null}
       <span className="muted small">{tr('Every theme has its own voice. Make your own sounds in the Sound Lab.', 'У каждой темы свой голос. Свои звуки — в Звуковой лаборатории.')}</span>
-    </div>
-  );
-}
-
-/** The next step of "My path" — one click to continue learning in the right order. */
-function PathCard() {
-  const stages = usePathStages();
-  const next = nextStep(stages);
-  const setView = useCode((s) => s.setView);
-  const total = stages.reduce((n, s) => n + s.items.length, 0);
-  const done = stages.reduce((n, s) => n + s.items.filter((x) => s.done.has(x.id)).length, 0);
-  return (
-    <div className="path-card" data-testid="path-card">
-      <button className="path-card-go" onClick={() => next.stage.open(next.item?.id)} data-testid="path-card-go">
-        <span className="lp-next-icon">{next.stage.icon}</span>
-        <span>
-          <b>{tr('My path — next step', 'Мой путь — следующий шаг')}</b>
-          <span>
-            {pick(next.stage.title)}
-            {next.item ? ` → ${pick(next.item.title)}` : ''}
-          </span>
-        </span>
-        <span className="lp-go">▶</span>
-      </button>
-      <button className="btn small ghost" onClick={() => setView('path')} data-testid="path-card-all">
-        🗺 {tr('The whole path', 'Весь путь')} · {done}/{total}
-      </button>
     </div>
   );
 }
@@ -289,6 +242,30 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <span>{tr('Hints', 'Подсказки')}</span>
         <button className={`btn small${prefs.hints ? ' on' : ''}`} onClick={() => setPrefs({ hints: !prefs.hints })} aria-pressed={prefs.hints} data-testid="toggle-hints">
           {prefs.hints ? tr('On', 'Включены') : tr('Off', 'Выключены')}
+        </button>
+      </div>
+      <div className="pop-row">
+        <span>{tr('Effects', 'Эффекты')}</span>
+        {(['full', 'calm', 'off'] as const).map((k) => (
+          <button key={k} className={`btn small${prefs.fx === k ? ' on' : ''}`} onClick={() => setPrefs({ fx: k })} aria-pressed={prefs.fx === k} data-testid={`fx-${k}`}>
+            {k === 'full' ? tr('Bright', 'Яркие') : k === 'calm' ? tr('Calm', 'Спокойные') : tr('Off', 'Выкл')}
+          </button>
+        ))}
+      </div>
+      <details className="fx-legend">
+        <summary className="small">{tr('What the effects mean', 'Что значат эффекты')}</summary>
+        <ul className="small">
+          <li>✨ {tr('sparks — this step is right', 'искры — шаг сделан правильно')}</li>
+          <li>〰 {tr('a soft shake — not this one, try again (never a punishment)', 'лёгкое покачивание — не то, попробуй ещё (это не наказание)')}</li>
+          <li>🔥 {tr('streak — 3 right in a row without hints', 'серия — 3 правильно подряд без подсказок')}</li>
+          <li>🎉 {tr('confetti and a card — lesson done; the card holds the one sentence to remember', 'конфетти и карточка — урок пройден; на карточке одна фраза, которую надо запомнить')}</li>
+          <li>🔓 {tr('a breaking lock — a new district of the map is open', 'разбитый замок — открыт новый район карты')}</li>
+        </ul>
+      </details>
+      <div className="pop-row">
+        <span>{tr('Lock what I have not reached', 'Закрывать то, до чего ещё не дошёл')}</span>
+        <button className={`btn small${prefs.lockAhead ? ' on' : ''}`} onClick={() => setPrefs({ lockAhead: !prefs.lockAhead })} aria-pressed={prefs.lockAhead} data-testid="toggle-lock">
+          {prefs.lockAhead ? '🔒 ' + tr('On', 'Включено') : '🔓 ' + tr('Off — everything open', 'Выкл — всё открыто')}
         </button>
       </div>
       <div className="pop-row">
@@ -395,7 +372,7 @@ function LearnHub() {
           <Gamepad2 size={15} /> {tr('Lessons', 'Уроки')}
         </button>
         <button role="tab" aria-selected={part === 'courses'} className={part === 'courses' ? 'on' : ''} onClick={() => useLearnHub.set('courses')} data-testid="hub-courses">
-          <GraduationCap size={15} /> {tr('Courses: C# for Unity, Unreal', 'Курсы: C# для Unity, Unreal')}
+          <GraduationCap size={15} /> {tr('C# courses', 'Курсы C#')}
         </button>
         <button role="tab" aria-selected={part === 'trainers'} className={part === 'trainers' ? 'on' : ''} onClick={() => useLearnHub.set('trainers')} data-testid="hub-trainers">
           <Dumbbell size={15} /> {tr('Trainers', 'Тренажёры')}
@@ -462,6 +439,8 @@ export default function CodeModule() {
   const [dragging, setDragging] = useState(false);
   const [focus, setFocus] = useState(false);
   const guide = useGuide();
+  const lock = usePathLock();
+  const lockedStage = lock.viewLocked(view);
 
   useEffect(() => {
     void init();
@@ -507,7 +486,7 @@ export default function CodeModule() {
         } else s.toast('info', undo ? tr('Nothing to undo.', 'Нечего отменять.') : tr('Nothing to redo.', 'Нечего возвращать.'));
         return;
       }
-      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'racing' || s.view === 'models' || s.view === 'path' || s.view === 'sound' || s.view === 'errors') return;
+      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'racing' || s.view === 'models' || s.view === 'path' || s.view === 'abc' || s.view === 'welcome' || s.view === 'sound' || s.view === 'errors') return;
       if (/^[1-5]$/.test(e.key)) s.setLevel(Number(e.key) as 1 | 2 | 3 | 4 | 5);
       else if (e.key === '?') s.simpler();
       else if (e.key === 'e') s.toggleExample();
@@ -528,10 +507,10 @@ export default function CodeModule() {
   void wsVersion;
   const changedCount = workspace.changedFiles().length;
   const hasProject = files.length > 0;
-  const shownView: View = !hasProject && (view === 'code' || view === 'overview' || view === 'map' || view === 'changes') ? 'welcome' : view;
+  const shownView: View = !hasProject && (view === 'code' || view === 'overview' || view === 'map' || view === 'changes') ? 'path' : view;
   const tabs: { v: View; label: string; icon: React.ReactNode; guide?: string; group?: string }[] = hasProject
     ? [
-        { v: 'path', label: tr('My path', 'Мой путь'), icon: <Route size={16} /> },
+        { v: 'path', label: tr('My path', 'Мой путь'), icon: <Home size={16} /> },
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
         { v: GAMES.includes(view) ? view : lastGame, label: tr('Games', 'Игры'), icon: <Joystick size={16} />, group: 'games' },
@@ -543,8 +522,7 @@ export default function CodeModule() {
         { v: 'glossary', label: tr('Dictionary', 'Словарь'), icon: <MapIcon size={16} /> },
       ]
     : [
-        { v: 'welcome', label: tr('Start', 'Начало'), icon: <Home size={16} /> },
-        { v: 'path', label: tr('My path', 'Мой путь'), icon: <Route size={16} /> },
+        { v: 'path', label: tr('My path', 'Мой путь'), icon: <Home size={16} /> },
         { v: 'learn', label: tr('Learn', 'Учиться'), icon: <Gamepad2 size={16} /> },
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
         { v: GAMES.includes(view) ? view : lastGame, label: tr('Games', 'Игры'), icon: <Joystick size={16} />, group: 'games' },
@@ -612,17 +590,21 @@ export default function CodeModule() {
         {GAMES.includes(shownView) ? (
           <div className="cm-games" role="tablist" aria-label={tr('Games', 'Игры')}>
             {GAME_TABS.map((g) => (
-              <button key={g.v} role="tab" aria-selected={shownView === g.v} className={shownView === g.v ? 'on' : ''} onClick={() => setView(g.v)} data-testid={`view-${g.v}`}>
-                {g.icon} {pick(g.label)}
+              <button key={g.v} role="tab" aria-selected={shownView === g.v} className={`${shownView === g.v ? 'on' : ''}${lock.viewLocked(g.v) ? ' locked' : ''}`} onClick={() => setView(g.v)} data-testid={`view-${g.v}`}>
+                {lock.viewLocked(g.v) ? '🔒' : g.icon} {pick(g.label)}
               </button>
             ))}
           </div>
         ) : null}
         <div className="cm-view">
-          {shownView === 'welcome' ? (
+          {lockedStage ? (
+            <LockedScreen stage={lockedStage} />
+          ) : shownView === 'welcome' ? (
             <Welcome />
           ) : shownView === 'path' ? (
             <LearningPath />
+          ) : shownView === 'abc' ? (
+            <AbcView />
           ) : shownView === 'learn' ? (
             <LearnHub />
           ) : shownView === 'workshop' ? (
@@ -706,6 +688,8 @@ export default function CodeModule() {
         </div>
       ) : null}
       <Toasts />
+      <PathWatcher />
+      <FxLayer />
     </div>
   );
 }

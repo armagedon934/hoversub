@@ -16,7 +16,7 @@ import { getCodeClient } from '../worker/client';
 import type { LoadResult } from './fileLoading';
 import { applyTheme, isThemeId, themeById, type ThemeId } from './themes';
 
-export type CodeView = 'welcome' | 'path' | 'learn' | 'workshop' | 'unity' | 'shooter' | 'racing' | 'models' | 'sound' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
+export type CodeView = 'welcome' | 'path' | 'abc' | 'learn' | 'workshop' | 'unity' | 'shooter' | 'racing' | 'models' | 'sound' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
 export type DiagramKind = 'auto' | 'flow' | 'connections' | 'data' | 'files';
 
 export interface Prefs {
@@ -32,13 +32,25 @@ export interface Prefs {
   locale: Locale;
   /** A calmer, very readable font with more letter spacing. */
   readable: boolean;
+  /** Celebration effects: full, calm (no flying things) or off. */
+  fx: 'full' | 'calm' | 'off';
+  /** Districts of "My path" you have not reached yet stay locked (like a new city in a game). */
+  lockAhead: boolean;
 }
 
 const PREFS_KEY = 'mf.code.prefs.v1';
 const LEVEL_SESSION_KEY = 'mf.code.level';
 
+function reducedMotion(): boolean {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 function loadPrefs(): Prefs {
-  const d: Prefs = { theme: 'dark', palette: 'graphite', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale(), readable: false };
+  const d: Prefs = { theme: 'dark', palette: 'graphite', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale(), readable: false, fx: reducedMotion() ? 'calm' : 'full', lockAhead: true };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
     if (raw.theme === 'light' || raw.theme === 'dark') d.theme = raw.theme;
@@ -49,6 +61,8 @@ function loadPrefs(): Prefs {
     if (typeof raw.spacing === 'boolean') d.spacing = raw.spacing;
     if (typeof raw.hints === 'boolean') d.hints = raw.hints;
     if (typeof raw.readable === 'boolean') d.readable = raw.readable;
+    if (raw.fx === 'full' || raw.fx === 'calm' || raw.fx === 'off') d.fx = raw.fx;
+    if (typeof raw.lockAhead === 'boolean') d.lockAhead = raw.lockAhead;
     if ([1, 2, 3, 4, 5].includes(raw.level)) d.level = raw.level;
     const s = Number(sessionStorage.getItem(LEVEL_SESSION_KEY));
     if ([1, 2, 3, 4, 5].includes(s)) d.level = s as Level;
@@ -173,7 +187,7 @@ export const useCode = create<State>((set, get) => ({
   index: null,
   overview: null,
   wsVersion: 0,
-  view: 'welcome',
+  view: 'path',
   openPath: null,
   open: null,
   openText: '',
@@ -392,7 +406,7 @@ export const useCode = create<State>((set, get) => ({
 
   async closeProject() {
     await workspace.clear();
-    set({ projectName: '', files: [], summaries: {}, index: null, overview: null, view: 'welcome', openPath: null, open: null, openText: '', selection: null, highlights: [], handles: new Map(), rootDir: null, canWriteToDisk: false, notes: [] });
+    set({ projectName: '', files: [], summaries: {}, index: null, overview: null, view: 'path', openPath: null, open: null, openText: '', selection: null, highlights: [], handles: new Map(), rootDir: null, canWriteToDisk: false, notes: [] });
   },
 }));
 

@@ -45,6 +45,18 @@ async function main() {
   const server = await startServer();
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 900 } });
+  // Old checks run with the map's locks off and calm effects (the new e2e-path covers locks and effects).
+  await ctx.addInitScript(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem('mf.code.prefs.v1') ?? '{}');
+      if (p.lockAhead === undefined) p.lockAhead = false;
+      if (!p.fx) p.fx = 'off';
+      localStorage.setItem('mf.code.prefs.v1', JSON.stringify(p));
+      localStorage.setItem('mf.home.intro', '1');
+    } catch {
+      /* ignore */
+    }
+  });
   const external: string[] = [];
   await ctx.route('**/*', (route) => {
     const u = route.request().url();
@@ -73,7 +85,8 @@ async function main() {
       [id, answers[id]],
     );
     await page.reload();
-    await page.getByTestId('start-shooter').click();
+    await page.getByTestId('view-games').click();
+    await page.getByTestId('view-shooter').click();
     await page.getByTestId('shooter').waitFor();
     await page.getByTestId('sh-brief').waitFor();
   };
@@ -89,16 +102,16 @@ async function main() {
     await page.goto(`${URL}#code`);
     await page.evaluate(() => localStorage.setItem('mf.code.prefs.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('mf.code.prefs.v1') ?? '{}'), locale: 'ru' })));
     await page.reload();
-    await page.getByTestId('code-welcome').waitFor();
-    if (!(await page.getByText('Шутер с нуля').count())) {
+    await page.getByTestId('learning-path').waitFor();
+    if (!(await page.getByText('Мой путь').count())) {
       await page.getByTestId('open-settings').click();
       await page.getByTestId('lang-ru').click();
       await page.keyboard.press('Escape');
       await page.mouse.click(5, 300);
     }
-    check('Welcome shows the big "Shooter from zero" card first', (await page.getByTestId('start-shooter').count()) === 1);
+    check('The 3D shooter is a district on the map', (await page.getByTestId('path-open-shooter-body').count()) === 1);
     await shot(page, '01-welcome');
-    await page.getByTestId('start-shooter').click();
+    await page.getByTestId('path-open-shooter-body').click();
     await page.getByTestId('shooter').waitFor();
     await page.getByTestId('sh-brief').waitFor();
     await page.waitForTimeout(600);

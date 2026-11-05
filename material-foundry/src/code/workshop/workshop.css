@@ -2001,6 +2001,16 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--panel-2);
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+}
+button.sh-blanks {
+  cursor: pointer;
+}
+button.sh-blanks:hover {
+  border-color: var(--accent);
 }
 .sh-blanks.warn {
   background: color-mix(in srgb, var(--danger, #e5484d) 22%, var(--panel));
@@ -2040,7 +2050,7 @@
   background: color-mix(in srgb, var(--accent) 35%, transparent);
   outline: 1px dashed var(--accent);
   border-radius: 3px;
-  animation: sh-blank 1.6s ease-in-out infinite;
+  cursor: pointer;
 }
 @keyframes sh-blank {
   50% {

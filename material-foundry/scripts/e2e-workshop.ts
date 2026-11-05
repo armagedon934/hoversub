@@ -78,6 +78,18 @@ async function main() {
   const ai = fakeOllama();
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 940 }, acceptDownloads: true });
+  // Old checks run with the map's locks off and calm effects (the new e2e-path covers locks and effects).
+  await ctx.addInitScript(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem('mf.code.prefs.v1') ?? '{}');
+      if (p.lockAhead === undefined) p.lockAhead = false;
+      if (!p.fx) p.fx = 'off';
+      localStorage.setItem('mf.code.prefs.v1', JSON.stringify(p));
+      localStorage.setItem('mf.home.intro', '1');
+    } catch {
+      /* ignore */
+    }
+  });
   const external: string[] = [];
   await ctx.route('**/*', (route) => {
     const u = route.request().url();
@@ -101,12 +113,14 @@ async function main() {
   try {
     await page.goto(URL);
     await page.getByTestId('mode-code').click();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
     // Russian interface (the person's language).
     await page.getByTestId('open-settings').click();
     await page.getByTestId('lang-ru').click();
+    await page.getByTestId('learning-path').waitFor();
+    await page.getByTestId('open-tools').click();
     await page.getByTestId('code-welcome').waitFor();
-    check('Welcome offers Workshop, Mini-Unity and the error translator', (await page.getByTestId('start-workshop').count()) === 1 && (await page.getByTestId('start-unity').count()) === 1 && (await page.getByTestId('start-errors').count()) === 1);
+    check('Free mode offers the Workshop, the example and the error translator', (await page.getByTestId('start-workshop').count()) === 1 && (await page.getByTestId('open-example').count()) === 1 && (await page.getByTestId('start-errors').count()) === 1);
     await shot(page, '01-welcome-ru');
 
     // ------------------------------------------------------------------ Workshop: Unity script
@@ -365,6 +379,8 @@ async function main() {
     });
     await page.reload();
     await page.getByTestId('mode-code').click().catch(() => {});
+    await page.getByTestId('learning-path').waitFor();
+    await page.getByTestId('open-tools').click();
     await page.getByTestId('code-welcome').waitFor();
     const resume = await page.getByTestId('resume-card').textContent();
     check('Welcome shows "continue where you stopped" and waiting review cards', /Продолжить/.test(resume ?? '') && /Повторение/.test(resume ?? ''), resume ?? '');

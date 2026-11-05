@@ -421,3 +421,30 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
   **68/68**, materials **39/39**. Screenshots: `verification/games/`.
 * Honest limits: arcade car physics; dents move mesh points (not a soft body of beams); the learning car evolves two
   numbers (not a neural network); game materials are 256 px.
+
+## 14. Home = My path (a map with locks), the ABC of code, effects with a meaning, easy blanks (eleventh iteration)
+
+* **Home:** the program opens on "My path" (the separate "Start" tab is gone; its tools moved to "Free mode"). A first
+  start explains in four lines where you are and what to press; one big button always opens the next step. The path is
+  a map of 12 districts; the next one opens when the previous is finished (districts already started stay open; locks
+  can be switched off). Game screens of closed districts show a "still closed" screen with "To my next step"; lessons
+  inside games, courses and the C# lesson list open one after another. A finished district shows "NEW DISTRICT OPEN"
+  (`PathWatcher`). The finish card states the honest level after the whole path.
+* **The ABC of code** (`learn/abc.ts`, `AbcView.tsx`): 10 levels — `( )` `;` `" "` `=` `{ }` `==` `//` `.` `[ ]` and a
+  boss. Real C# run by the interpreter; `robot`/`cat` are host objects. Every symbol has a detected "funny moment"
+  (what happens without it) and one anchor sentence that goes to the review deck.
+* **Effects** (`ui/fx.ts`, `FxLayer.tsx`): sparks = right step, soft shake = try again, floating XP, a streak chip,
+  confetti + a card with the sentence to remember = lesson done, a breaking lock = new district. Settings: bright /
+  calm / off (reduce-motion starts calm). Hooked into the ABC, lessons, courses, Mini-Unity, shooter/racing/models
+  goals and wins, sound lessons.
+* **Blanks `___`:** a click selects the whole blank, typing replaces it, Tab / Shift+Tab jump between blanks; the
+  blank no longer blinks.
+* **Fixed:** the variables lesson asked "after the second line" while the code shown starts with `using System;` → the
+  question now names the line. C# is the main language in "Learn"; other languages and Unreal are marked optional.
+  Lesson text follows the text-size setting with short lines (ADHD).
+* **Unit tests: 535, all passing** (new `abc.test.ts`: in RU and EN every level's answer reaches all goals, every
+  starter fails and shows its moment, the boss shows the four moments in order, falling into the pit, wrong answers fail).
+* **Browser e2e:** new `scripts/e2e-path.ts` **30/30** (home on the path, intro, big button, 12 districts with 11
+  locked, locked district and locked game, ABC moment with CS0201, goal ticks, lesson card with the sentence, next
+  symbol, review card, boss, new district card, the corrected question, sparks on a right answer, effects legend,
+  blank click/type/Tab, C# as the main language, tablet width, offline, no page errors). Screenshots: `verification/path/`.

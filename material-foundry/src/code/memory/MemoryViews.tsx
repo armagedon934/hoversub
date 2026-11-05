@@ -1,6 +1,7 @@
 // Memory and focus helpers: the review session (spaced repetition), the notebook, the "continue
 // where I stopped" card, the focus timer with gentle breaks, and the read-aloud button.
 
+import { useAbc } from '../learn/abcProgress';
 import { useEffect, useMemo, useState } from 'react';
 import { Brain, Download, Pause, Play, RotateCcw, Timer, Trash2, Volume2, X } from 'lucide-react';
 import { tr } from '../i18n';
@@ -208,6 +209,10 @@ export function ResumeCard() {
   const go = () => {
     if (!last) return;
     if (last.kind === 'lesson' && last.extra === 'sound') setView('sound');
+    else if (last.kind === 'lesson' && last.extra === 'abc') {
+      useAbc.getState().set({ current: last.id });
+      setView('abc');
+    }
     else if (last.kind === 'lesson' && last.extra?.startsWith('course:')) {
       courseRequest.value = { course: last.extra.slice(7), lesson: last.id };
       useLearnHub.set('courses');

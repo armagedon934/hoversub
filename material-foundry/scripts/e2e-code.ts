@@ -49,6 +49,18 @@ async function main() {
   const server = await startServer();
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 920 }, acceptDownloads: true });
+  // Old checks run with the map's locks off and calm effects (the new e2e-path covers locks and effects).
+  await ctx.addInitScript(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem('mf.code.prefs.v1') ?? '{}');
+      if (p.lockAhead === undefined) p.lockAhead = false;
+      if (!p.fx) p.fx = 'off';
+      localStorage.setItem('mf.code.prefs.v1', JSON.stringify(p));
+      localStorage.setItem('mf.home.intro', '1');
+    } catch {
+      /* ignore */
+    }
+  });
   const external: string[] = [];
   // Block everything that is not this local app: proves no internet is needed.
   await ctx.route('**/*', (route) => {
@@ -72,11 +84,13 @@ async function main() {
   try {
     await page.goto(URL);
     await page.getByTestId('mode-code').click();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
     check('UNDERSTAND CODE opens from the top bar', true);
     await shot(page, '01-welcome');
 
     // ---- the example project
+    await page.getByTestId('view-path').click();
+    await page.getByTestId('open-tools').click();
     await page.getByTestId('code-welcome').getByTestId('open-example').click();
     await page.getByTestId('overview').waitFor();
     await idle(page);
@@ -265,6 +279,8 @@ async function main() {
     files.push({ name: 'picture.png', mimeType: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1]) });
     files.push({ name: 'boom.js', mimeType: 'text/javascript', buffer: Buffer.from('window.__opened_and_ran = true; alert("ran");\n') });
     await page.waitForFunction(() => (window as any).__mf.code.getState().files.length === 0);
+    // closing a project goes back to the map; opening your own files is in "Free mode"
+    await page.getByTestId('open-tools').click();
     await page.getByTestId('file-input').setInputFiles(files);
     await page.getByTestId('overview').waitFor({ timeout: 90000 });
     await idle(page);
@@ -324,6 +340,8 @@ async function main() {
     // ---- step-by-step player for real code (flow of a function, nothing is run)
     await page.getByTestId('close-project').click();
     await page.getByTestId('close-project-confirm').click();
+    await page.getByTestId('view-path').click();
+    await page.getByTestId('open-tools').click();
     await page.getByTestId('code-welcome').getByTestId('open-example').click();
     await page.getByTestId('overview').waitFor();
     await idle(page);

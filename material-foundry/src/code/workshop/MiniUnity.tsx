@@ -3,6 +3,8 @@
 // Instantiate…). The script runs in the safe interpreter, frame by frame; the Inspector shows
 // the script's public fields and the Console shows Debug.Log — like the real editor.
 
+import { lockedClick, usePathLock } from '../learn/LearningPath';
+import { fx } from '../ui/fx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { playUi } from '../ui/uiSound';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, Eye, Lightbulb, Play, RotateCcw, Square } from 'lucide-react';
@@ -253,6 +255,7 @@ type Phase = 'edit' | 'playing' | 'won' | 'lost' | 'error';
 
 export function MiniUnity() {
   const prog = useUnityProgress();
+  const lock = usePathLock();
   const theme = useCode((s) => s.prefs.theme);
   const addXp = useLearn((s) => s.addXp);
   const mark = useResume((s) => s.mark);
@@ -393,10 +396,12 @@ export function MiniUnity() {
       if (r.status === 'lost') setTries((t) => t + 1);
       if (r.status === 'won' && !sandbox) {
         const p = useUnityProgress.getState();
-        if (!p.done.includes(level.id)) {
+        const first = !p.done.includes(level.id);
+        if (first) {
           p.set({ done: [...p.done, level.id] });
           addXp(25);
         }
+        fx.lesson({ icon: level.icon, title: pick(level.title), anchor: pick(level.learn), xp: first ? 25 : undefined });
       }
     };
     raf.current = requestAnimationFrame(loop);
@@ -481,15 +486,17 @@ export function MiniUnity() {
           <button
             key={l.id}
             role="listitem"
-            className={`mu-level${!sandbox && l.id === level.id ? ' on' : ''}${done.has(l.id) ? ' done' : ''}`}
-            onClick={() => {
+            className={`mu-level${!sandbox && l.id === level.id ? ' on' : ''}${done.has(l.id) ? ' done' : ''}${lock.locked(l.id) ? ' locked' : ''}`}
+            onClick={(e) => {
+              if (lock.locked(l.id)) return lockedClick(e.currentTarget);
               setSandbox(null);
               prog.set({ levelId: l.id });
             }}
+            aria-disabled={lock.locked(l.id)}
             data-testid={`mu-level-${l.id}`}
             title={pick(l.title)}
           >
-            <span aria-hidden>{done.has(l.id) ? '✅' : l.icon}</span> {i + 1}
+            <span aria-hidden>{done.has(l.id) ? '✅' : lock.locked(l.id) ? '🔒' : l.icon}</span> {i + 1}
             {!sandbox && l.id === level.id ? `. ${pick(l.title)}` : ''}
           </button>
         ))}

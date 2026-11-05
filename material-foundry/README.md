@@ -20,8 +20,9 @@ JavaScript with a step-by-step animation of the running program and mini-games, 
 step-by-step replay of real values), **Shooter from zero** (a 3D first-person game where 32 missions teach Unity C# — you
 fill a few blanks of real Unity code and get a new ability: human-like bots you can watch and tune, atmosphere, a match on a map),
 **Racing** (12 lessons: car physics, a Trackmania-style ghost, BeamNG-style dents, a car that learns), **Sound** (synthesizer
-and Unity OnAudioFilterRead lessons), **Models & materials** (texture-studio materials in every game), **My path** (one
-order through everything), 10 themes, **Mini-Unity** (real
+and Unity OnAudioFilterRead lessons), **Models & materials** (texture-studio materials in every game), **My path** (the home screen: a map of
+districts that open one by one, starting with *The ABC of code* — robot Bit and one funny moment per C# symbol; effects
+with a meaning), 10 themes, **Mini-Unity** (real
 Unity C# scripts driving a small 2D game, 14 levels), courses
 (*C# for Unity*, *Unreal C++*), an error translator, spaced review, a notebook and an optional bridge to an AI model on
 your own computer. The interface is available in **Russian and English**. See

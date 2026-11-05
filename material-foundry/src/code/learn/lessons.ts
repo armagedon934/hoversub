@@ -122,7 +122,7 @@ console.log(health);      //@c`,
       { at: 'c', frames: [{ fn: MAIN, vars: { health: 70 } }], print: '70', say: T('The value is shown on the screen: 70.', 'Значение показывается на экране: 70.') },
     ],
     games: [
-      { kind: 'choice', q: T('What is in health after the second line?', 'Что лежит в health после второй строки?'), options: ['100', '30', '70', '130'], answer: 2, why: T('100 − 30 = 70, and the result replaces the old value.', '100 − 30 = 70, и результат заменяет старое значение.') },
+      { kind: 'choice', q: T('What is in health after the line health = health - 30;?', 'Что лежит в health после строки health = health - 30; ?'), options: ['100', '30', '70', '130'], answer: 2, why: T('100 − 30 = 70, and the result replaces the old value.', '100 − 30 = 70, и результат заменяет старое значение.') },
       { kind: 'choice', q: T('What would be shown if the hero lost 45 instead of 30?', 'Что будет на экране, если герой потеряет 45, а не 30?'), options: ['45', '55', '145', '100'], answer: 1, why: T('100 − 45 = 55.', '100 − 45 = 55.') },
       { kind: 'bug', q: T('The hero got hit, but the health went UP! Tap the mistake.', 'Героя ударили, а здоровье ВЫРОСЛО! Нажми на ошибку.'), at: 'b', from: '-', to: '+', why: T('"+" adds. Damage must subtract, so it has to be "−".', '«+» прибавляет. Урон должен вычитать, поэтому нужен «−».') },
       { kind: 'order', q: T('Put the lines in the right order.', 'Расставь строки в правильном порядке.'), markers: ['a', 'b', 'c'], why: T('A box must exist before it is changed, and it is shown last.', 'Коробка должна появиться раньше, чем её меняют, а показывают её в конце.') },

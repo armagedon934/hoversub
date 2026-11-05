@@ -13,7 +13,9 @@ import { useLearn } from '../learn/progress';
 import { ReaderModal } from '../learn/ReaderView';
 import { useResume } from '../memory/resume';
 import { playUi } from '../ui/uiSound';
-import { blankHighlighter, createEditor, type WorkshopEditor } from '../workshop/editor';
+import { lockedClick, usePathLock } from '../learn/LearningPath';
+import { fx } from '../ui/fx';
+import { blankHighlighter, createEditor, jumpToBlank, type WorkshopEditor } from '../workshop/editor';
 import { useWorkshop } from '../workshop/store';
 import { SOUND_LESSONS, type SoundLesson } from './soundLessons';
 import { useSoundLab } from './labProgress';
@@ -300,6 +302,7 @@ function Synth() {
 
 function Lessons() {
   const prog = useSoundLab();
+  const lock = usePathLock();
   const addXp = useLearn((s) => s.addXp);
   const mark = useResume((s) => s.mark);
   const lesson: SoundLesson = SOUND_LESSONS.find((l) => l.id === prog.lesson) ?? SOUND_LESSONS[0];
@@ -367,6 +370,7 @@ function Lessons() {
       const code = codeRef.current;
       if (countBlanks(code) > 0) {
         setWarn(true);
+        if (edRef.current) jumpToBlank(edRef.current.view);
         return;
       }
       setBusy(true);
@@ -391,11 +395,12 @@ function Lessons() {
       if (g.every(Boolean)) {
         setWon(true);
         const p = useSoundLab.getState();
-        if (!p.done.includes(lesson.id)) {
+        const first = !p.done.includes(lesson.id);
+        if (first) {
           p.set({ done: [...p.done, lesson.id] });
           addXp(20);
         }
-        playUi('success');
+        fx.lesson({ icon: '🔊', title: pick(lesson.title), anchor: pick(lesson.task), xp: first ? 20 : undefined });
       }
     },
     [lesson, overrides, addXp],
@@ -422,7 +427,15 @@ function Lessons() {
       <section className="snd-left">
         <div className="snd-lessons" role="list">
           {SOUND_LESSONS.map((l, i) => (
-            <button key={l.id} role="listitem" className={`sh-dot${l.id === lesson.id ? ' on' : ''}${prog.done.includes(l.id) ? ' done' : ''}`} onClick={() => prog.set({ lesson: l.id })} title={`${i + 1}. ${pick(l.title)}`} data-testid={`snd-lesson-${l.id}`}>
+            <button
+              key={l.id}
+              role="listitem"
+              className={`sh-dot${l.id === lesson.id ? ' on' : ''}${prog.done.includes(l.id) ? ' done' : ''}${lock.locked(l.id) ? ' locked' : ''}`}
+              onClick={(e) => (lock.locked(l.id) ? lockedClick(e.currentTarget) : prog.set({ lesson: l.id }))}
+              title={`${i + 1}. ${pick(l.title)}`}
+              aria-disabled={lock.locked(l.id)}
+              data-testid={`snd-lesson-${l.id}`}
+            >
               {prog.done.includes(l.id) ? '✓' : l.icon}
             </button>
           ))}
@@ -445,7 +458,7 @@ function Lessons() {
           <button className="btn primary big" onClick={() => void build()} disabled={busy} data-testid="snd-build">
             <Play size={16} /> {busy ? tr('Computing the sound…', 'Считаю звук…') : tr('Build and listen', 'Собрать и послушать')}
           </button>
-          {blanks > 0 ? <span className={`sh-blanks${warn ? ' warn' : ''}`} data-testid="snd-blanks">✏️ {tr(`Blanks to fill: ${blanks}`, `Пропусков: ${blanks}`)}</span> : <span className="sh-blanks ok">✅ {tr('All blanks filled', 'Все пропуски заполнены')}</span>}
+          {blanks > 0 ? <button className={`sh-blanks${warn ? ' warn' : ''}`} data-testid="snd-blanks" onClick={() => edRef.current && jumpToBlank(edRef.current.view)}>✏️ {tr(`Blanks to fill: ${blanks} — click or Tab`, `Пропусков: ${blanks} — нажми или Tab`)}</button> : <span className="sh-blanks ok">✅ {tr('All blanks filled', 'Все пропуски заполнены')}</span>}
         </div>
         <div className="sh-tools">
           <button className="btn small" onClick={() => setReading(true)}>

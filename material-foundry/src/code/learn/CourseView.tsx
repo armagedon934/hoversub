@@ -2,6 +2,8 @@
 // for C#, a guided walk through the lines for Unreal C++), 3) quiz, 4) do it yourself (C#: the
 // learner's code is run and its output compared). One stage at a time, always one clear button.
 
+import { lockedClick, usePathLock } from './LearningPath';
+import { fx } from '../ui/fx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Eye, Lightbulb, Play } from 'lucide-react';
 import { pick, tr, type Text2 } from '../i18n';
@@ -105,10 +107,12 @@ function QuizCard({ quiz, onDone }: { quiz: Quiz; onDone: (firstTry: boolean) =>
           <button
             key={i}
             className={`crs-opt${picked === i ? (i === quiz.answer ? ' good' : ' bad') : ''}`}
-            onClick={() => {
+            onClick={(e) => {
               if (right) return;
               setPicked(i);
               setTries((t) => t + 1);
+              if (i === quiz.answer) fx.spark(e.currentTarget);
+              else fx.wrong(e.currentTarget);
             }}
             data-testid="quiz-option"
           >
@@ -240,6 +244,7 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
     finish(course.id, lesson.id, stars);
     useReview.getState().addCards(lesson.quiz.map((q, i) => ({ id: `course:${course.id}:${lesson.id}:${i}`, front: pick(q.q), back: `${optText(q.options[q.answer])}\n\n${pick(q.why)}`, from: `${pick(course.title)} · ${pick(lesson.title)}`, code: lesson.code })));
     setStage('done');
+    fx.lesson({ icon: lesson.icon, title: pick(lesson.title), anchor: pick(lesson.goal), stars, xp: 25 });
   };
   const stages: [Stage, string][] = [
     ['read', tr('1. Read', '1. Читай')],
@@ -312,6 +317,7 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
             onDone={(first) => {
               if (!first) setMistakes((m) => m + 1);
               addXp(first ? 5 : 2);
+              fx.streak(first);
               if (qi + 1 < lesson.quiz.length) setQi(qi + 1);
               else if (lesson.task) setStage('task');
               else complete(!first);
@@ -402,6 +408,7 @@ function ResultPane({ lesson }: { lesson: CourseLesson }) {
 export const courseRequest: { value: { course: string; lesson: string } | null } = { value: null };
 
 export function CoursesView() {
+  const lock = usePathLock();
   const [open] = useState(() => {
     const v = courseRequest.value;
     courseRequest.value = null;
@@ -422,6 +429,8 @@ export function CoursesView() {
     );
   }
   const nextUp = course.lessons.find((l) => !done[`course:${course.id}:${l.id}`]);
+  const stageId = course.id === 'cs-unity' ? 'theory' : course.id === 'cs-advanced' ? 'advanced' : null;
+  const isLocked = (id: string) => !!stageId && lock.lockedIn(stageId, id);
   return (
     <div className="ln" data-testid="courses">
       <div className="ln-home">
@@ -431,7 +440,7 @@ export function CoursesView() {
             return (
               <button key={c.id} className={`ln-track${c.id === courseId ? ' on' : ''}`} onClick={() => setCourseId(c.id)} data-testid={`course-${c.id}`}>
                 <span className="ln-track-name">
-                  {c.icon} {pick(c.title)}
+                  {c.icon} {pick(c.title)} {c.id === 'unreal' ? <span className="muted small">({tr('optional', 'по желанию')})</span> : null}
                 </span>
                 <span>{pick(c.about)}</span>
                 <span className="muted small">
@@ -456,8 +465,13 @@ export function CoursesView() {
             const r = done[`course:${course.id}:${l.id}`];
             return (
               <li key={l.id}>
-                <button className={`ln-path-item${r ? ' done' : ''}${l === nextUp ? ' next' : ''}`} onClick={() => setLessonId(l.id)} data-testid="course-lesson-card">
-                  <span className="ln-path-n">{i + 1}</span>
+                <button
+                  className={`ln-path-item${r ? ' done' : ''}${l === nextUp ? ' next' : ''}${isLocked(l.id) ? ' locked' : ''}`}
+                  onClick={(e) => (isLocked(l.id) ? lockedClick(e.currentTarget) : setLessonId(l.id))}
+                  aria-disabled={isLocked(l.id)}
+                  data-testid="course-lesson-card"
+                >
+                  <span className="ln-path-n">{isLocked(l.id) ? '🔒' : i + 1}</span>
                   <span className="ln-path-icon" aria-hidden>
                     {l.icon}
                   </span>

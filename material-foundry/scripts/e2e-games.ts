@@ -46,6 +46,18 @@ async function main() {
   const server = await startServer();
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 900 } });
+  // Old checks run with the map's locks off and calm effects (the new e2e-path covers locks and effects).
+  await ctx.addInitScript(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem('mf.code.prefs.v1') ?? '{}');
+      if (p.lockAhead === undefined) p.lockAhead = false;
+      if (!p.fx) p.fx = 'off';
+      localStorage.setItem('mf.code.prefs.v1', JSON.stringify(p));
+      localStorage.setItem('mf.home.intro', '1');
+    } catch {
+      /* ignore */
+    }
+  });
   const external: string[] = [];
   await ctx.route('**/*', (route) => {
     const u = route.request().url();
@@ -74,7 +86,7 @@ async function main() {
       [key, id, code, extra] as const,
     );
     await page.reload();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
   };
   const openGame = async (v: string) => {
     await page.getByTestId('view-games').click();
@@ -90,7 +102,7 @@ async function main() {
     await page.goto(`${URL}#code`);
     await page.evaluate(() => localStorage.setItem('mf.code.prefs.v1', JSON.stringify({ locale: 'ru' })));
     await page.reload();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
     if (!(await page.getByText('Мой путь').count())) {
       await page.getByTestId('open-settings').click();
       await page.getByTestId('lang-ru').click();
@@ -99,15 +111,13 @@ async function main() {
     }
 
     // ------------------------------------------------------------------ my path
-    check('Welcome shows "My path — next step" first', (await page.getByTestId('path-card').count()) === 1);
+    check('The program opens on "My path" with one big Continue button', (await page.getByTestId('path-continue').count()) === 1);
     await shot(page, '01-welcome');
-    await page.getByTestId('path-card-all').click();
-    await page.getByTestId('learning-path').waitFor();
-    check('My path lists 10 stages in order', (await page.getByTestId('path-stage').count()) === 10);
+    check('My path lists 12 districts in order', (await page.getByTestId('path-stage').count()) === 12);
     await shot(page, '02-path');
-    await page.getByTestId('path-continue').click();
+    await page.getByTestId('path-open-2d').click();
     await page.getByTestId('mini-unity').waitFor();
-    check('Continue opens the next lesson (Mini-Unity 2D level 1)', true);
+    check('A district opens its next lesson (Mini-Unity 2D level 1)', true);
     check('The Games row shows 5 games', (await page.locator('.cm-games button').count()) === 5);
 
     // ------------------------------------------------------------------ themes and sounds
@@ -144,7 +154,7 @@ async function main() {
     const z = SOUND_LESSONS[3];
     await page.evaluate(([c]) => localStorage.setItem('mf.soundlab.v1', JSON.stringify({ code: { z4: c }, lesson: 'z4', tab: 'lessons' })), [answerCode(z.code())]);
     await page.reload();
-    await page.getByTestId('code-welcome').waitFor();
+    await page.getByTestId('learning-path').waitFor();
     await openGame('sound');
     await page.getByTestId('snd-build').click();
     await page.getByTestId('snd-won').waitFor({ timeout: 20000 });

@@ -436,19 +436,76 @@ export function showAiGhost(view: EditorView, text: string, why: string): void {
   view.focus();
 }
 
-/** Highlights every ___ (a blank to fill in a mission) so it is easy to find. */
+/** Where the blanks ___ are in a text. */
+export function blankRanges(text: string): { from: number; to: number }[] {
+  const out: { from: number; to: number }[] = [];
+  for (const m of text.matchAll(/___/g)) out.push({ from: m.index!, to: m.index! + 3 });
+  return out;
+}
+
+/** Selects the next (or previous) blank so typing simply replaces it. */
+export function jumpToBlank(view: EditorView, dir: 1 | -1 = 1): boolean {
+  const blanks = blankRanges(view.state.doc.toString());
+  if (!blanks.length) return false;
+  const sel = view.state.selection.main;
+  const target =
+    dir > 0
+      ? (blanks.find((b) => b.from >= sel.to && !(b.from === sel.from && b.to === sel.to)) ?? blanks[0])
+      : ([...blanks].reverse().find((b) => b.to <= sel.from && !(b.from === sel.from && b.to === sel.to)) ?? blanks[blanks.length - 1]);
+  view.dispatch({ selection: { anchor: target.from, head: target.to }, scrollIntoView: true });
+  view.focus();
+  return true;
+}
+
+/**
+ * Blanks ___ of a mission: highlighted, and easy to fill — a click on a blank (or Tab) selects the
+ * whole blank, and typing right next to it replaces it. Nobody has to delete underscores by hand.
+ */
 export function blankHighlighter(): Extension {
-  const deco = new MatchDecorator({ regexp: /___/g, decoration: Decoration.mark({ class: 'cm-blank', attributes: { title: tr('Fill this blank', 'Заполни этот пропуск') } }) });
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-      constructor(v: EditorView) {
-        this.decorations = deco.createDeco(v);
-      }
-      update(u: ViewUpdate) {
-        this.decorations = deco.updateDeco(u, this.decorations);
-      }
-    },
-    { decorations: (v) => v.decorations },
-  );
+  const deco = new MatchDecorator({ regexp: /___/g, decoration: Decoration.mark({ class: 'cm-blank', attributes: { title: tr('Click and type — the blank is replaced', 'Нажми и печатай — пропуск заменится сам') } }) });
+  const blankAt = (state: EditorState, pos: number, edges: boolean) => {
+    const line = state.doc.lineAt(pos);
+    for (const m of line.text.matchAll(/___/g)) {
+      const from = line.from + m.index!;
+      const to = from + 3;
+      if (edges ? pos >= from && pos <= to : pos > from && pos < to) return { from, to };
+    }
+    return null;
+  };
+  return [
+    ViewPlugin.fromClass(
+      class {
+        decorations: DecorationSet;
+        constructor(v: EditorView) {
+          this.decorations = deco.createDeco(v);
+        }
+        update(u: ViewUpdate) {
+          this.decorations = deco.updateDeco(u, this.decorations);
+        }
+      },
+      { decorations: (v) => v.decorations },
+    ),
+    // A click on (or the cursor moving into) a blank selects all of it.
+    EditorState.transactionFilter.of((trn) => {
+      if (trn.docChanged || !trn.selection) return trn;
+      const r = trn.selection.main;
+      if (!r.empty || trn.selection.ranges.length > 1) return trn;
+      const b = blankAt(trn.state, r.head, trn.isUserEvent('select.pointer'));
+      return b ? [trn, { selection: { anchor: b.from, head: b.to }, sequential: true }] : trn;
+    }),
+    // Typing with the cursor touching a blank replaces the blank.
+    EditorView.inputHandler.of((view, from, to, text) => {
+      if (from !== to || !text || text.includes('\n')) return false;
+      const b = blankAt(view.state, from, true);
+      if (!b) return false;
+      view.dispatch({ changes: { from: b.from, to: b.to, insert: text }, selection: { anchor: b.from + text.length }, userEvent: 'input.type' });
+      return true;
+    }),
+    Prec.highest(
+      keymap.of([
+        { key: 'Tab', run: (v) => jumpToBlank(v, 1) },
+        { key: 'Shift-Tab', run: (v) => jumpToBlank(v, -1) },
+      ]),
+    ),
+  ];
 }

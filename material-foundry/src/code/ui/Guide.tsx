@@ -32,9 +32,11 @@ export function useGuide(): GuideState | null {
   if (view === 'unity')
     return { text: tr('1) Read the task. 2) Change the code on the left. 3) Press "Play" and use the arrow keys. Stuck? Press "Hint".', '1) Прочитай задание. 2) Измени код слева. 3) Нажми «Играть» и жми стрелки. Застрял? Нажми «Подсказка».'), target: null };
   if (view === 'shooter' || view === 'racing' || view === 'models')
-    return { text: tr('1) Read the radio message. 2) Fill the highlighted ___ in the code. 3) "Upload the script", click the game and play. Stuck? "Hint" or "Show me how to play".', '1) Прочитай сообщение по рации. 2) Заполни подсвеченные ___ в коде. 3) «Загрузить прошивку», нажми на игру и играй. Застрял? «Подсказка» или «Покажи, как играть».'), target: null };
+    return { text: tr('1) Read the radio message. 2) Click a highlighted ___ (or press Tab) and just type — it is replaced. 3) "Upload the script", click the game and play. Stuck? "Hint".', '1) Прочитай сообщение по рации. 2) Нажми на подсвеченный ___ (или Tab) и просто печатай — он заменится. 3) «Загрузить прошивку», нажми на игру и играй. Застрял? «Подсказка».'), target: null };
   if (view === 'path')
-    return { text: tr('This is your path: one order through everything. The big button opens the next lesson. You can open any stage, even out of order.', 'Это твой путь: один порядок через всё. Большая кнопка открывает следующий урок. Можно открыть любой этап, даже не по порядку.'), target: null };
+    return { text: tr('Press the big ▶ button — it always opens your next step. 🔒 = districts you have not reached yet.', 'Жми большую кнопку ▶ — она всегда ведёт к следующему шагу. 🔒 — районы, до которых ты ещё не дошёл.'), target: null };
+  if (view === 'abc')
+    return { text: tr('Type on the left and press "Run" (Ctrl+Enter) — on the right Bit does exactly what is written.', 'Пиши слева и жми «Запустить» (Ctrl+Enter) — справа Бит сделает ровно то, что написано.'), target: null };
   if (view === 'sound')
     return { text: tr('Lessons: fill the ___ and press "Build and listen" — the wave is on the right, the sliders change the sound live. Synthesizer: presets and sliders, every change plays at once.', 'Уроки: заполни ___ и нажми «Собрать и послушать» — справа волна, ползунки меняют звук вживую. Синтезатор: заготовки и ползунки, каждое изменение сразу звучит.'), target: null };
   if (view === 'errors') return { text: tr('Paste the red error text — each error gets a plain explanation and a fix.', 'Вставь красный текст ошибки — для каждой ошибки будет простое объяснение и исправление.'), target: null };
@@ -43,7 +45,7 @@ export function useGuide(): GuideState | null {
   if (!files)
     return {
       step: 1,
-      text: tr('Start here: "Shooter from zero" — learn Unity C# while playing a 3D game; "Learn from zero" — lessons and courses; "Write my own code" — the Workshop.', 'Начни отсюда: «Шутер с нуля» — учи C# для Unity, играя в 3D-игру; «Учиться с нуля» — уроки и курсы; «Писать свой код» — Мастерская.'),
+      text: tr('Free mode: open your own files, an example, or translate an error. Learning is on the "My path" tab.', 'Свободный режим: открой свои файлы, пример или переведи ошибку. Учёба — на вкладке «Мой путь».'),
       target: 'start',
     };
   if (view === 'map') return { text: tr('This is the project map. Arrows show which file uses which. Click a file to open it.', 'Это карта проекта. Стрелки показывают, какой файл каким пользуется. Нажми на файл, чтобы открыть его.'), target: null };
