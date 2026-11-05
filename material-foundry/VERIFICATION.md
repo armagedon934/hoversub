@@ -310,3 +310,25 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
 * **Browser e2e `npm run e2e:workshop`: 51/51**: the "shoot" recipe from "I want…" opens in the sandbox, the empty
   Inspector fields are filled and written to the Console, and a real mouse click on the game fires a bullet.
   `e2e:code` 68/68, materials 39/39, `e2e:desktop` 13/13 on the same build.
+
+## 10. Unity fun pack: more recipes, levels and trainers (seventh iteration)
+
+* **Unit tests: 310, all passing** (17 files). New and extended:
+  * `tests/unity-recipes.test.ts` (27): 12 new Unity recipes are checked by behaviour in Mini-Unity — double jump
+    (a second jump in the air, then no third), dash (Shift moves far, then cools down), respawn after falling,
+    enemy shooter (a bullet flies towards the hero after 1 s and hits him), homing enemy (turns and comes closer),
+    waypoints (`Transform[]` filled in the Inspector, the loop visits both ends), typewriter dialogue (letter by
+    letter), regeneration (+1/s up to the maximum), coin magnet, combo (raises and resets), collect-all (Victory
+    once), enemy turn-around by raycast.
+  * `tests/csharp-run.test.ts` (19): 14 Mini-Unity levels; the 5 new ones (coroutine, InvokeRepeating, ground
+    raycast, FindWithTag, arrays/foreach) are won by their solutions and not by their starters (in the ground-raycast
+    level the starter's air jumps fly into the spikes).
+  * `tests/trainers.test.ts` (31): every one of the 26 "find the bug" cases has exactly one marked line, its fix
+    has valid grammar, and the 11 cases the live checks know are flagged on that line before the fix and not after;
+    every "predict the output" template produces valid questions for 25 random seeds each (≥ 4 unique options,
+    exactly one right answer equal to the interpreter's output, every wrong option explained); event order, quiz
+    answers, cheat sheet and achievements are consistent.
+* **Browser e2e `npm run e2e:workshop`: 57/57** (adds: trainers with the daily goal, finding a bug by tapping lines,
+  predicting an output with a step-by-step replay, the perfect Unity event order, downloading the cheat sheet,
+  achievements unlocking). It found that Chromium drops Cyrillic download file names, so downloads now use Latin
+  names. `e2e:code` 68/68, materials 39/39, `e2e:desktop` 13/13.

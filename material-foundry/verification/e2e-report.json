@@ -1,12 +1,12 @@
 {
-  "date": "2026-11-04T22:04:21.166Z",
+  "date": "2026-11-05T00:26:42.780Z",
   "passed": 39,
   "failed": 0,
   "checks": [
     {
       "name": "First run opens directly into a generated material",
       "ok": true,
-      "detail": "4.9 s to first full material (software WebGL, shared CPU)"
+      "detail": "5.1 s to first full material (software WebGL, shared CPU)"
     },
     {
       "name": "Workflow introduction is shown on first run",
@@ -76,7 +76,7 @@
     {
       "name": "Randomize seed changes the seed",
       "ok": true,
-      "detail": "seed 336"
+      "detail": "seed 46279"
     },
     {
       "name": "Seed lock keeps the seed when switching presets",
@@ -131,12 +131,12 @@
     {
       "name": "High-resolution (2048) ZIP export completes",
       "ok": true,
-      "detail": "10.8 s"
+      "detail": "10.4 s"
     },
     {
       "name": "Interface keeps rendering frames during the 2048 export",
       "ok": true,
-      "detail": "frame gaps p95 18 ms, max 65 ms over 647 frames"
+      "detail": "frame gaps p95 17 ms, max 126 ms over 616 frames"
     },
     {
       "name": "ZIP contains the expected files",

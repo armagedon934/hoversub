@@ -388,6 +388,47 @@ async function main() {
     check('Lessons: compare the same code in other languages', /C\+\+/.test(cmp ?? '') && /Python/.test(cmp ?? ''));
     await shot(page, '18-compare-languages');
 
+    // ------------------------------------------------------------------ Trainers
+    await page.getByTestId('view-learn').click();
+    await page.getByTestId('hub-trainers').click();
+    await page.getByTestId('trainers').waitFor();
+    check('Trainers: daily goal is shown', (await page.getByTestId('daily-goal').count()) >= 1);
+    await shot(page, '19-trainers');
+    await page.getByTestId('trainer-bugs').click();
+    await page.getByTestId('bug-hunt').waitFor();
+    const nLines = await page.getByTestId('bug-line').count();
+    for (let k = 0; k < nLines && !(await page.getByTestId('bug-answer').count()); k++) {
+      const line = page.getByTestId('bug-line').nth(k);
+      if (await line.isEnabled()) await line.click();
+    }
+    const bugText = (await page.getByTestId('bug-answer').textContent()) ?? '';
+    check('Find the bug: the right line shows why and the fixed line', /✓/.test(bugText) && bugText.length > 40, bugText.slice(0, 80));
+    await shot(page, '20-find-the-bug');
+    await page.getByTestId('trainer-exit').click();
+    await page.getByTestId('trainer-predict').click();
+    await page.getByTestId('predict-option').first().waitFor();
+    await page.getByTestId('predict-option').first().click();
+    await page.getByTestId('predict-feedback').waitFor();
+    await page.getByTestId('predict-steps').click();
+    await page.getByTestId('trace-view').waitFor();
+    check('What will it print: an answer gives feedback and a step-by-step replay', true);
+    await shot(page, '21-predict-output');
+    await page.getByTestId('trainer-exit').click();
+    await page.getByTestId('trainer-lifecycle').click();
+    for (const name of ['Awake', 'OnEnable', 'Start', 'FixedUpdate', 'Update', 'LateUpdate', 'OnDisable', 'OnDestroy']) await page.getByTestId('lifecycle-card').filter({ hasText: new RegExp(`^${name}$`) }).click();
+    check('Unity event order: perfect order recognised', /Идеальный/.test((await page.getByTestId('lifecycle-done').textContent()) ?? ''));
+    await page.getByTestId('trainer-exit').click();
+    await page.getByTestId('trainer-cheat').click();
+    await page.getByTestId('cheat-sheet').waitFor();
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('cheat-download').click()]);
+    check('Cheat sheet can be saved as a file', /\.md$/.test(dl.suggestedFilename()), dl.suggestedFilename());
+    await shot(page, '22-cheat-sheet');
+    await page.getByTestId('trainer-exit').click();
+    await page.getByTestId('trainer-badges').click();
+    const badges = await page.locator('.tr-badge.on').count();
+    check('Achievements unlock (event order, cheat sheet, first level…)', badges >= 3, `${badges} unlocked`);
+    await shot(page, '23-achievements');
+
     // ------------------------------------------------------------------ Focus timer
     await page.getByTestId('open-focus').click();
     await page.getByTestId('focus-timer').waitFor();

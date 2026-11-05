@@ -6,7 +6,7 @@
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { Bot, Brain, BookOpenText, Code2, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
+import { Bot, Brain, BookOpenText, Code2, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -21,6 +21,7 @@ import { Workshop } from '../workshop/Workshop';
 import { getLanguage } from '../languages/registry';
 import { tr, type Locale } from '../i18n';
 import { CoursesView } from '../learn/CourseView';
+import { DailyGoal, Trainers } from '../learn/Trainers';
 import { Learn } from '../learn/Learn';
 import { getCodeClient } from '../worker/client';
 import { ChangesView } from './ChangesView';
@@ -59,6 +60,12 @@ function Welcome() {
       <h1>{tr('Understand code — without fear', 'Понимать код — без страха')}</h1>
       <p className="welcome-lead">{tr('Choose one of three ways to start. You can always come back here.', 'Выбери один из трёх способов начать. Сюда всегда можно вернуться.')}</p>
       <ResumeCard />
+      <div className="welcome-goal">
+        <DailyGoal compact />
+        <button className="btn" onClick={() => { useLearnHub.set('trainers'); setView('learn'); }} data-testid="start-trainers">
+          🐞 🔮 🔄 {tr('Trainers — 5 minutes', 'Тренажёры — 5 минут')}
+        </button>
+      </div>
       <div className="start-cards" data-guide="start">
         <button className="start-card" onClick={() => setView('learn')} data-testid="start-learn">
           <span className="start-emoji" aria-hidden>
@@ -275,6 +282,9 @@ function LearnHub() {
         <button role="tab" aria-selected={part === 'courses'} className={part === 'courses' ? 'on' : ''} onClick={() => useLearnHub.set('courses')} data-testid="hub-courses">
           <GraduationCap size={15} /> {tr('Courses: C# for Unity, Unreal', 'Курсы: C# для Unity, Unreal')}
         </button>
+        <button role="tab" aria-selected={part === 'trainers'} className={part === 'trainers' ? 'on' : ''} onClick={() => useLearnHub.set('trainers')} data-testid="hub-trainers">
+          <Dumbbell size={15} /> {tr('Trainers', 'Тренажёры')}
+        </button>
         <button role="tab" aria-selected={part === 'review'} className={part === 'review' ? 'on' : ''} onClick={() => useLearnHub.set('review')} data-testid="hub-review">
           <Brain size={15} /> {tr('Review', 'Повторение')} {due ? <span className="badge">{due}</span> : null}
         </button>
@@ -282,7 +292,7 @@ function LearnHub() {
           <NotebookPen size={15} /> {tr('Notebook', 'Блокнот')}
         </button>
       </div>
-      {part === 'lessons' ? <Learn /> : part === 'courses' ? <CoursesView /> : part === 'review' ? <ReviewView /> : <NotebookView />}
+      {part === 'lessons' ? <Learn /> : part === 'courses' ? <CoursesView /> : part === 'trainers' ? <Trainers /> : part === 'review' ? <ReviewView /> : <NotebookView />}
     </div>
   );
 }

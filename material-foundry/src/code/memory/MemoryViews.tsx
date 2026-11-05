@@ -145,7 +145,7 @@ export function NotebookView() {
   const exportMd = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([notebookMarkdown(notes)], { type: 'text/markdown;charset=utf-8' }));
-    a.download = tr('my-notebook.md', 'мой-блокнот.md');
+    a.download = 'my-notebook.md';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
@@ -257,7 +257,7 @@ export function ResumeCard() {
 
 /** Which part of the Learn hub is open (lessons / review / notebook). */
 export const useLearnHub = (() => {
-  let value: 'lessons' | 'courses' | 'review' | 'notebook' = 'lessons';
+  let value: 'lessons' | 'courses' | 'trainers' | 'review' | 'notebook' = 'lessons';
   const subs = new Set<() => void>();
   return {
     get: () => value,

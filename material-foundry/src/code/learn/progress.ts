@@ -3,6 +3,7 @@
 
 import { create } from 'zustand';
 import type { TrackId } from './lessons';
+import { useTrainers } from './achievements';
 
 const KEY = 'mf.learn.v1';
 
@@ -80,6 +81,7 @@ export const useLearn = create<LearnState>((set, get) => ({
     }
     set({ xp: s.xp + n, streak, lastDay: d });
     save(get());
+    useTrainers.getState().earned(n);
   },
   finishLesson(track, lessonId, stars) {
     const k = key(track, lessonId);

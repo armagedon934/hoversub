@@ -39,6 +39,13 @@ service and no API key involved. (An AI model running on your own computer can o
 * **Courses** — *C# for Unity* (16 lessons; every example runs for real in the replay; tasks are checked by running
   the learner's code and comparing the output) and *Unreal Engine C++* (4 reading lessons compared with Unity).
   "Compare with other languages" shows a lesson's code in all languages side by side.
+* **Trainers** — *Find the bug* (26 real Unity mistakes, from the symptom to the line; every case is checked by the
+  tests, and the ones the live checks know are flagged on exactly that line), *What will it print?* (endless questions
+  from 15 templates with random numbers; the right answer comes from running the code, each wrong option explains its
+  misconception; step-by-step replay), *Unity event order*, *Where does this code go?*, a printable *Unity C# cheat
+  sheet*, 18 achievements and a daily XP goal.
+* **More Unity**: 50 recipes (39 of them Unity scripts, all playing in Mini-Unity and checked by behaviour) and
+  14 Mini-Unity levels (new: coroutine, InvokeRepeating, ground raycast, FindWithTag, arrays/foreach).
 * **Error translator** — paste Unity Console / Visual Studio / compiler / Python / browser errors; 52 known kinds
   are explained (meaning + fix, file and line).
 * **Memory & focus** — spaced repetition (Leitner boxes 1/2/4/8/16 days) from lesson questions and the notebook;

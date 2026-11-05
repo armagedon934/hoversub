@@ -1,6 +1,6 @@
 {
-  "when": "2026-11-04T22:01:53.488Z",
-  "passed": 51,
+  "when": "2026-11-05T00:24:04.114Z",
+  "passed": 57,
   "failed": 0,
   "dialogs": 0,
   "checks": [
@@ -218,6 +218,36 @@
       "name": "Lessons: compare the same code in other languages",
       "ok": true,
       "detail": ""
+    },
+    {
+      "name": "Trainers: daily goal is shown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Find the bug: the right line shows why and the fixed line",
+      "ok": true,
+      "detail": "✅ Нашёл!C# различает большие и маленькие буквы. Unity ищет «Update»; «update» — "
+    },
+    {
+      "name": "What will it print: an answer gives feedback and a step-by-step replay",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Unity event order: perfect order recognised",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Cheat sheet can be saved as a file",
+      "ok": true,
+      "detail": "unity-cheat-sheet.md"
+    },
+    {
+      "name": "Achievements unlock (event order, cheat sheet, first level…)",
+      "ok": true,
+      "detail": "4 unlocked"
     },
     {
       "name": "Focus timer counts down",
