@@ -8,7 +8,17 @@ the texture studio, which is unchanged.
 Everything runs in your browser on your own computer. There is no account, no internet connection, no cloud AI
 service and no API key involved. (An AI model running on your own computer can optionally be connected.)
 
-## New: "Shooter from zero" — learn Unity C# by playing (ninth iteration)
+## New: living bots, racing, sound, models & materials, themes, My path (tenth iteration)
+
+* **My path** — one order through everything with progress and a "continue" button; one **Games** tab (Mini-Unity 2D,
+  Shooter 3D, Racing, Models & materials, Sound), each with code on the left and the game on the right.
+* **Living bots** — human-like turning/reaction/aim/glances/hearing/memory, spectator mode, vision overlay, bot brain
+  sliders, 7 missions. **Racing** — 12 lessons up to a Trackmania ghost, BeamNG-style dents and a car that learns.
+  **Sound** — synthesizer and 9 OnAudioFilterRead lessons. **Models & materials** — texture-studio materials in every
+  game, 6 lessons. **10 themes** with their own sounds and per-sound volume.
+* Details: `docs/RU_GUIDE.md` (§2, §4½–4⅞), `VERIFICATION.md` §13.
+
+## Earlier: "Shooter from zero" — learn Unity C# by playing (ninth iteration)
 
 * The main entry on the start screen. Code on the left, a **3D first-person game** on the right (three.js, loaded
   only when opened). 25 missions in 5 chapters bring a soldier's "suit" back to life: comms, legs, eyes, body,

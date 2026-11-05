@@ -17,8 +17,11 @@ with pictures, a project explainer and a safe "What if I change this?" workflow 
 Opening a file never runs it. It also has a **Learn** section: short game-themed lessons in C#, C++, C, Python and
 JavaScript with a step-by-step animation of the running program and mini-games, a **Workshop** to write your own code
 (suggestions, "what comes next" ghost text, live Unity-aware checks, "I want…" recipes, safe Run for C#/Python/JS with a
-step-by-step replay of real values), **Shooter from zero** (a 3D first-person game where 25 missions teach Unity C# — you
-fill a few blanks of real Unity code and get a new ability, ending in a match against bots on a map), **Mini-Unity** (real
+step-by-step replay of real values), **Shooter from zero** (a 3D first-person game where 32 missions teach Unity C# — you
+fill a few blanks of real Unity code and get a new ability: human-like bots you can watch and tune, atmosphere, a match on a map),
+**Racing** (12 lessons: car physics, a Trackmania-style ghost, BeamNG-style dents, a car that learns), **Sound** (synthesizer
+and Unity OnAudioFilterRead lessons), **Models & materials** (texture-studio materials in every game), **My path** (one
+order through everything), 10 themes, **Mini-Unity** (real
 Unity C# scripts driving a small 2D game, 14 levels), courses
 (*C# for Unity*, *Unreal C++*), an error translator, spaced review, a notebook and an optional bridge to an AI model on
 your own computer. The interface is available in **Russian and English**. See

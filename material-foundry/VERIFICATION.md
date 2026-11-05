@@ -382,3 +382,42 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
   missions are remembered; tablet width has no sideways scroll; no page errors. Screenshots: `verification/shooter/`.
 * Honest limits: boxes only (no rotated colliders or slopes), humanoids made of boxes, no prefabs/`Instantiate` in 3D,
   no NavMesh (bots side-step around crates instead), `Health` is built in (in real Unity it is a small script).
+
+## 13. Living bots, racing, sound, models & materials, themes, one learning path (tenth iteration)
+
+* **Human-like bots** (`unity3d.ts`): the look is a spring with a turn-speed limit and slight overshoot, a reaction
+  delay, an aim error that settles (and grows when the target moves fast), glances while patrolling, hearing of the
+  player's shots, memory and search where last seen; every number lives in a `BotProfile` (live sliders,
+  characters). Spectator eye (behind / through the eyes), a vision overlay (field of view, look line, state labels).
+  Chapter "Living bots": 7 missions (spectator camera, `Quaternion.RotateTowards`, reaction time, settling aim,
+  glances with a coroutine and `Mathf.LerpAngle`, memory and search, `BotBrain` character).
+* **Racing** (`racing.ts`, race part of `unity3d.ts`): closed Catmull-Rom track, barriers with `OnCollisionEnter`
+  (relativeVelocity, contacts), road/grass by a ray down, `RaceTrack` helpers, cars with a dentable mesh
+  (`mesh.vertices`), parts (`SetParent(null)`, `AddComponent<Rigidbody>`), material colours with transparency,
+  car-to-car bumps, chase camera. 12 lessons (gas … a car that learns by evolution).
+* **Sound** (`sound/`): synthesizer (12 presets, slow ×2 at the same pitch, WAV), analysis (pitch, loudness,
+  squareness, noisiness), 9 lessons in Unity `OnAudioFilterRead` run by the interpreter, live Inspector, sounds usable
+  in the games (gunshot, hit, engine).
+* **Models & materials** (`models.ts`, `gameMaterials.ts`): `CreatePrimitive`, `Resources.Load<Material>` with the
+  texture generator's presets (generated offline in the workers, 256 px), `mainTextureScale`, `_BumpScale`, bounds,
+  LOD; a material picker under every 3D game with real-size tiling. 6 lessons.
+* **10 themes** with their own UI sound voices and per-sound volumes; **My path** (10 stages in one order with
+  progress), one **Games** tab with a game row; course lessons in two panes (result at once + the same idea in a game).
+* **Bugs found and fixed on the way:** the interpreter's random numbers repeated (lost precision) → mulberry32;
+  `Random.Range(-1f, 1f)` used the integer version (only −1 and 0) → float when the arguments are written as floats;
+  `Vector2.MoveTowards` fell into another case (broke 4 Mini-Unity tests) → fixed; the live checker flagged
+  `if (x) y = 1;` as "= instead of ==" → only the condition is checked; course lessons' code lines overlapped (class
+  names collided with the code viewer) → renamed; a file name that differed only in letter case broke the Windows build.
+* **Unit tests: 487, all passing** (new: `themes` 3, `sound` 19, `race-engine` 6, `racing` 15, `models` 10, more in
+  `shooter` (bots: 14 + 5 "robotic code fails") and `code-reader` (every line of every new lesson is translated)).
+  Racing: every lesson's finished script completes its goals driven by its own demo keys; wrong code does not
+  (no brakes/air never stops, no grass check, no speed loss on a hit). Sound: every lesson's finished script passes its
+  goals by listening; broken ones do not. Themes: text contrast ≥ 7 (main), ≥ 4.5 (secondary), ≥ 3 (muted/accent),
+  ≥ 4.5 (button text) for every theme.
+* **Browser e2e:** `scripts/e2e-games.ts` **24/24** (path and continue, Games row, 10 themes recolour everything, sound
+  volumes, course two panes + game link, sound lesson won, synthesizer, sound used in a game, bot mission won,
+  spectator with labels, bot brain, a studio material on crates, racing dents in the real loop, driving with W, models
+  tiling, tablet width, offline, no page errors), `e2e-shooter` **28/28**, `e2e-workshop` **62/62**, `e2e-code`
+  **68/68**, materials **39/39**. Screenshots: `verification/games/`.
+* Honest limits: arcade car physics; dents move mesh points (not a soft body of beams); the learning car evolves two
+  numbers (not a neural network); game materials are 256 px.
