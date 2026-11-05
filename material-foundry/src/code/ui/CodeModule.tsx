@@ -58,7 +58,7 @@ function Welcome() {
   return (
     <div className="welcome" data-testid="code-welcome">
       <h1>{tr('Understand code — without fear', 'Понимать код — без страха')}</h1>
-      <p className="welcome-lead">{tr('Choose one of three ways to start. You can always come back here.', 'Выбери один из трёх способов начать. Сюда всегда можно вернуться.')}</p>
+      <p className="welcome-lead">{tr('Choose where to start — the big cards are the main ones. You can always come back here with "Start".', 'Выбери, с чего начать: главное — три большие карточки. Сюда всегда можно вернуться кнопкой «Начало».')}</p>
       <ResumeCard />
       <div className="welcome-goal">
         <DailyGoal compact />

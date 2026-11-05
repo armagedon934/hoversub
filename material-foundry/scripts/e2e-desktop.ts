@@ -48,6 +48,7 @@ async function main() {
     page.setDefaultTimeout(30000);
     await page.waitForLoadState('domcontentloaded');
     // The material studio (WebGL + generator workers) under the strict policy.
+    await page.getByTestId('mode-materials').click();
     await page.waitForTimeout(4000);
     const canvases = await page.locator('canvas').count();
     check('Materials studio renders in the desktop app', canvases > 0, `${canvases} canvas`);

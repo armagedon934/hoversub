@@ -32,7 +32,7 @@ try {
     if (m.type() === 'error' || m.type() === 'warning') console.log(`[${m.type()}] ${m.text()}`);
   });
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto(URL);
+  await page.goto(`${URL}#materials`);
   await page.waitForFunction('(() => { const s = window.__mf?.store?.getState(); return s && s.material && !s.gen.busy; })()', null, { timeout: 180000 });
   await page.click('[data-preset="molten_crust"]');
   await page.click('[data-testid="open-export"]');

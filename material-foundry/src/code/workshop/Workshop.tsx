@@ -521,7 +521,8 @@ export function Workshop() {
             <FilePlus2 size={15} /> {tr('New', 'Новый')}
           </button>
           {menu ? <NewFileMenu onPick={(k) => ws.newFile(k)} onClose={() => setMenu(false)} /> : null}
-          <select value={file.id} onChange={(e) => ws.open(e.target.value)} aria-label={tr('My files', 'Мои файлы')} data-testid="ws-file-select">
+          <select value={file.id} onChange={(e) => ws.open(e.target.value)} aria-label={tr('My files', 'Мои файлы')}
+            title={tr('My files: switch between them', 'Мои файлы: переключение между ними')} data-testid="ws-file-select">
             {ws.files.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
@@ -533,10 +534,21 @@ export function Workshop() {
             value={file.name}
             onChange={(e) => ws.rename(e.target.value.replace(/[\\/:*?"<>|]/g, ''))}
             aria-label={tr('File name', 'Имя файла')}
+            title={tr('File name (you can rename it here)', 'Имя файла (здесь можно переименовать)')}
             data-testid="ws-name"
             spellCheck={false}
           />
           <span className="pill">{LANG_LABEL[file.lang]}</span>
+          <button
+            className="btn ghost"
+            onClick={() => {
+              if (confirm(tr(`Delete "${file.name}" from the Workshop?`, `Удалить «${file.name}» из Мастерской?`))) ws.remove(file.id);
+            }}
+            aria-label={tr('Delete this file', 'Удалить этот файл')}
+            title={tr('Delete this file', 'Удалить этот файл')}
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
         <span className="spacer" />
         <button className="btn primary big" onClick={() => void run()} disabled={running} data-testid="ws-run" title="Ctrl+Enter">
@@ -552,15 +564,7 @@ export function Workshop() {
         <button className="btn" onClick={download} data-testid="ws-download" title={tr('Save a copy to the computer', 'Сохранить копию на компьютер')}>
           <Download size={15} /> {tr('Download', 'Скачать')}
         </button>
-        <button
-          className="btn ghost"
-          onClick={() => {
-            if (confirm(tr(`Delete "${file.name}" from the Workshop?`, `Удалить «${file.name}» из Мастерской?`))) ws.remove(file.id);
-          }}
-          aria-label={tr('Delete this file', 'Удалить этот файл')}
-        >
-          <Trash2 size={15} />
-        </button>
+
       </div>
 
       <div className={`ws-main${side === 'result' && result?.steps.length ? ' wide-side' : ''}`}>
@@ -637,6 +641,7 @@ export function Workshop() {
                     {live.x.blocks
                       .filter((b) => !b.collapsed && b.id === 'here')
                       .flatMap((b) => b.lines.slice(0, 2))
+                      .filter((l) => l.trim() !== live.x.summary.trim())
                       .map((l, i) => (
                         <p key={i} className="small">
                           {l}

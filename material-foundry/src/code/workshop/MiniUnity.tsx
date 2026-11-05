@@ -472,7 +472,8 @@ export function MiniUnity() {
             data-testid={`mu-level-${l.id}`}
             title={pick(l.title)}
           >
-            <span aria-hidden>{done.has(l.id) ? '✅' : l.icon}</span> {i + 1}. {pick(l.title)}
+            <span aria-hidden>{done.has(l.id) ? '✅' : l.icon}</span> {i + 1}
+            {!sandbox && l.id === level.id ? `. ${pick(l.title)}` : ''}
           </button>
         ))}
         {sandbox ? (

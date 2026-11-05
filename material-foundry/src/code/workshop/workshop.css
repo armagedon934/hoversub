@@ -1584,3 +1584,24 @@
     display: none !important;
   }
 }
+
+/* Level chips: number + icon; the current level also shows its name. All levels fit without scrolling. */
+.mu-levels {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+.mu-level {
+  padding: 6px 10px;
+}
+
+@media (max-width: 1200px) {
+  .ws-toolbar {
+    gap: 6px;
+  }
+  .ws-name {
+    width: 110px;
+  }
+  .ws-toolbar .btn.big {
+    padding: 0 12px;
+  }
+}

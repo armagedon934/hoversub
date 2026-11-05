@@ -1,5 +1,5 @@
 {
-  "when": "2026-11-05T00:27:10.751Z",
+  "when": "2026-11-05T00:43:14.320Z",
   "passed": 13,
   "failed": 0,
   "checks": [
@@ -11,7 +11,7 @@
     {
       "name": "Window opens the app from app:// (no server, no internet)",
       "ok": true,
-      "detail": "app://local/index.html"
+      "detail": "app://local/index.html#materials"
     },
     {
       "name": "The page has no Node.js access; only the small AI bridge is exposed",

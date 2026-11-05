@@ -79,7 +79,7 @@ async function main() {
 
     // ------------------------------------------------------------ first run
     const t0 = Date.now();
-    await page.goto(URL);
+    await page.goto(`${URL}#materials`);
     await waitReady(page);
     check('First run opens directly into a generated material', true, `${((Date.now() - t0) / 1000).toFixed(1)} s to first full material (software WebGL, shared CPU)`);
     check('Workflow introduction is shown on first run', await page.isVisible('[data-testid="intro"]'));
@@ -403,7 +403,7 @@ async function main() {
         return orig.call(this, type, ...rest);
       };
     })()`);
-    await p2.goto(URL);
+    await p2.goto(`${URL}#materials`);
     await waitReady(p2);
     await p2.waitForTimeout(1000);
     const fallback = await p2.isVisible('.webgl-fallback');

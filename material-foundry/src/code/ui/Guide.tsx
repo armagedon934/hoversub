@@ -37,7 +37,7 @@ export function useGuide(): GuideState | null {
   if (!files)
     return {
       step: 1,
-      text: tr('Start here. New to code? Press "Learn" — short lessons with games. Want to look at real code? Press "Look at an example".', 'Начни отсюда. Код для тебя новый? Нажми «Учиться» — короткие уроки с играми. Хочешь посмотреть на настоящий код? Нажми «Посмотреть пример».'),
+      text: tr('Start here: "Learn from zero" — lessons and courses; "Write my own code" — the Workshop; "Mini-Unity" — your scripts move a hero.', 'Начни отсюда: «Учиться с нуля» — уроки и курсы; «Писать свой код» — Мастерская; «Мини-Unity» — твои скрипты двигают героя.'),
       target: 'start',
     };
   if (view === 'map') return { text: tr('This is the project map. Arrows show which file uses which. Click a file to open it.', 'Это карта проекта. Стрелки показывают, какой файл каким пользуется. Нажми на файл, чтобы открыть его.'), target: null };

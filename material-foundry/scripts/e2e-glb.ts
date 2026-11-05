@@ -100,7 +100,7 @@ try {
   const errors: string[] = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto(URL);
+  await page.goto(`${URL}#materials`);
   await waitReady(page);
   await page.click('[data-testid="dismiss-intro"]').catch(() => {});
   for (const c of CASES) {
