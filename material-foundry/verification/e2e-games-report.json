@@ -1,0 +1,127 @@
+{
+  "when": "2026-11-05T06:10:24.328Z",
+  "passed": 24,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "The program opens on \"My path\" with one big Continue button",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "My path lists 12 districts in order",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A district opens its next lesson (Mini-Unity 2D level 1)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The Games row shows 5 games",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Settings offer 10 themes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Settings offer a volume for every kind of sound",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Choosing a theme recolours the whole program",
+      "ok": true,
+      "detail": "rgb(22, 23, 26) → rgb(18, 13, 29)"
+    },
+    {
+      "name": "A course lesson shows its result at once, next to the code",
+      "ok": true,
+      "detail": "Ari has 2 lives\nSpeed: 9\nAlive: True"
+    },
+    {
+      "name": "…with a button to the same idea in a game",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The game button opens the matching shooter mission",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Sound lesson \"Jump\": the written OnAudioFilterRead passes its goals by listening",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The live Inspector shows the sliders of the sound script",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Synthesizer: a preset shows its wave and numbers; Play / Stop / Slow ×2 are there",
+      "ok": true,
+      "detail": "⏱ 0.22 с🎵 ~933 Гц🔊 46%▦ квадрат 9%≋ шум 39%— — линия высоты"
+    },
+    {
+      "name": "A sound can be used as the gunshot in the shooter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Bot mission \"A smooth turn\" completes in the real game loop",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Watching bots: the camera follows a bot and their states are drawn over them",
+      "ok": true,
+      "detail": "6 labels"
+    },
+    {
+      "name": "The bot brain panel changes all bots live (characters and sliders)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A texture-studio material can be put on any kind of object in a game",
+      "ok": true,
+      "detail": "Crate:barn_planks, Crate:barn_planks, Crate:barn_planks"
+    },
+    {
+      "name": "Racing \"Dents\": the body crumples where it hit the barrier (real loop)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Racing: holding W drives the car (speedometer)",
+      "ok": true,
+      "detail": "85 km/h"
+    },
+    {
+      "name": "Models \"Tiling\": the brick wall from the texture studio repeats by its size",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tablet width: My path has no sideways scroll",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No requests left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

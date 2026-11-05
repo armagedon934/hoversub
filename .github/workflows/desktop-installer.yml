@@ -1,0 +1,60 @@
+# Builds the Windows installer (MaterialFoundry-Setup-x.y.z.exe) on a real Windows machine,
+# installs it silently into a custom folder, starts the installed app in smoke-test mode and
+# uploads the installer as a downloadable artifact (Actions → this run → Artifacts).
+name: Desktop installer (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'material-foundry/src/**'
+      - 'material-foundry/desktop/**'
+      - 'material-foundry/package.json'
+      - '.github/workflows/desktop-installer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: material-foundry
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install and build the web app
+        run: |
+          npm ci
+          npm run build
+      - name: Build the installer
+        working-directory: material-foundry/desktop
+        run: |
+          npm ci
+          npm run dist:win
+      - name: Install silently into a custom folder
+        shell: pwsh
+        working-directory: material-foundry/desktop/release
+        run: |
+          $setup = Get-ChildItem -Filter 'MaterialFoundry-Setup-*.exe' | Select-Object -First 1
+          Start-Process -Wait -FilePath $setup.FullName -ArgumentList '/S', '/D=C:\MF Test\Material Foundry'
+          if (-not (Test-Path 'C:\MF Test\Material Foundry\Material Foundry.exe')) { throw 'not installed' }
+          if (-not (Test-Path 'C:\MF Test\Material Foundry\Uninstall Material Foundry.exe')) { throw 'no uninstaller' }
+      - name: Start the installed app (smoke test)
+        shell: pwsh
+        run: |
+          $p = Start-Process -PassThru -Wait -FilePath 'C:\MF Test\Material Foundry\Material Foundry.exe' -ArgumentList '--smoke-test'
+          if ($p.ExitCode -ne 0) { throw "smoke test failed: $($p.ExitCode)" }
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          Start-Process -Wait -FilePath 'C:\MF Test\Material Foundry\Uninstall Material Foundry.exe' -ArgumentList '/S'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MaterialFoundry-Setup-windows
+          path: material-foundry/desktop/release/MaterialFoundry-Setup-*.exe
+          retention-days: 30

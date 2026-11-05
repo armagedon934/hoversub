@@ -1,0 +1,40 @@
+[
+  {
+    "file": "arcane_stone_seed_1111_block_8192.glb",
+    "exportSeconds": 67.53,
+    "sizeMB": 120.27,
+    "validator": {
+      "errors": 0,
+      "warnings": 1,
+      "infos": 0,
+      "messages": [
+        "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE: Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations."
+      ]
+    },
+    "threeGLTFLoader": {
+      "meshes": 1,
+      "tris": 2028,
+      "decodedMaps": [
+        "aoMap:8192",
+        "emissiveMap:8192",
+        "map:8192",
+        "metalnessMap:8192",
+        "normalMap:8192",
+        "roughnessMap:8192"
+      ],
+      "renderedMaps": [
+        "aoMap:2048",
+        "emissiveMap:2048",
+        "map:2048",
+        "metalnessMap:2048",
+        "normalMap:2048",
+        "roughnessMap:2048"
+      ],
+      "renderCap": 2048
+    },
+    "screenshot": "20-glb-glowing_runes-block-8K.png"
+  },
+  {
+    "consoleErrors": []
+  }
+]

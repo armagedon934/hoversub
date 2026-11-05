@@ -1,0 +1,157 @@
+{
+  "when": "2026-11-05T06:10:51.677Z",
+  "passed": 30,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "The program opens on \"My path\" (no separate \"Start\" tab)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A first start says where you are and what to press",
+      "ok": true,
+      "detail": "👋 Куда ты попалЭта программа учит делать игры на Unity — с нуля, на языке C#.Ни"
+    },
+    {
+      "name": "One big button: \"Start: The ABC of code → ( )\"",
+      "ok": true,
+      "detail": "🔤Начать: Азбука кода→ ( )  Круглые скобки — нажать кнопку▶"
+    },
+    {
+      "name": "The map has 12 districts",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Only the first district is open, the rest are locked like new cities",
+      "ok": true,
+      "detail": "11 locked"
+    },
+    {
+      "name": "The finish card says what you will be able to do",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A locked district does not open (a toast says why)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A game of a later district shows the locked screen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"To my next step\" opens the ABC of code",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The ABC: only the first symbol is open",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Running \"robot.Jump;\" shows the funny moment and the real C# error CS0201",
+      "ok": true,
+      "detail": "😮 Что сейчас произошлоРобот прочитал слово, посмотрел на кнопку… и не нажал. Без ( ) — эт"
+    },
+    {
+      "name": "Bit jumps: the first goal is ticked",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Level done: the card shows the one sentence to remember",
+      "ok": true,
+      "detail": "( )ПРОЙДЕНОКруглые скобки — нажать кнопку+40 XP🧠 Запомни одной фразой( ) — нажать кнопку. Внутри — сколько или что.😄 К"
+    },
+    {
+      "name": "\"Next\" opens the next symbol (;)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The symbol becomes a review card (comes back in 1, 2, 4… days)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The boss: the first broken thing shows its moment (missing ;)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The boss is beaten: Bit reaches the flag and shouts",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Finishing a district breaks the lock of the next one",
+      "ok": true,
+      "detail": "🔒🧱НОВЫЙ РАЙОН ОТКРЫТКирпичный кварталПервые кирпичики C# — Переменные, if, цик"
+    },
+    {
+      "name": "\"Let's go\" opens the first lesson of the new district",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The question names the line instead of \"after the second line\"",
+      "ok": true,
+      "detail": "Что лежит в health после строки health = health - 30; ?"
+    },
+    {
+      "name": "A right answer gives sparks and +XP where it was earned",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Settings explain what the effects mean",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A click on ___ selects the whole blank",
+      "ok": true,
+      "detail": "\"___\""
+    },
+    {
+      "name": "Typing replaces the blank (nothing to delete by hand)",
+      "ok": true,
+      "detail": "✏️ Пропусков: 3 — нажми или Tab → ✏️ Пропусков: 2 — нажми или Tab"
+    },
+    {
+      "name": "…and no underscores are left around the typed text",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tab jumps to the next blank and selects it",
+      "ok": true,
+      "detail": "\"___\""
+    },
+    {
+      "name": "Learn: C# is the main language, the others are optional (folded)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tablet width: the map has no sideways scroll",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No requests left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

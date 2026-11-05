@@ -1,0 +1,318 @@
+{
+  "when": "2026-11-05T06:08:06.207Z",
+  "passed": 62,
+  "failed": 0,
+  "dialogs": 0,
+  "checks": [
+    {
+      "name": "Free mode offers the Workshop, the example and the error translator",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Workshop starts with a Unity script",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Ghost text guesses the next line inside Update",
+      "ok": true,
+      "detail": "float x = Input.GetAxis(\"Horizontal\");Tab ↹"
+    },
+    {
+      "name": "After accepting, the next guess moves the player with Time.deltaTime",
+      "ok": true,
+      "detail": "transform.Translate(x * speed * Time.deltaTime, 0, 0);Tab ↹"
+    },
+    {
+      "name": "Tab inserted both guessed lines",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The hints panel lists ideas with reasons",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Typing \"Input.\" suggests Unity members",
+      "ok": true,
+      "detail": "anyKeyDownbool | GetAxis(string axis) | GetAxisRaw(string axis) | GetKey(KeyCode key) | GetKeyDown(KeyCode key) | GetKeyUp(KeyCode key)"
+    },
+    {
+      "name": "Each suggestion is explained in Russian",
+      "ok": true,
+      "detail": "anyKeyDowntrue в кадр, когда нажата любая клавиша."
+    },
+    {
+      "name": "Live check: lowercase update() is explained (Unity would silently ignore it)",
+      "ok": true,
+      "detail": "строка 5Unity никогда не вызовет «update» — имя должно быть ровно «Update» (с большой буквы). Unity не покажет ошибку, к"
+    },
+    {
+      "name": "Live check: CS1612 position.x is explained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "One-click fix renames update → Update",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Read simply: 5 lines at a time with plain Russian under each",
+      "ok": true,
+      "detail": "10transform.position.x += x;Прибавляем x к transform.position.x.🔴 Ошибка CS1612"
+    },
+    {
+      "name": "Read simply: the problem line is marked red",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Read simply: the script map has a few named parts",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Хочу…\" finds the jump recipe from a Russian wish",
+      "ok": true,
+      "detail": "UnityПлатформер: бег и прыжок с физикой (Rigidbody2D)"
+    },
+    {
+      "name": "Recipe opens as a new file named like its class",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "C# run stops and asks for ReadLine",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "C# program finishes with the answer and real values",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Step-by-step replay narrates in Russian",
+      "ok": true,
+      "detail": "↩ Отдаём 42 и выходим из функции."
+    },
+    {
+      "name": "Replay shows the function call with its parameter box (n = 21)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Runtime error is explained with how to fix",
+      "ok": true,
+      "detail": " Элемента с таким номером нетстрока 3Элемента с номером 3 нет: элементов 3, их номера от 0 до 2 (IndexOutOfRangeExceptio"
+    },
+    {
+      "name": "Python runs offline (Pyodide) with input()",
+      "ok": true,
+      "detail": "Имя? Боб\nБоб 0\nБоб 1\nБоб 4"
+    },
+    {
+      "name": "Python run has a step-by-step replay",
+      "ok": true,
+      "detail": "Шаг 1 / 18"
+    },
+    {
+      "name": "An endless Python loop is stopped and explained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript runs in a worker without network functions",
+      "ok": true,
+      "detail": "sum 10\nundefined"
+    },
+    {
+      "name": "JavaScript error points to the right line",
+      "ok": true,
+      "detail": " Имя не определенострока 5undefinedThing is not definedЧто это значит: JavaScript не знает это имя: "
+    },
+    {
+      "name": "An endless JS loop is stopped after a few seconds",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "C++ is honestly not run (needs a compiler)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mini-Unity: a correct script wins the level",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mini-Unity Inspector shows public fields",
+      "ok": true,
+      "detail": "Inspectorspeed3"
+    },
+    {
+      "name": "Mini-Unity: an endless loop in Update is caught (Unity would freeze)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mini-Unity reacts to real key presses (Debug.Log on Space)",
+      "ok": true,
+      "detail": "Console[0.0s] Space!"
+    },
+    {
+      "name": "Project step 1 (walk) is won by holding the arrow key",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A Unity script from the Workshop plays in the Mini-Unity sandbox",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recipe in the sandbox: empty Inspector fields are filled and written to the Console",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recipe in the sandbox: a mouse click fires a bullet (GetMouseButtonDown, Instantiate, velocity)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Error translator explains pasted Unity errors",
+      "ok": true,
+      "detail": "3 cards"
+    },
+    {
+      "name": "Saved explanation appears in the notebook",
+      "ok": true,
+      "detail": "1 notes"
+    },
+    {
+      "name": "Notebook notes become review cards (box 1)",
+      "ok": true,
+      "detail": "2коробка 10коробка 20коробка 30коробка 40коробка 5"
+    },
+    {
+      "name": "Welcome shows \"continue where you stopped\" and waiting review cards",
+      "ok": true,
+      "detail": "🎮Продолжить с того места, где остановилсяПривет, Unity · 0 мин назад Повторение: ждут 2 карточек (5 мин)"
+    },
+    {
+      "name": "Review session: show answer → \"I remember\" moves on",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Courses: C# for Unity has 16 lessons",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Courses: three courses offered (C# for Unity, C# further, Unreal)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Course lesson replays the real run step by step",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Course task: a wrong answer shows needed vs printed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Course task: the right code is accepted and the lesson completes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Unreal lesson: honest line-by-line walk (C++ not run)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Lessons: compare the same code in other languages",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Trainers: daily goal is shown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Find the bug: the right line shows why and the fixed line",
+      "ok": true,
+      "detail": "✅ Нашёл!C# различает большие и маленькие буквы. Unity ищет «Update»; «update» — "
+    },
+    {
+      "name": "What will it print: an answer gives feedback and a step-by-step replay",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Unity event order: perfect order recognised",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Cheat sheet can be saved as a file",
+      "ok": true,
+      "detail": "unity-cheat-sheet.md"
+    },
+    {
+      "name": "Achievements unlock (event order, cheat sheet, first level…)",
+      "ok": true,
+      "detail": "4 unlocked"
+    },
+    {
+      "name": "Focus timer counts down",
+      "ok": true,
+      "detail": "14:59"
+    },
+    {
+      "name": "Local AI: connection check lists models",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Local AI: non-local addresses are refused",
+      "ok": true,
+      "detail": "http://localhost:4207"
+    },
+    {
+      "name": "Local AI guess appears as marked ghost text (inserted only on Tab)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Only the local AI address was contacted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tablet width: no horizontal page scroll",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No requests left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "when": "2026-11-05T06:09:30.491Z",
+  "passed": 28,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "The 3D shooter is a district on the map",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "32 missions in 6 chapters + free play",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mission 1 starts on a soft light screen (light, but not glaring white)",
+      "ok": true,
+      "detail": "rgb 221,225,230, stage 840×590"
+    },
+    {
+      "name": "The blanks counter shows what is left",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Upload is refused while ___ is left, with a clear note",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "New words open a plain explanation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Hints open one by one",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The blank ___ is highlighted in the editor",
+      "ok": true,
+      "detail": "using UnityEngine;public class Radio : M"
+    },
+    {
+      "name": "After typing, all blanks are filled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mission 1 is complete after writing the radio message",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "The Debug.Log message arrives on the in-game radio",
+      "ok": true,
+      "detail": "📻 Приём! Боец на связи"
+    },
+    {
+      "name": "Mission 3: holding the real W key walks to the circle",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mission s05 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "0.8 s"
+    },
+    {
+      "name": "Mission s08 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "3.4 s"
+    },
+    {
+      "name": "Mission s10 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "0.9 s"
+    },
+    {
+      "name": "Mission s16 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "11.5 s"
+    },
+    {
+      "name": "Mission s18 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "3.4 s"
+    },
+    {
+      "name": "Mission s22 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "2.5 s"
+    },
+    {
+      "name": "Mission s24 completes in the real game loop (\"show me\")",
+      "ok": true,
+      "detail": "0.9 s"
+    },
+    {
+      "name": "A syntax mistake is explained next to the code",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "\"Read simply\" opens the 5-lines reader for the mission script",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Final mission: the match against 5 bots is won (team of 3, real loop)",
+      "ok": true,
+      "detail": "9.0 s"
+    },
+    {
+      "name": "Free play: the whole game runs with every script (timer and enemies on screen)",
+      "ok": true,
+      "detail": "30 / 30Врагов: 5⏱ 179"
+    },
+    {
+      "name": "Free play: the player moves with the keyboard (focus on the game, no mouse needed)",
+      "ok": true,
+      "detail": "7.33"
+    },
+    {
+      "name": "Completed missions are remembered",
+      "ok": true,
+      "detail": "s01,s03,s05,s08,s10,s16,s18,s22,s24,s25"
+    },
+    {
+      "name": "Tablet width: the game is on top and nothing scrolls sideways",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No requests left this computer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "No page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}
