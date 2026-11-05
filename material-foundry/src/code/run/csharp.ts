@@ -1384,6 +1384,22 @@ export class CsProgram {
       case 'float':
         if (name === 'MaxValue') return 3.4028235e38;
         break;
+      case 'Random': {
+        // random points: inside a ball/circle of radius 1, or on its surface
+        if (name === 'value') return this.rand();
+        if (name === 'insideUnitSphere' || name === 'onUnitSphere' || name === 'insideUnitCircle') {
+          const flat = name === 'insideUnitCircle';
+          for (;;) {
+            const x = this.rand() * 2 - 1;
+            const y = this.rand() * 2 - 1;
+            const z = flat ? 0 : this.rand() * 2 - 1;
+            const l = Math.hypot(x, y, z);
+            if (l > 1 || l < 1e-6) continue;
+            return name === 'onUnitSphere' ? vec(x / l, y / l, z / l, 3) : vec(x, y, z, flat ? 2 : 3);
+          }
+        }
+        break;
+      }
       case 'Vector2':
       case 'Vector3': {
         const d = type === 'Vector2' ? 2 : 3;

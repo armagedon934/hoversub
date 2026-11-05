@@ -116,7 +116,7 @@ export interface Spec3 {
   trigger?: boolean;
   health?: number;
   rigidbody?: boolean;
-  bot?: { team?: string; waypoints?: [number, number, number][]; speed?: number; accuracy?: number; fireRate?: number; damage?: number; sight?: number };
+  bot?: { team?: string; waypoints?: [number, number, number][]; speed?: number; accuracy?: number; fireRate?: number; damage?: number; sight?: number; profile?: Partial<BotProfile> };
   emissive?: boolean;
   /** Armour: health comes back to full after this many seconds without a hit. */
   regen?: number;
@@ -156,7 +156,43 @@ export interface Obj3 {
   moveFrom?: { frame: number; pos: V3 };
   regen?: number;
   armor?: number;
+  /** The frame in which a script last turned this object (built-in animation leaves it alone then). */
+  touchedFrame?: number;
 }
+
+/**
+ * How a built-in bot behaves — like a person, not a robot. Every number can be changed live with
+ * sliders while you watch the bots (spectator mode), and the same ideas are coded by hand in the
+ * "Human bots" missions.
+ */
+export interface BotProfile {
+  /** Seconds between noticing you and starting to aim/shoot (people need ~0.25–0.6 s). */
+  reaction: number;
+  /** Fastest turn of the head/body, degrees per second (a fast mouse flick ≈ 500). */
+  turnSpeed: number;
+  /** How hard the "hand" pulls the aim to the target (spring stiffness). */
+  stiffness: number;
+  /** 1 = stops exactly; less than 1 = overshoots a little and comes back, like a real hand. */
+  damping: number;
+  /** Aim error at the start of a fight, degrees; it calms down over time. */
+  aimError: number;
+  /** How fast the aim error calms down (per second). */
+  settle: number;
+  /** Field of view: degrees to each side. */
+  viewAngle: number;
+  /** How far it can see, metres. */
+  sight: number;
+  /** How far it hears shots, metres (0 = deaf). */
+  hearing: number;
+  /** How often it glances around while walking (glances per second). */
+  glance: number;
+  /** Seconds it keeps searching where it last saw / heard you. */
+  memory: number;
+}
+
+export const DEFAULT_PROFILE: BotProfile = { reaction: 0.45, turnSpeed: 420, stiffness: 70, damping: 0.62, aimError: 7, settle: 2.2, viewAngle: 65, sight: 22, hearing: 28, glance: 0.45, memory: 6 };
+
+export type BotState = 'patrol' | 'react' | 'attack' | 'search' | 'chase' | 'dead';
 
 interface Bot {
   team: string;
@@ -168,12 +204,22 @@ interface Bot {
   damage: number;
   sight: number;
   nextShot: number;
-  state: 'patrol' | 'chase' | 'attack' | 'dead';
+  state: BotState;
   seenAt: number;
   walk: number;
   lastPos: V3;
   lastSeen?: V3;
   strafe: number;
+  profile: BotProfile;
+  /** Where the bot looks (degrees) and how fast that changes — the "mouse" of the bot. */
+  look: { yaw: number; pitch: number; vy: number; vp: number };
+  lookAt?: V3;
+  reactUntil: number;
+  aimErr: number;
+  glanceUntil: number;
+  glanceYaw: number;
+  searchUntil: number;
+  arrivedAt: number;
 }
 
 export interface Shot3 {
@@ -262,6 +308,10 @@ export class World3D {
   logs: { time: number; text: string }[] = [];
   shots: Shot3[] = [];
   rays: { from: V3; to: V3; color: string }[] = [];
+  /** Rays that bots' scripts cast this frame (their "eyes" and shots) — drawn in the vision view. */
+  sightRays: { from: V3; to: V3; color: string }[] = [];
+  /** Every ray a bot's script cast (for the lessons: did it hit you?). */
+  botRays: { at: number; bot: Obj3; hitPlayer: boolean }[] = [];
   ui: { name: string; text: string }[] = [];
   status: Frame3['status'] = 'playing';
   message = '';
@@ -318,6 +368,7 @@ export class World3D {
     this.rays = [];
     this.ui = [];
     this.kills = 0;
+    this.botRays = [];
     this.hitMarkAt = this.killMarkAt = this.hurtAt = -10;
     this.lastRay = null;
     this.status = 'playing';
@@ -373,6 +424,14 @@ export class World3D {
         walk: 0,
         lastPos: v3(...s.pos),
         strafe: 1,
+        profile: { ...DEFAULT_PROFILE, sight: s.bot.sight ?? DEFAULT_PROFILE.sight, ...(s.bot.profile ?? {}) },
+        look: { yaw: s.rot?.[1] ?? 0, pitch: 0, vy: 0, vp: 0 },
+        reactUntil: 0,
+        aimErr: 0,
+        glanceUntil: 0,
+        glanceYaw: 0,
+        searchUntil: 0,
+        arrivedAt: -1,
       };
     }
     this.objects.push(o);
@@ -476,7 +535,11 @@ export class World3D {
   }
 
   private callAll(method: string): void {
-    for (const inst of [...this.insts]) if (inst.obj.alive || inst.obj === this.player) this.call(inst, method);
+    const dead = (this.player.health?.value ?? 1) <= 0;
+    for (const inst of [...this.insts]) {
+      if (dead && this.isPartOf(inst.obj, this.player)) continue; // a player who is out does not move or shoot
+      if (inst.obj.alive || inst.obj === this.player) this.call(inst, method);
+    }
   }
 
   private startCoroutine(inst: ScriptInst, v: V, line: number): V {
@@ -517,7 +580,7 @@ export class World3D {
   // ---------------------------------------------------------------------------------- frame
 
   frame(): Frame3 {
-    if (this.status !== 'playing') return { status: this.status, message: this.message };
+    if (this.status !== 'playing' && !(this.status === 'lost' && this.spectate)) return { status: this.status, message: this.message };
     try {
       if (!this.started) {
         this.started = true;
@@ -539,6 +602,7 @@ export class World3D {
       }
       this.frameNo++;
       this.rays = [];
+      this.sightRays = [];
       this.follow();
       this.callAll('FixedUpdate');
       this.physics();
@@ -559,6 +623,7 @@ export class World3D {
       this.mouse = { dx: 0, dy: 0 };
       this.shots = this.shots.filter((s) => this.time - s.at < 0.25);
       if (this.player.health && this.player.health.value <= 0 && this.status === 'playing') {
+        this.player.hidden = true;
         this.status = 'lost';
         this.message = tr('You were defeated. Try again!', 'Тебя победили. Попробуй ещё раз!');
       }
@@ -788,11 +853,12 @@ export class World3D {
     const eye = add(b.pos, v3(0, 0.7, 0));
     const to = sub(add(target.pos, v3(0, target === this.player ? 0.6 : 0.5, 0)), eye);
     const dist = len(to);
-    if (dist > (b.bot?.sight ?? 18)) return false;
+    const prof = b.bot?.profile ?? DEFAULT_PROFILE;
+    if (dist > (b.bot?.sight === 0 ? 0 : prof.sight)) return false;
     const fwd = qRotate(b.rot, v3(0, 0, 1));
     const cos = (fwd.x * to.x + fwd.z * to.z) / ((Math.hypot(fwd.x, fwd.z) * Math.hypot(to.x, to.z)) || 1);
-    // outside the field of view (70° each side) — unless it just saw the target or was just shot
-    if (cos < Math.cos(70 * D2R) && this.time - (b.bot?.seenAt ?? -10) > 2 && this.time - (b.lastHitAt ?? -10) > 1) return false;
+    // outside the field of view — unless it just saw the target or was just shot
+    if (cos < Math.cos(prof.viewAngle * D2R) && this.time - (b.bot?.seenAt ?? -10) > 1.5 && this.time - (b.lastHitAt ?? -10) > 1) return false;
     const hit = this.raycast(eye, to, dist, [b]);
     return !!hit && this.isPartOf(hit.obj, target);
   }
@@ -831,8 +897,50 @@ export class World3D {
     }
   }
 
-  /** The built-in bot brain: patrol → sees a foe → attack (strafing, shooting) → chase where it was seen. */
+  /** Where the player last fired (bots with ears react to it). */
+  lastNoise: { pos: V3; at: number } | null = null;
+
+  /** Turns the bot's look towards a point like a hand on a mouse: a spring with a speed limit. */
+  private steerLook(o: Obj3, b: Bot, target: V3 | null, yawOverride?: number): void {
+    const p = b.profile;
+    const L = b.look;
+    let wantYaw = L.yaw;
+    let wantPitch = 0;
+    if (yawOverride !== undefined) wantYaw = yawOverride;
+    else if (target) {
+      const eye = add(o.pos, v3(0, 0.7, 0));
+      const d = sub(target, eye);
+      wantYaw = Math.atan2(d.x, d.z) / D2R;
+      wantPitch = -Math.atan2(d.y, Math.hypot(d.x, d.z)) / D2R;
+    }
+    const dt = this.sdt;
+    const k = p.stiffness;
+    const c = 2 * p.damping * Math.sqrt(k);
+    const ey = (((wantYaw - L.yaw + 540) % 360) + 360) % 360 - 180;
+    L.vy += (k * ey - c * L.vy) * dt;
+    L.vp += (k * (wantPitch - L.pitch) - c * L.vp) * dt;
+    const lim = p.turnSpeed;
+    L.vy = Math.max(-lim, Math.min(lim, L.vy));
+    L.vp = Math.max(-lim, Math.min(lim, L.vp));
+    L.yaw += L.vy * dt;
+    L.pitch = Math.max(-60, Math.min(60, L.pitch + L.vp * dt));
+    o.rot = qEuler(0, L.yaw, 0);
+    b.lookAt = target ?? undefined;
+  }
+
+  /** The direction the bot aims (its look), with the current aim error. */
+  aimDir(o: Obj3): V3 {
+    const L = o.bot!.look;
+    return qRotate(qEuler(L.pitch, L.yaw, 0), v3(0, 0, 1));
+  }
+
+  /**
+   * The built-in bot brain, made to feel human: patrol (glancing around) → notices you → a short
+   * reaction → attack with an aim that overshoots a little and calms down → when you hide, searches
+   * where it last saw (or heard) you, looks around, then goes back to patrol.
+   */
   private think(o: Obj3, b: Bot): void {
+    const p = b.profile;
     let target: Obj3 | null = null;
     let best = Infinity;
     for (const f of this.foesOf(o)) {
@@ -842,53 +950,107 @@ export class World3D {
         target = f;
       }
     }
+    // ears: a shot of the player nearby makes it come and look
+    if (!target && p.hearing > 0 && this.lastNoise && this.time - this.lastNoise.at < 0.1 && b.team !== 'blue' && len(sub(this.lastNoise.pos, o.pos)) < p.hearing && b.state !== 'attack') {
+      b.lastSeen = { ...this.lastNoise.pos };
+      b.searchUntil = this.time + p.memory;
+      b.arrivedAt = -1;
+      if (b.state === 'patrol') b.state = 'search';
+    }
     if (target) {
-      if (b.state !== 'attack') b.nextShot = Math.max(b.nextShot, this.time + 0.45 + 0.4 * this.rand()); // reaction time
+      if (b.state !== 'attack' && b.state !== 'react') {
+        b.state = 'react';
+        b.reactUntil = this.time + p.reaction * (0.8 + 0.4 * this.rand());
+        b.aimErr = p.aimError * (1 + 0.5 * this.rand());
+      }
+      if (b.state === 'react' && this.time >= b.reactUntil) {
+        b.state = 'attack';
+        b.nextShot = Math.max(b.nextShot, this.time + 0.1);
+      }
       b.seenAt = this.time;
       b.lastSeen = { ...target.pos };
-    }
-    const remembers = this.time - b.seenAt < 4 && !!b.lastSeen;
-    b.state = target ? 'attack' : remembers ? 'chase' : 'patrol';
+      b.searchUntil = this.time + p.memory;
+      b.arrivedAt = -1;
+    } else if (b.state === 'react' || b.state === 'attack' || b.state === 'chase') {
+      b.state = this.time < b.searchUntil && b.lastSeen ? 'search' : 'patrol';
+    } else if (b.state === 'search' && this.time >= b.searchUntil) b.state = 'patrol';
+
+    // where to look
     let goal: V3 | null = null;
-    if (b.state === 'patrol' && b.waypoints.length) {
-      goal = b.waypoints[b.wp % b.waypoints.length];
-      if (Math.hypot(goal.x - o.pos.x, goal.z - o.pos.z) < 0.4) b.wp = (b.wp + 1) % b.waypoints.length;
-    } else if (b.state === 'attack' && target) goal = target.pos;
-    else if (b.state === 'chase') goal = b.lastSeen!;
+    if (target) {
+      // during the reaction it already starts turning, but slower ("wait, what was that?")
+      const aimAt = add(target.pos, v3(0, target === this.player ? 0.55 : 0.45, 0));
+      this.steerLook(o, b, aimAt);
+      // a moving target is harder to follow: the error grows with its speed
+      const tv = Math.hypot(target.vel.x, target.vel.z);
+      b.aimErr = Math.max(0, b.aimErr * Math.exp(-p.settle * this.sdt) + tv * 0.25 * this.sdt);
+      if (b.state === 'attack') goal = target.pos;
+    } else if (b.state === 'search' && b.lastSeen) {
+      const at = Math.hypot(b.lastSeen.x - o.pos.x, b.lastSeen.z - o.pos.z) < 0.8;
+      if (at && b.arrivedAt < 0) b.arrivedAt = this.time;
+      if (!at) {
+        goal = b.lastSeen;
+        this.steerLook(o, b, add(b.lastSeen, v3(0, 1.2, 0)));
+      } else {
+        // sweep: look left and right where the target could be
+        const t = this.time - b.arrivedAt;
+        this.steerLook(o, b, null, b.look.yaw + Math.sin(t * 2.2) * 60 * this.sdt * 3);
+      }
+    } else {
+      // patrol: look where you walk, sometimes glance to the side
+      if (b.waypoints.length) {
+        goal = b.waypoints[b.wp % b.waypoints.length];
+        if (Math.hypot(goal.x - o.pos.x, goal.z - o.pos.z) < 0.4) b.wp = (b.wp + 1) % b.waypoints.length;
+      }
+      const walkYaw = goal ? Math.atan2(goal.x - o.pos.x, goal.z - o.pos.z) / D2R : b.look.yaw;
+      if (this.time > b.glanceUntil && this.rand() < p.glance * this.sdt) {
+        b.glanceYaw = (this.rand() < 0.5 ? -1 : 1) * (35 + this.rand() * 55);
+        b.glanceUntil = this.time + 0.6 + this.rand() * 0.9;
+      }
+      const glancing = this.time < b.glanceUntil;
+      this.steerLook(o, b, null, walkYaw + (glancing ? b.glanceYaw : 0));
+    }
+
+    // moving
     if (goal) {
       const to = v3(goal.x - o.pos.x, 0, goal.z - o.pos.z);
       const dist = Math.hypot(to.x, to.z);
-      if (dist > 0.05) o.rot = qSlerp(o.rot, qLook(to), Math.min(1, 6 * this.sdt));
       if (b.state === 'attack') {
         // keep some distance and side-step, like a person in a firefight
-        if (Math.floor(this.time / 1.4) % 2 === 0) b.strafe = b.strafe || 1;
-        else if (b.strafe === 1 && this.rand() < 0.02) b.strafe = -1;
+        if (b.strafe === 1 && this.rand() < 0.012) b.strafe = -1;
+        else if (b.strafe === -1 && this.rand() < 0.012) b.strafe = 1;
         const side = mul(norm(v3(to.z, 0, -to.x)), b.strafe * b.speed * 0.45 * this.sdt);
         const approach = dist > 7 ? mul(norm(to), b.speed * 0.7 * this.sdt) : v3();
         const before = { ...o.pos };
         this.moveCollide(o, add(side, approach));
         if (Math.hypot(o.pos.x - before.x, o.pos.z - before.z) < 1e-4) b.strafe = -b.strafe;
       } else if (dist > 0.1) {
-        const step = mul(norm(to), (b.state === 'patrol' ? b.speed * 0.6 : b.speed) * this.sdt);
+        const step = mul(norm(to), (b.state === 'patrol' ? b.speed * 0.6 : b.speed * 0.85) * this.sdt);
         const before = { ...o.pos };
         this.moveCollide(o, step);
         // walked into a box? side-step around it
         if (Math.hypot(o.pos.x - before.x, o.pos.z - before.z) < len(step) * 0.3) this.moveCollide(o, mul(v3(step.z, 0, -step.x), b.strafe * 1.5));
-        if (b.state === 'chase' && dist < 0.5) b.seenAt = -10;
       }
     }
     o.vel = v3(0, 0, 0);
+
+    // shooting: only when the aim is on the target
     if (b.state === 'attack' && target && this.time >= b.nextShot) {
-      b.nextShot = this.time + b.fireRate * (0.7 + 0.6 * this.rand());
       const eye = add(o.pos, v3(0, 0.7, 0));
-      const aim = sub(add(target.pos, v3(0, target === this.player ? 0.5 : 0.4, 0)), eye);
-      const spread = b.accuracy * (1 + len(aim) / 20);
-      const dir = norm(add(norm(aim), v3((this.rand() - 0.5) * spread, (this.rand() - 0.5) * spread, (this.rand() - 0.5) * spread)));
-      const hit = this.raycast(eye, dir, 60, [o]);
-      const end = hit ? hit.point : add(eye, mul(dir, 60));
-      const struck = hit ? this.objects.find((x) => x.health && this.isPartOf(hit.obj, x) && (x === this.player || x.bot)) : undefined;
-      this.shots.push({ from: eye, to: end, at: this.time, hit: !!struck, byBot: true });
-      if (struck) this.damage(struck, b.damage, o);
+      const want = norm(sub(add(target.pos, v3(0, target === this.player ? 0.5 : 0.4, 0)), eye));
+      const aim = this.aimDir(o);
+      const off = Math.acos(Math.max(-1, Math.min(1, aim.x * want.x + aim.y * want.y + aim.z * want.z))) / D2R;
+      if (off < 4 + b.aimErr) {
+        b.nextShot = this.time + b.fireRate * (0.7 + 0.6 * this.rand());
+        const spreadDeg = b.aimErr + b.accuracy * 12 * (1 + len(sub(target.pos, o.pos)) / 25);
+        const r = () => (this.rand() - 0.5) * 2 * Math.tan(spreadDeg * D2R) * 0.5;
+        const dir = norm(add(aim, v3(r(), r(), r())));
+        const hit = this.raycast(eye, dir, 60, [o]);
+        const end = hit ? hit.point : add(eye, mul(dir, 60));
+        const struck = hit ? this.objects.find((x) => x.health && this.isPartOf(hit.obj, x) && (x === this.player || x.bot)) : undefined;
+        this.shots.push({ from: eye, to: end, at: this.time, hit: !!struck, byBot: true });
+        if (struck) this.damage(struck, b.damage, o);
+      }
     }
   }
 
@@ -900,12 +1062,15 @@ export class World3D {
     const s = Math.sin(o.bot.walk) * swing;
     const set = (n: string, x: number) => {
       const bone = o.bones![n];
-      if (bone?.local) bone.local.rot = qEuler(x, 0, 0);
+      if (bone?.local && bone.touchedFrame !== this.frameNo) bone.local.rot = qEuler(x, 0, 0);
     };
     set('LeftLeg', s);
     set('RightLeg', -s);
-    set('LeftArm', o.bot.state === 'attack' ? -70 : -s * 0.8);
-    set('RightArm', o.bot.state === 'attack' ? -85 : s * 0.8);
+    const aiming = o.bot.state === 'attack' || o.bot.state === 'react';
+    set('LeftArm', aiming ? -70 - o.bot.look.pitch * 0.8 : -s * 0.8);
+    set('RightArm', aiming ? -85 - o.bot.look.pitch * 0.8 : s * 0.8);
+    const head = o.bones.Head;
+    if (head?.local && head.touchedFrame !== this.frameNo) head.local.rot = qEuler(o.bot.look.pitch * 0.7, 0, 0);
     // a little bounce of the hips at every step
     const hips = o.bones.Hips;
     if (hips?.local) hips.local.pos = v3(0, 0.05 + Math.abs(Math.sin(o.bot.walk)) * 0.04 * Math.min(1, speed / 3), 0);
@@ -959,6 +1124,12 @@ export class World3D {
         const target = /tip|muzzle/i.test(name) ? (this.objects.find((o) => o.name === 'GunTip') ?? this.gun) : this.gun;
         cell.v = host('transform', target);
         note(name, target.name);
+      } else if (t === 'Transform' && /bot|enemy/i.test(name)) {
+        const bot = this.objects.find((o) => o.bot && o.alive);
+        if (bot) {
+          cell.v = host('transform', bot);
+          note(name, bot.name);
+        }
       } else if (t === 'Transform' && /player|target/i.test(name)) {
         cell.v = host('transform', this.player);
         note(name, tr('the player', 'игрок'));
@@ -1035,6 +1206,8 @@ export class World3D {
         case 'Health':
         case 'Damageable':
           return o.health ? host('health', o) : null;
+        case 'BotBrain':
+          return o.bot ? host('brain', o) : null;
         case 'Animator':
           return host('animator', o);
         case 'AudioSource':
@@ -1053,6 +1226,7 @@ export class World3D {
         if (type === 'CharacterController') return !!x.cc;
         if (type === 'Health' || type === 'Damageable') return !!x.health;
         if (type === 'Rigidbody') return !!x.rb;
+        if (type === 'BotBrain') return !!x.bot;
         if (type === 'Camera') return x === world.camera || x === world.player;
         if (['Transform', 'Animator', 'AudioSource', 'Collider', 'BoxCollider', 'CapsuleCollider'].includes(type)) return true;
         return world.insts.some((i) => i.obj === x && i.cls.name === type);
@@ -1171,6 +1345,20 @@ export class World3D {
           case 'Quaternion.Slerp':
           case 'Quaternion.Lerp':
             return host('quat3', qSlerp(quatOf(args[0]) ?? QI, quatOf(args[1]) ?? QI, Math.min(1, Math.max(0, num(args[2])))));
+          case 'Quaternion.RotateTowards': {
+            // turn from a to b, but not more than maxDegrees (a speed limit for turning)
+            const a = quatOf(args[0]) ?? QI;
+            const b = quatOf(args[1]) ?? QI;
+            const dot = Math.min(1, Math.abs(a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w));
+            const angle = (2 * Math.acos(dot)) / D2R;
+            const max = num(args[2]);
+            return host('quat3', angle < 1e-4 ? b : qSlerp(a, b, Math.min(1, max / angle)));
+          }
+          case 'Quaternion.Angle': {
+            const a = quatOf(args[0]) ?? QI;
+            const b = quatOf(args[1]) ?? QI;
+            return (2 * Math.acos(Math.min(1, Math.abs(a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w)))) / D2R;
+          }
           case 'Quaternion.Inverse':
             return host('quat3', qInv(quatOf(args[0]) ?? QI));
           case 'Physics.Raycast': {
@@ -1193,8 +1381,14 @@ export class World3D {
             const dist = (rest.find((a) => typeof a === 'number') as number | undefined) ?? 1000;
             const hit = world.raycast(origin, dir, dist);
             world.lastRay = hit ? { obj: hit.obj, point: hit.point, frame: world.frameNo } : null;
+            // who fired? a ray that starts inside a bot is that bot's shot; near the player's eyes — the player's (and it is loud)
+            const shooterBot = world.objects.find((o) => o.bot && o.alive && Math.abs(origin.x - o.pos.x) < o.half.x && Math.abs(origin.z - o.pos.z) < o.half.z && Math.abs(origin.y - o.pos.y) < o.half.y + 0.05);
+            if (!shooterBot && len(sub(origin, world.camera.pos)) < 1.5) world.lastNoise = { pos: { ...world.player.pos }, at: world.time };
             const end = hit ? hit.point : add(origin, mul(norm(dir), Math.min(dist, 80)));
-            world.shots.push({ from: origin, to: end, at: world.time, hit: !!hit, byBot: false });
+            if (shooterBot) {
+              world.sightRays.push({ from: origin, to: end, color: hit && world.isPartOf(hit.obj, world.player) ? 'red' : 'yellow' });
+              world.botRays.push({ at: world.time, bot: shooterBot, hitPlayer: !!hit && world.isPartOf(hit.obj, world.player) });
+            } else world.shots.push({ from: origin, to: end, at: world.time, hit: !!hit, byBot: false });
             if (outArg) setRef(outArg, hit ? host('hit3', hit) : host('hit3', null));
             return !!hit;
           }
@@ -1316,6 +1510,13 @@ export class World3D {
           case 'uitext':
             if (name === 'text') return (target.ref as { text: string }).text;
             break;
+          case 'brain': {
+            const b = o.bot!;
+            if (name in b.profile) return b.profile[name as keyof BotProfile];
+            if (name === 'state') return { k: 'enum', type: 'BotState', name: b.state[0].toUpperCase() + b.state.slice(1) };
+            if (name === 'transform') return host('transform', o);
+            break;
+          }
         }
         return NOT_FOUND;
       },
@@ -1341,6 +1542,7 @@ export class World3D {
           if (name === 'localRotation' && quatOf(value)) {
             if (o.local) o.local.rot = quatOf(value)!;
             else o.rot = quatOf(value)!;
+            o.touchedFrame = world.frameNo;
             return true;
           }
           if ((name === 'eulerAngles' || name === 'localEulerAngles') && vec) {
@@ -1393,6 +1595,10 @@ export class World3D {
             }
             if (o === world.player) world.head.local!.pos.y = Math.max(0.2, h / 2 - 0.2);
           } else o.cc.radius = value;
+          return true;
+        }
+        if (target.kind === 'brain' && typeof value === 'number' && o.bot && name in o.bot.profile) {
+          o.bot.profile[name as keyof BotProfile] = value;
           return true;
         }
         if (target.kind === 'uitext' && name === 'text') {
@@ -1463,7 +1669,12 @@ export class World3D {
           }
           case 'transform.LookAt': {
             const t = objOf(args[0])?.pos ?? asV3(args[0]);
-            if (t && len(sub(t, o.pos)) > 1e-6) o.rot = qLook(sub(t, o.pos));
+            if (t && len(sub(t, o.pos)) > 1e-6) {
+              const q = qLook(sub(t, o.pos));
+              // a child (camera, head…) keeps its rotation relative to the parent
+              if (o.local && o.parent) o.local.rot = qMul(qInv(o.parent.rot), q);
+              o.rot = q;
+            }
             return undefined;
           }
           case 'transform.TransformDirection':
@@ -1522,9 +1733,13 @@ export class World3D {
             return undefined;
           }
           case 'health.TakeDamage':
-          case 'health.Damage':
-            world.damage(o, num(args[0]));
+          case 'health.Damage': {
+            const lr = world.lastRay;
+            const fromBot = lr && lr.frame === world.frameNo ? world.botRays.at(-1) : undefined;
+            if (fromBot && fromBot.at === world.time && lr) world.shots.push({ from: add(fromBot.bot.pos, v3(0, 0.7, 0)), to: lr.point, at: world.time, hit: true, byBot: true });
+            world.damage(o, num(args[0]), fromBot && fromBot.at === world.time ? fromBot.bot : world.player);
             return undefined;
+          }
           case 'health.Heal':
             if (o.health) o.health.value = Math.min(o.health.max, o.health.value + num(args[0]));
             return undefined;
@@ -1548,9 +1763,27 @@ export class World3D {
     };
   }
 
+  /** Spectator mode: watch a bot through its eyes or from behind (null = your own eyes). */
+  spectate: { bot: Obj3; mode: 'eyes' | 'follow' } | null = null;
+
   /** For the renderer: the eye (camera) position and rotation. */
   eye(): { pos: V3; rot: Q; fov: number } {
+    const sp = this.spectate;
+    if (sp && sp.bot.bot) {
+      const b = sp.bot;
+      const L = b.bot!.look;
+      const yaw = qToEuler(b.rot).y;
+      if (sp.mode === 'eyes') return { pos: add(b.pos, v3(0, 0.72, 0)), rot: qMul(qEuler(0, yaw, 0), qEuler(L.pitch, 0, 0)), fov: 75 };
+      const back = qRotate(qEuler(0, yaw, 0), v3(0, 0, -1));
+      const pos = add(add(b.pos, mul(back, 3.6)), v3(0, 1.6, 0));
+      return { pos, rot: qLook(sub(add(b.pos, v3(0, 0.6, 0)), pos)), fov: 70 };
+    }
     return { pos: this.camera.pos, rot: this.camera.rot, fov: this.camera.fov ?? 70 };
+  }
+
+  /** Bots that can be watched (alive, built-in or scripted). */
+  watchable(): Obj3[] {
+    return this.objects.filter((o) => o.bot && o.alive && o.bot.state !== 'dead');
   }
 }
 

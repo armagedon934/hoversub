@@ -58,8 +58,9 @@ export const CHAPTERS: { n: number; icon: string; title: Text2; about: Text2 }[]
   { n: 1, icon: '🌫', title: { en: 'Waking up', ru: 'Пробуждение' }, about: { en: 'Comms, legs, eyes, body: the basics of C# and of moving in 3D.', ru: 'Связь, ноги, глаза, тело: основы C# и движение в 3D.' } },
   { n: 2, icon: '🎯', title: { en: 'Shooting range', ru: 'Стрельбище' }, about: { en: 'Rays, damage, magazines, automatic fire, a shotgun and your own weapon classes.', ru: 'Лучи, урон, магазин, автоматический огонь, дробовик и свои классы оружия.' } },
   { n: 3, icon: '🤖', title: { en: 'The enemy', ru: 'Враг' }, about: { en: 'Bots: patrol, eyes, and a brain that decides when to shoot.', ru: 'Боты: патруль, глаза и мозг, который решает, когда стрелять.' } },
-  { n: 4, icon: '🌬', title: { en: 'Atmosphere', ru: 'Атмосфера' }, about: { en: 'A body that feels alive: inertia, head bob, speed, leaning, a living weapon, a walking bot.', ru: 'Тело, которое ощущается живым: инерция, покачивание головы, скорость, наклоны, живое оружие, шагающий бот.' } },
-  { n: 5, icon: '🏜', title: { en: 'Operation', ru: 'Операция' }, about: { en: 'A real match on a map: your team against the bots.', ru: 'Настоящий матч на карте: твоя команда против ботов.' } },
+  { n: 4, icon: '🧠', title: { en: 'Living bots', ru: 'Живые боты' }, about: { en: 'Watch bots and make them human: smooth turning, reaction time, a calming aim, glances, memory, character.', ru: 'Наблюдай за ботами и сделай их людьми: плавный поворот, время реакции, успокаивающийся прицел, оглядывание, память, характер.' } },
+  { n: 5, icon: '🌬', title: { en: 'Atmosphere', ru: 'Атмосфера' }, about: { en: 'A body that feels alive: inertia, head bob, speed, leaning, a living weapon, a walking bot.', ru: 'Тело, которое ощущается живым: инерция, покачивание головы, скорость, наклоны, живое оружие, шагающий бот.' } },
+  { n: 6, icon: '🏜', title: { en: 'Operation', ru: 'Операция' }, about: { en: 'A real match on a map: your team against the bots.', ru: 'Настоящий матч на карте: твоя команда против ботов.' } },
 ];
 
 // ------------------------------------------------------------------------------------ blanks
@@ -144,6 +145,49 @@ const sticky = (run: MissionRun, key: string, now: boolean) => {
   if (now) run.mem[key] = 1;
   return run.mem[key] === 1;
 };
+
+const add3 = (p: V3, dy: number): V3 => v3(p.x, p.y + dy, p.z);
+/** Does the bot face the player (within deg, on the ground plane)? */
+function faces(w: World3D, name: string, deg: number): boolean {
+  const bot = objByName(w, name);
+  if (!bot) return false;
+  const f = qRotate(bot.rot, v3(0, 0, 1));
+  const to = v3(w.player.pos.x - bot.pos.x, 0, w.player.pos.z - bot.pos.z);
+  const l = Math.hypot(to.x, to.z) * Math.hypot(f.x, f.z) || 1;
+  return Math.acos(Math.max(-1, Math.min(1, (f.x * to.x + f.z * to.z) / l))) / D2R < deg;
+}
+/** Remembers the fastest turn of the bot (degrees per second). */
+function trackYawRate(w: World3D, r: MissionRun, name: string): void {
+  const bot = objByName(w, name);
+  if (!bot) return;
+  const yaw = qToEuler(bot.rot).y;
+  if (r.mem.lastYaw === undefined && w.frameNo === 1) {
+    // the first frame: compare with how the bot stood when the level started
+    r.mem.lastYaw = w.level.objects.find((o) => o.name === name)?.rot?.[1] ?? 0;
+    r.mem.lastYawFrame = 0;
+  }
+  if (r.mem.lastYaw !== undefined && r.mem.lastYawFrame === w.frameNo - 1) {
+    const d = Math.abs(((yaw - r.mem.lastYaw + 540) % 360) - 180);
+    r.mem.maxRate = Math.max(r.mem.maxRate ?? 0, d / w.dt);
+  }
+  r.mem.lastYaw = yaw;
+  r.mem.lastYawFrame = w.frameNo;
+}
+/** Is there a free line from the bot's eyes to the player? */
+function botSees(w: World3D, name: string): boolean {
+  const bot = objByName(w, name);
+  if (!bot) return false;
+  const eye = add3(bot.pos, 0.7);
+  const hit = w.raycast(eye, v3(w.player.pos.x - eye.x, w.player.pos.y - eye.y, w.player.pos.z - eye.z), 60, [bot]);
+  return !!hit && w.isPartOf(hit.obj, w.player);
+}
+/** The head of a bot turned left/right, degrees (−180…180). */
+function headYaw(w: World3D, name: string): number {
+  const h = objByName(w, name)?.bones?.Head?.local?.rot;
+  if (!h) return 0;
+  const y = qToEuler(h).y;
+  return y > 180 ? y - 360 : y;
+}
 
 // --------------------------------------------------------------------------------- autopilot
 
@@ -1481,10 +1525,496 @@ public class EnemyAI : MonoBehaviour
     demo: (_t, w, r) => (r.mem.hit === 1 ? walkTo(w, v3(0, 0, -19), ['Shift']) : walkTo(w, v3(0, 0, 3))),
     demoSeconds: 14,
   },
-  // ======================================================================= chapter 4: atmosphere
+  // ===================================================================== chapter 4: living bots
+  {
+    id: 'b1',
+    chapter: 4,
+    icon: '🎥',
+    title: T('The spectator', 'Наблюдатель'),
+    system: T('Camera: spectator', 'Камера: наблюдатель'),
+    radio: T('Before fixing bots you must SEE them. When you are out of a round, games put the camera behind a bot. Write that camera: it follows the bot smoothly and always looks at it.', 'Чтобы чинить ботов, их надо ВИДЕТЬ. Когда ты выбыл из раунда, игры ставят камеру за спину бота. Напиши такую камеру: она плавно летит за ботом и всегда на него смотрит.'),
+    task: T('Fill the blanks. The camera must keep the walking bot in view for 4 seconds, from behind.', 'Заполни пропуски. Камера должна 4 секунды держать идущего бота в кадре, со спины.'),
+    words: [
+      { word: 'LateUpdate()', say: T('Runs after everybody moved — the right moment for cameras.', 'Срабатывает после того, как все подвинулись, — правильное время для камер.') },
+      { word: 'bot.rotation * offset', say: T('"Behind and above the bot" turned the way the bot is turned.', '«Сзади и сверху от бота» с учётом того, куда бот повёрнут.') },
+      { word: 'Vector3.Lerp', say: T('Fly a part of the way each frame — smooth, no jerks.', 'Каждый кадр пролететь часть пути — плавно, без рывков.') },
+    ],
+    hints: [T('wanted = bot.position + bot.rotation * offset; move with Lerp; look at the bot.', 'wanted = bot.position + bot.rotation * offset; двигайся через Lerp; смотри на бота.'), T('offset, Lerp, bot', 'offset, Lerp, bot')],
+    code: () => `using UnityEngine;
+
+public class BotCamera : MonoBehaviour
+{
+    public Transform bot;
+    public Vector3 offset = new Vector3(0, 2.5f, -4.5f);
+    public float smooth = 4f;
+
+    void LateUpdate()
+    {
+        Vector3 wanted = bot.position + bot.rotation * ⟦offset⟧;
+        transform.position = Vector3.⟦Lerp⟧(transform.position, wanted, smooth * Time.deltaTime);
+        transform.LookAt(⟦bot⟧.position + Vector3.up);
+    }
+}
+`,
+    file: 'BotCamera.cs',
+    attachTo: 'Main Camera',
+    level: () => ({
+      id: 'b1',
+      ...DUSK,
+      objects: [...room(34, { wall: '#bca57e' }), crate(-5, 4), crate(6, 9), { name: 'Bot', tag: 'Enemy', shape: 'humanoid', pos: [-6, 0.9, 2], bot: { sight: 0, speed: 3, waypoints: [[-6, 0.9, 2], [6, 0.9, 2], [6, 0.9, 12], [-6, 0.9, 12]] } }],
+      player: { pos: [0, 0.9, -10] },
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The bot stays in view for 4 seconds', 'Бот в кадре 4 секунды подряд'), check: (w, r) => {
+        const bot = objByName(w, 'Bot');
+        if (!bot) return false;
+        const ok = angleTo(w, add3(bot.pos, 0.5)) < 18;
+        r.mem.inView = ok ? (r.mem.inView ?? 0) + w.dt : 0;
+        return sticky(r, 'view', r.mem.inView >= 4);
+      } },
+      { text: T('…from behind, 3–7 m away', '…со спины, в 3–7 м'), check: (w, r) => {
+        const bot = objByName(w, 'Bot');
+        if (!bot) return false;
+        const d = { x: w.camera.pos.x - bot.pos.x, z: w.camera.pos.z - bot.pos.z };
+        const dist = Math.hypot(d.x, d.z);
+        const f = qRotate(bot.rot, v3(0, 0, 1));
+        return sticky(r, 'behind', dist > 3 && dist < 7 && f.x * d.x + f.z * d.z < 0);
+      } },
+    ],
+    keys: [],
+    ability: T('You can watch bots from behind — the spectator camera of every shooter.', 'Ты умеешь смотреть за ботами со спины — камера наблюдателя любого шутера.'),
+    inUnity: T('Put the script on the Main Camera (not inside the player) and drag the bot into "Bot". Cinemachine does the same with a "Follow" target.', 'Повесь скрипт на Main Camera (не внутри игрока) и перетащи бота в поле «Bot». Cinemachine делает то же самое через цель «Follow».'),
+    demo: () => ({ until: 1e9 }),
+    demoSeconds: 9,
+  },
+  {
+    id: 'b2',
+    chapter: 4,
+    icon: '🔄',
+    title: T('A smooth turn', 'Плавный поворот'),
+    system: T('Bots: neck', 'Боты: шея'),
+    radio: T('A robot snaps to you in one frame — that is why bots look fake. A person turns with a limited speed. Quaternion.RotateTowards turns by at most N degrees per step.', 'Робот разворачивается к тебе за один кадр — поэтому боты выглядят ненастоящими. Человек поворачивается с ограниченной скоростью. Quaternion.RotateTowards поворачивает не больше чем на N градусов за шаг.'),
+    task: T('Fill the blanks. The bot must turn to you — but never faster than 200° per second.', 'Заполни пропуски. Бот должен повернуться к тебе — но не быстрее 200° в секунду.'),
+    words: [
+      { word: 'Quaternion.LookRotation(dir)', say: T('The rotation that looks in this direction.', 'Поворот, который смотрит в это направление.') },
+      { word: 'Quaternion.RotateTowards(a, b, max)', say: T('From a towards b, but at most max degrees.', 'От a к b, но не больше чем на max градусов.') },
+    ],
+    hints: [T('want = LookRotation(toPlayer); turn with RotateTowards by turnSpeed * Time.deltaTime.', 'want = LookRotation(toPlayer); поворачивай через RotateTowards на turnSpeed * Time.deltaTime.'), T('LookRotation, RotateTowards, turnSpeed', 'LookRotation, RotateTowards, turnSpeed')],
+    code: () => `using UnityEngine;
+
+public class BotTurn : MonoBehaviour
+{
+    public Transform player;
+    public float turnSpeed = 180f;
+
+    void Update()
+    {
+        Vector3 toPlayer = player.position - transform.position;
+        toPlayer.y = 0;
+        Quaternion want = Quaternion.⟦LookRotation⟧(toPlayer);
+        transform.rotation = Quaternion.⟦RotateTowards⟧(transform.rotation, want, ⟦turnSpeed⟧ * Time.deltaTime);
+    }
+}
+`,
+    file: 'BotTurn.cs',
+    attachTo: '#Enemy',
+    level: () => ({
+      id: 'b2',
+      ...DUSK,
+      botBrain: 'script',
+      objects: [...room(30, { wall: '#b9a27a' }), { name: 'Bot', tag: 'Enemy', shape: 'humanoid', pos: [0, 0.9, 6], bot: { sight: 0 } }],
+      player: { pos: [0, 0.9, 0] },
+      scripts: official('look', 'move'),
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The bot turned to you', 'Бот повернулся к тебе'), check: (w, r) => sticky(r, 'face', faces(w, 'Bot', 8)) },
+      { text: T('…smoothly: never faster than 200°/s', '…плавно: не быстрее 200°/с'), check: (w, r) => {
+        trackYawRate(w, r, 'Bot');
+        return r.mem.face === 1 && (r.mem.maxRate ?? 0) <= 205;
+      } },
+    ],
+    keys: ['WASD', 'mouse'],
+    ability: T('Your bots turn like people, not like turrets.', 'Твои боты поворачиваются как люди, а не как турели.'),
+    inUnity: T('The same line is used for turrets, heads, cars turning to a target. turnSpeed 90 — slow guard, 400 — fast fighter.', 'Эту же строку используют для турелей, голов, машин, поворачивающих к цели. turnSpeed 90 — медленный охранник, 400 — быстрый боец.'),
+    demo: (t) => ({ until: 1e9, keys: t > 1.5 && t < 2.6 ? ['a'] : [] }),
+    demoSeconds: 4,
+  },
+  {
+    id: 'b3',
+    chapter: 4,
+    icon: '⏱',
+    title: T('Reaction time', 'Время реакции'),
+    system: T('Bots: reaction', 'Боты: реакция'),
+    radio: T('A person who sees you needs a moment to understand and react — about 0.3–0.6 seconds. A bot that fires in the very first frame feels like a cheater. Count how long it has seen you.', 'Человеку, который тебя увидел, нужно мгновение, чтобы понять и среагировать, — около 0,3–0,6 секунды. Бот, стреляющий в первый же кадр, ощущается как читер. Считай, сколько он тебя уже видит.'),
+    task: T('Fill the blanks, then step out from behind the wall: the bot fires — but not at once.', 'Заполни пропуски и выйди из-за стены: бот выстрелит — но не сразу.'),
+    words: [
+      { word: 'seenFor += Time.deltaTime', say: T('A stopwatch: grows while the bot sees you.', 'Секундомер: растёт, пока бот тебя видит.') },
+      { word: 'seenFor = 0', say: T('Lost you — the stopwatch starts again.', 'Потерял тебя — секундомер сначала.') },
+    ],
+    hints: [T('Add Time.deltaTime; shoot when seenFor > reactionTime; otherwise put 0.', 'Прибавляй Time.deltaTime; стреляй, когда seenFor > reactionTime; иначе клади 0.'), T('Time.deltaTime, reactionTime, 0', 'Time.deltaTime, reactionTime, 0')],
+    code: () => `using UnityEngine;
+
+public class BotReact : MonoBehaviour
+{
+    public Transform player;
+    public float reactionTime = 0.5f;
+    public float viewDistance = 25f;
+    float seenFor;
+    float nextShot;
+
+    void Update()
+    {
+        if (CanSee())
+        {
+            seenFor += ⟦Time.deltaTime⟧;
+            transform.LookAt(player);
+            if (seenFor > ⟦reactionTime⟧ && Time.time > nextShot)
+            {
+                nextShot = Time.time + 0.6f;
+                Debug.Log("${tr('Shot!', 'Выстрел!')}");
+            }
+        }
+        else
+        {
+            seenFor = ⟦0⟧;
+        }
+    }
+
+    bool CanSee()
+    {
+        Vector3 eye = transform.position + Vector3.up * 0.7f;
+        Vector3 dir = player.position - eye;
+        return Physics.Raycast(eye, dir, out RaycastHit hit, viewDistance) && hit.collider.CompareTag("Player");
+    }
+}
+`,
+    file: 'BotReact.cs',
+    attachTo: '#Enemy',
+    level: () => ({
+      id: 'b3',
+      ...DUSK,
+      botBrain: 'script',
+      objects: [...room(30, { wall: '#b8a07a' }), wall(-1, 5, 4, 0.8, 3, '#a58c66'), { name: 'Bot', tag: 'Enemy', shape: 'humanoid', pos: [0, 0.9, 10], rot: [0, 180, 0], bot: { sight: 0 } }],
+      player: { pos: [-1, 0.9, 2] },
+      scripts: official('look', 'move'),
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The bot sees you', 'Бот тебя видит'), check: (w, r) => {
+        const see = botSees(w, 'Bot');
+        if (see && r.mem.visibleAt === undefined) r.mem.visibleAt = w.time;
+        return sticky(r, 'seen', see);
+      } },
+      { text: T('It fires — but not sooner than 0.35 s after seeing you', 'Стреляет — но не раньше чем через 0,35 с'), check: (w, r) => {
+        if (r.mem.shotAt === undefined && logged(w, /Shot!|Выстрел!/)) r.mem.shotAt = w.time;
+        return r.mem.shotAt !== undefined && r.mem.visibleAt !== undefined && r.mem.shotAt - r.mem.visibleAt >= 0.35;
+      } },
+    ],
+    keys: ['WASD', 'mouse'],
+    ability: T('Your bots react like people — you get a fair moment.', 'Твои боты реагируют как люди — у тебя есть честный миг.'),
+    inUnity: T('Pro shooters tune this number for difficulty: 0.25 s — hard, 0.7 s — easy. Many add a random part: reactionTime + Random.Range(0f, 0.2f).', 'В больших шутерах этим числом настраивают сложность: 0,25 с — сложно, 0,7 с — легко. Часто добавляют случайность: reactionTime + Random.Range(0f, 0.2f).'),
+    demo: (t) => ({ until: 1e9, keys: t > 0.8 && t < 1.5 ? ['d'] : [] }),
+    demoSeconds: 4,
+  },
+  {
+    id: 'b4',
+    chapter: 4,
+    icon: '🎯',
+    title: T('A hand, not a robot', 'Рука, а не робот'),
+    system: T('Bots: aim', 'Боты: прицел'),
+    radio: T('A person first aims roughly, then more and more exactly. Give the aim an error that calms down over time: the first shots fly past, then they hit (training rounds, they do not hurt).', 'Человек сначала целится грубо, потом всё точнее. Дай прицелу ошибку, которая со временем успокаивается: первые выстрелы летят мимо, потом попадают (пули учебные, не больно).'),
+    task: T('Fill the blanks: early shots mostly miss, later shots mostly hit.', 'Заполни пропуски: первые выстрелы в основном мимо, потом — в основном точно.'),
+    words: [
+      { word: 'Random.insideUnitSphere', say: T('A random little arrow in any direction (shorter than 1).', 'Случайная маленькая стрелка в любую сторону (короче 1).') },
+      { word: 'error = Lerp(error, 0, …)', say: T('The error melts a bit every frame.', 'Ошибка каждый кадр немного «тает».') },
+    ],
+    hints: [T('Lerp towards 0 with settleSpeed; add insideUnitSphere * error to the direction.', 'Lerp к нулю со settleSpeed; к направлению добавь insideUnitSphere * error.'), T('Lerp, settleSpeed, error', 'Lerp, settleSpeed, error')],
+    code: () => `using UnityEngine;
+
+public class BotAim : MonoBehaviour
+{
+    public Transform player;
+    public float startError = 0.35f;
+    public float settleSpeed = 1.5f;
+    public float fireRate = 0.4f;
+    float error;
+    float nextShot;
+
+    void Start()
+    {
+        error = startError;
+    }
+
+    void Update()
+    {
+        transform.LookAt(player);
+        error = Mathf.⟦Lerp⟧(error, 0f, ⟦settleSpeed⟧ * Time.deltaTime);
+
+        if (Time.time >= nextShot)
+        {
+            nextShot = Time.time + fireRate;
+            Vector3 eye = transform.position + Vector3.up * 0.7f;
+            Vector3 dir = (player.position - eye).normalized + Random.insideUnitSphere * ⟦error⟧;
+            if (Physics.Raycast(eye, dir, out RaycastHit hit, 50f) && hit.collider.CompareTag("Player"))
+                hit.collider.GetComponent<Health>().TakeDamage(1);
+        }
+    }
+}
+`,
+    file: 'BotAim.cs',
+    attachTo: '#Enemy',
+    level: () => ({
+      id: 'b4',
+      ...DUSK,
+      botBrain: 'script',
+      objects: [...room(30, { wall: '#b6a07b' }), { name: 'Bot', tag: 'Enemy', shape: 'humanoid', pos: [0, 0.9, 10], rot: [0, 180, 0], bot: { sight: 0 } }],
+      player: { pos: [0, 0.9, 0] },
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The first 4 shots: at most 1 hits', 'Первые 4 выстрела: попал не больше 1 раза'), check: (w) => {
+        const rays = w.botRays.slice(0, 4);
+        return rays.length === 4 && rays.filter((x) => x.hitPlayer).length <= 1;
+      } },
+      { text: T('Shots 9–14: at least 5 of 6 hit', 'Выстрелы 9–14: попали хотя бы 5 из 6'), check: (w) => {
+        const rays = w.botRays.slice(8, 14);
+        return rays.length === 6 && rays.filter((x) => x.hitPlayer).length >= 5;
+      } },
+    ],
+    keys: [],
+    ability: T('Your bots aim like hands: rough first, then sharp.', 'Твои боты целятся как руки: сначала грубо, потом точно.'),
+    inUnity: T('Reset error = startError when the bot loses you and finds you again, and add error when you run fast — it becomes very human.', 'Возвращай error = startError, когда бот теряет и снова находит тебя, и добавляй ошибку, когда ты быстро бежишь, — станет очень по-человечески.'),
+    demo: () => ({ until: 1e9 }),
+    demoSeconds: 7,
+  },
+  {
+    id: 'b5',
+    chapter: 4,
+    icon: '👀',
+    title: T('Looking around', 'Оглядываться'),
+    system: T('Bots: glances', 'Боты: оглядывание'),
+    radio: T('A guard who stares only forward is a statue. People glance to the sides now and then. A coroutine waits a random time, turns the head, waits, turns back — while the body keeps walking.', 'Охранник, который смотрит только вперёд, — статуя. Люди время от времени поглядывают по сторонам. Корутина ждёт случайное время, поворачивает голову, ждёт, возвращает — а тело продолжает идти.'),
+    task: T('Fill the blanks: the walking bot must glance to the sides at least 3 times, smoothly.', 'Заполни пропуски: идущий бот должен оглянуться хотя бы 3 раза, плавно.'),
+    words: [
+      { word: 'transform.Find("Head")', say: T('The head bone of the bot.', 'Кость головы бота.') },
+      { word: 'Mathf.LerpAngle', say: T('Like Lerp, but for angles (knows that 350° is next to 10°).', 'Как Lerp, но для углов (знает, что 350° рядом с 10°).') },
+      { word: 'while (true) + yield', say: T('Repeat forever, with pauses — only inside a coroutine.', 'Повторять вечно, с паузами — только внутри корутины.') },
+    ],
+    hints: [T('Find "Head"; wait Random.Range(minWait, maxWait); look 0.8f s; LerpAngle to targetYaw.', 'Найди "Head"; жди Random.Range(minWait, maxWait); смотри 0.8f с; LerpAngle к targetYaw.'), T('"Head", minWait, 0.8f, LerpAngle', '"Head", minWait, 0.8f, LerpAngle')],
+    code: () => `using System.Collections;
+using UnityEngine;
+
+public class BotGlance : MonoBehaviour
+{
+    public float minWait = 1f;
+    public float maxWait = 2.5f;
+    public float turnSpeed = 6f;
+    Transform head;
+    float headYaw;
+    float targetYaw;
+
+    void Start()
+    {
+        head = transform.Find(⟦"Head"⟧);
+        StartCoroutine(LookAround());
+    }
+
+    IEnumerator LookAround()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(Random.Range(⟦minWait⟧, maxWait));
+            targetYaw = Random.Range(-70f, 70f);
+            yield return new WaitForSeconds(⟦0.8f⟧);
+            targetYaw = 0f;
+        }
+    }
+
+    void Update()
+    {
+        headYaw = Mathf.⟦LerpAngle⟧(headYaw, targetYaw, turnSpeed * Time.deltaTime);
+        head.localRotation = Quaternion.Euler(0, headYaw, 0);
+    }
+}
+`,
+    file: 'BotGlance.cs',
+    attachTo: '#Enemy',
+    level: () => ({
+      id: 'b5',
+      ...DUSK,
+      objects: [...room(30, { wall: '#b4a07c' }), { name: 'Bot', tag: 'Enemy', shape: 'humanoid', pos: [-6, 0.9, 6], bot: { sight: 0, speed: 3, profile: { glance: 0 }, waypoints: [[-6, 0.9, 6], [6, 0.9, 6], [6, 0.9, 10], [-6, 0.9, 10]] } }],
+      player: { pos: [0, 0.9, -4] },
+      scripts: official('look', 'move'),
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The head turned to the sides 3 times', 'Голова повернулась в стороны 3 раза'), check: (w, r) => {
+        const y = headYaw(w, 'Bot');
+        if (Math.abs(y) > 25 && r.mem.away !== 1) {
+          r.mem.away = 1;
+          r.mem.glances = (r.mem.glances ?? 0) + 1;
+        }
+        if (Math.abs(y) < 10) r.mem.away = 0;
+        return sticky(r, 'g3', (r.mem.glances ?? 0) >= 3);
+      } },
+      { text: T('…smoothly (never faster than 600°/s)', '…плавно (не быстрее 600°/с)'), check: (w, r) => {
+        const y = headYaw(w, 'Bot');
+        if (r.mem.lastHead !== undefined) r.mem.maxHead = Math.max(r.mem.maxHead ?? 0, Math.abs(y - r.mem.lastHead) / w.dt);
+        r.mem.lastHead = y;
+        return r.mem.g3 === 1 && (r.mem.maxHead ?? 0) <= 600;
+      } },
+    ],
+    keys: ['WASD', 'mouse'],
+    ability: T('Your bots look around like living guards.', 'Твои боты оглядываются как живые охранники.'),
+    inUnity: T('In real projects the head turn is done in LateUpdate after the Animator, so the animation does not overwrite it.', 'В настоящих проектах поворот головы делают в LateUpdate после Animator, чтобы анимация его не перезаписала.'),
+    demo: () => ({ until: 1e9 }),
+    demoSeconds: 14,
+  },
+  {
+    id: 'b6',
+    chapter: 4,
+    icon: '🧭',
+    title: T('Memory and search', 'Память и поиск'),
+    system: T('Bots: memory', 'Боты: память'),
+    radio: T('A cheating bot always knows where you are. A fair one remembers where it LAST SAW you and goes to check there. Show yourself in the doorway, hide — the bot must come to that doorway, not to you.', 'Бот-читер всегда знает, где ты. Честный помнит, где ПОСЛЕДНИЙ РАЗ тебя видел, и идёт проверить туда. Покажись в проходе и спрячься — бот должен прийти к проходу, а не к тебе.'),
+    task: T('Fill the blanks. Peek through the doorway and hide: the bot walks to the place it saw you.', 'Заполни пропуски. Выгляни в проход и спрячься: бот придёт туда, где тебя видел.'),
+    words: [
+      { word: 'lastSeen', say: T('A remembered point: where you were when it saw you.', 'Запомненная точка: где ты был, когда он тебя видел.') },
+      { word: 'bool searching', say: T('Is it going to check? true / false.', 'Идёт ли проверять? true / false.') },
+    ],
+    hints: [T('Remember player.position; while searching walk to lastSeen; when there — searching = false.', 'Запоминай player.position; пока searching — иди к lastSeen; пришёл — searching = false.'), T('player.position, searching, lastSeen, false', 'player.position, searching, lastSeen, false')],
+    code: () => `using UnityEngine;
+
+public class BotSearch : MonoBehaviour
+{
+    public Transform player;
+    public float speed = 3f;
+    Vector3 lastSeen;
+    bool searching;
+
+    void Update()
+    {
+        if (CanSee())
+        {
+            lastSeen = ⟦player.position⟧;
+            searching = true;
+            transform.LookAt(player);
+        }
+        else if (⟦searching⟧)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, ⟦lastSeen⟧, speed * Time.deltaTime);
+            transform.LookAt(lastSeen);
+            if (Vector3.Distance(transform.position, lastSeen) < 0.3f)
+                searching = ⟦false⟧;
+        }
+    }
+
+    bool CanSee()
+    {
+        Vector3 eye = transform.position + Vector3.up * 0.7f;
+        Vector3 dir = player.position - eye;
+        if (Vector3.Angle(transform.forward, dir) > 50f) return false;
+        return Physics.Raycast(eye, dir, out RaycastHit hit, 30f) && hit.collider.CompareTag("Player");
+    }
+}
+`,
+    file: 'BotSearch.cs',
+    attachTo: '#Enemy',
+    level: () => ({
+      id: 'b6',
+      ...DUSK,
+      botBrain: 'script',
+      objects: [...room(30, { wall: '#b39d79' }), wall(-6, 4, 10, 0.8, 3, '#a58c66'), wall(6, 4, 10, 0.8, 3, '#a58c66'), { name: 'Bot', tag: 'Enemy', shape: 'humanoid', pos: [0, 0.9, 12], rot: [0, 180, 0], bot: { sight: 0 } }],
+      player: { pos: [5, 0.9, 1.5] },
+      scripts: official('look', 'move'),
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The bot saw you', 'Бот тебя заметил'), check: (w, r) => {
+        const see = botSees(w, 'Bot');
+        if (see) {
+          r.mem.lsx = w.player.pos.x;
+          r.mem.lsz = w.player.pos.z;
+        }
+        return sticky(r, 'seen', see);
+      } },
+      { text: T('It came to where it last saw you — not to where you are', 'Он пришёл туда, где видел тебя последний раз, — а не туда, где ты сейчас'), check: (w, r) => {
+        const bot = objByName(w, 'Bot');
+        const ls = field(w, 'lastSeen') as { x: number; z: number } | undefined;
+        if (!bot || !ls || r.mem.seen !== 1) return false;
+        const there = Math.hypot(bot.pos.x - ls.x, bot.pos.z - ls.z) < 0.5;
+        const notYou = Math.hypot(w.player.pos.x - ls.x, w.player.pos.z - ls.z) > 2;
+        return sticky(r, 'came', there && notYou && field(w, 'searching') === false);
+      } },
+    ],
+    keys: ['WASD', 'mouse'],
+    ability: T('Your bots play fair: they remember and search.', 'Твои боты играют честно: помнят и ищут.'),
+    inUnity: T('Add a look-around when it arrives (from the previous mission) and it becomes a real search. Big games also remember sounds the same way.', 'Добавь оглядывание, когда он пришёл (из прошлой миссии), — получится настоящий поиск. В больших играх так же запоминают звуки.'),
+    demo: (t, w) => (t < 1.6 ? walkTo(w, v3(0, 0, 2)) : t < 2.4 ? walkTo(w, v3(0, 0, 5)) : t < 3.2 ? walkTo(w, v3(0, 0, 2)) : walkTo(w, v3(5, 0, 1.5))),
+    demoSeconds: 9,
+  },
+  {
+    id: 'b7',
+    chapter: 4,
+    icon: '🎭',
+    title: T('A bot\'s character', 'Характер бота'),
+    system: T('Bots: character', 'Боты: характер'),
+    radio: T('Everything you built — reaction, turning, aim, ears — lives in the built-in brain (BotBrain) as numbers. A character is just a set of numbers. Make a slow "rookie" and beat him. Then play with the sliders on the right while watching him!', 'Всё, что ты собрал, — реакция, поворот, прицел, слух — живёт во встроенном мозге (BotBrain) как числа. Характер — это просто набор чисел. Сделай медленного «новичка» и победи его. Потом поиграй ползунками справа, наблюдая за ним!'),
+    task: T('Fill the blanks: give the bot a rookie character, then take him down.', 'Заполни пропуски: дай боту характер новичка и выведи его из боя.'),
+    words: [
+      { word: 'BotBrain', say: T('The built-in brain of a bot: reaction, turnSpeed, aimError, hearing…', 'Встроенный мозг бота: reaction, turnSpeed, aimError, hearing…') },
+      { word: 'profile', say: T('A set of numbers that make a character (rookie, pro, sniper).', 'Набор чисел, из которых получается характер (новичок, профи, снайпер).') },
+    ],
+    hints: [T('GetComponent<BotBrain>(); copy reaction and aimError into the brain.', 'GetComponent<BotBrain>(); перепиши reaction и aimError в мозг.'), T('BotBrain, reaction, aimError', 'BotBrain, reaction, aimError')],
+    code: () => `using UnityEngine;
+
+public class BotCharacter : MonoBehaviour
+{
+    public float reaction = 0.8f;
+    public float turnSpeed = 200f;
+    public float aimError = 14f;
+    public float hearing = 15f;
+
+    void Start()
+    {
+        BotBrain brain = GetComponent<⟦BotBrain⟧>();
+        brain.reaction = ⟦reaction⟧;
+        brain.turnSpeed = turnSpeed;
+        brain.aimError = ⟦aimError⟧;
+        brain.hearing = hearing;
+    }
+}
+`,
+    file: 'BotCharacter.cs',
+    attachTo: '#Enemy',
+    level: () => ({
+      id: 'b7',
+      ...DUSK,
+      objects: [...room(34, { wall: '#b39d79' }), crate(-4, 6), crate(4, 9), { name: 'Rookie', tag: 'Enemy', shape: 'humanoid', pos: [0, 0.9, 12], rot: [0, 180, 0], bot: { damage: 4, waypoints: [[-6, 0.9, 12], [6, 0.9, 12]] } }],
+      player: { pos: [0, 0.9, -6], gun: true },
+      scripts: official('look', 'move', 'gun'),
+      autoInspector: true,
+    }),
+    goals: [
+      { text: T('The character is in the brain', 'Характер записан в мозг'), check: (w) => {
+        const b = objByName(w, 'Rookie')?.bot;
+        return !!b && b.profile.reaction === num(field(w, 'reaction')) && b.profile.aimError === num(field(w, 'aimError'));
+      } },
+      { text: T('A rookie: reaction at least 0.5 s', 'Новичок: реакция не меньше 0,5 с'), check: (w) => (objByName(w, 'Rookie')?.bot?.profile.reaction ?? 0) >= 0.5 },
+      { text: T('Take the rookie down', 'Выведи новичка из боя'), check: (w) => objByName(w, 'Rookie')?.bot?.state === 'dead' },
+    ],
+    keys: ['WASD', 'mouse', 'LMB (hold)', 'R'],
+    ability: T('You can give bots any character — rookie, pro, sniper — with numbers.', 'Ты умеешь давать ботам любой характер — новичок, профи, снайпер — числами.'),
+    inUnity: T('In Unity such sets of numbers are often stored in a ScriptableObject ("BotProfile" asset): one file per character, shared by many bots.', 'В Unity такие наборы чисел часто хранят в ScriptableObject (ассет «BotProfile»): один файл на характер, общий для многих ботов.'),
+    demo: (_t, w) => shootAll(w, (o) => !!o.bot && o.bot.state !== 'dead', true),
+    demoSeconds: 12,
+  },
+  // ======================================================================= chapter 5: atmosphere
   {
     id: 's19',
-    chapter: 4,
+    chapter: 5,
     icon: '🧊',
     title: T('Inertia', 'Инерция'),
     system: T('Body: weight', 'Тело: вес'),
@@ -1551,7 +2081,7 @@ public class PlayerMovement : MonoBehaviour
   },
   {
     id: 's20',
-    chapter: 4,
+    chapter: 5,
     icon: '〰️',
     title: T('Head bob', 'Покачивание головы'),
     system: T('Camera: steps', 'Камера: шаги'),
@@ -1619,7 +2149,7 @@ public class HeadBob : MonoBehaviour
   },
   {
     id: 's21',
-    chapter: 4,
+    chapter: 5,
     icon: '🌀',
     title: T('Feeling of speed', 'Ощущение скорости'),
     system: T('Camera: speed', 'Камера: скорость'),
@@ -1666,7 +2196,7 @@ public class SpeedFov : MonoBehaviour
   },
   {
     id: 's22',
-    chapter: 4,
+    chapter: 5,
     icon: '↔️',
     title: T('Leaning', 'Наклоны'),
     system: T('Body: leaning', 'Тело: наклоны'),
@@ -1736,7 +2266,7 @@ public class Lean : MonoBehaviour
   },
   {
     id: 's23',
-    chapter: 4,
+    chapter: 5,
     icon: '🔫',
     title: T('A living weapon', 'Живое оружие'),
     system: T('Weapon: weight and recoil', 'Оружие: вес и отдача'),
@@ -1807,7 +2337,7 @@ public class WeaponFeel : MonoBehaviour
   },
   {
     id: 's24',
-    chapter: 4,
+    chapter: 5,
     icon: '🕺',
     title: T('A living body', 'Живое тело'),
     system: T('Bots: animation', 'Боты: анимация'),
@@ -1894,7 +2424,7 @@ public class BotBody : MonoBehaviour
   // ======================================================================== chapter 5: operation
   {
     id: 's25',
-    chapter: 5,
+    chapter: 6,
     icon: '🏆',
     title: T('Operation "Dusty Yard"', 'Операция «Пыльный двор»'),
     system: T('Command: the match', 'Штаб: матч'),

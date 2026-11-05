@@ -8,10 +8,10 @@ import { World3D } from '../src/code/run/unity3d';
 
 for (const loc of ['ru', 'en'] as const) {
   describe(`Shooter campaign (${loc})`, () => {
-    it('has 25 missions in 5 chapters, each with blanks, goals and texts', () => {
+    it('has 32 missions in 6 chapters, each with blanks, goals and texts', () => {
       setLocale(loc, false);
-      expect(MISSIONS.length).toBe(25);
-      expect(new Set(MISSIONS.map((m) => m.chapter))).toEqual(new Set([1, 2, 3, 4, 5]));
+      expect(MISSIONS.length).toBe(32);
+      expect(new Set(MISSIONS.map((m) => m.chapter))).toEqual(new Set([1, 2, 3, 4, 5, 6]));
       for (const m of MISSIONS) {
         const b = blanksOf(m);
         expect(b.length, m.id).toBeGreaterThanOrEqual(1);
@@ -97,5 +97,20 @@ describe('Shooter campaign: the goals really need the idea of the mission', () =
   });
   it('s24: legs that swing together are not "in turn"', async () => {
     expect(await play('s24', (c) => c.replace('rightLeg.localRotation = Quaternion.Euler(-swing, 0, 0);', 'rightLeg.localRotation = Quaternion.Euler(swing, 0, 0);'))).toEqual([true, false]);
+  });
+  it('b2: a bot that snaps with LookAt is too fast', async () => {
+    expect((await play('b2', (c) => c.replace(/transform\.rotation = Quaternion\.RotateTowards\(.*\);/, 'transform.rotation = want;')))[1]).toBe(false);
+  });
+  it('b3: zero reaction time fires at once', async () => {
+    expect((await play('b3', (c) => c.replace('public float reactionTime = 0.5f;', 'public float reactionTime = 0f;')))[1]).toBe(false);
+  });
+  it('b4: an aim that never calms down keeps missing', async () => {
+    expect((await play('b4', (c) => c.replace('public float settleSpeed = 1.5f;', 'public float settleSpeed = 0f;')))[1]).toBe(false);
+  });
+  it('b5: a head that jumps to the angle is not smooth', async () => {
+    expect((await play('b5', (c) => c.replace('headYaw = Mathf.LerpAngle(headYaw, targetYaw, turnSpeed * Time.deltaTime);', 'headYaw = targetYaw;')))[1]).toBe(false);
+  });
+  it('b6: a cheating bot that always walks to the player does not pass', async () => {
+    expect((await play('b6', (c) => c.replace('else if (searching)', 'else if (searching)\n        {\n            lastSeen = player.position;\n        }\n        if (searching)')))[1]).toBe(false);
   });
 });
