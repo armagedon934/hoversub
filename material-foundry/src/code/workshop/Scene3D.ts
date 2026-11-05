@@ -95,6 +95,7 @@ interface Entry {
   mats: THREE.MeshStandardMaterial[];
   color: string;
   emissive: boolean;
+  opacity?: number;
 }
 
 export class Scene3D {
@@ -178,10 +179,140 @@ export class Scene3D {
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.receiveShadow = true;
     this.scene.add(this.floor);
+    if (w.trackPts.length) this.buildTrack(w);
     for (const o of w.objects) this.ensure(o);
   }
 
+  private trackGroup?: THREE.Group;
+
+  /** The race track: asphalt, red-white kerbs, barriers, a chequered start line. */
+  private buildTrack(w: World3D): void {
+    const g = new THREE.Group();
+    const P = w.trackPts;
+    const n = P.length;
+    const half = (w.level.track?.width ?? 12) / 2;
+    const off = w.barrierOffset;
+    const ribbon = (inner: number, outer: number, y: number, colorAt: (i: number) => THREE.Color) => {
+      const pos: number[] = [];
+      const col: number[] = [];
+      const idx: number[] = [];
+      for (let i = 0; i <= n; i++) {
+        const a = P[i % n];
+        const b = P[(i + 1) % n];
+        const l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+        const rx = (b.z - a.z) / l;
+        const rz = -(b.x - a.x) / l;
+        const c = colorAt(i);
+        for (const k of [inner, outer]) {
+          pos.push(a.x + rx * k, y, -(a.z + rz * k));
+          col.push(c.r, c.g, c.b);
+        }
+        if (i < n) {
+          const q = i * 2;
+          idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return geo;
+    };
+    const asphalt = new THREE.Color('#3b3f45');
+    const lineMap = this.texture('grain').clone();
+    lineMap.needsUpdate = true;
+    lineMap.repeat.set(1, n / 4);
+    const road = new THREE.Mesh(ribbon(-half, half, 0.02, () => asphalt), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, map: lineMap, side: THREE.DoubleSide }));
+    road.receiveShadow = true;
+    g.add(road);
+    const red = new THREE.Color('#d8382f');
+    const white = new THREE.Color('#f2f2f2');
+    for (const side of [-1, 1]) {
+      const kerb = new THREE.Mesh(ribbon(side * half, side * (half + 0.9), 0.04, (i) => (Math.floor(i / 2) % 2 ? red : white)), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide }));
+      kerb.receiveShadow = true;
+      g.add(kerb);
+      // the barrier: a low wall, blue and white blocks
+      const pos: number[] = [];
+      const col: number[] = [];
+      const idx: number[] = [];
+      const blue = new THREE.Color('#2f6fd6');
+      for (let i = 0; i <= n; i++) {
+        const a = P[i % n];
+        const b = P[(i + 1) % n];
+        const l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+        const rx = (b.z - a.z) / l;
+        const rz = -(b.x - a.x) / l;
+        const x = a.x + rx * off * side;
+        const z = a.z + rz * off * side;
+        const c = Math.floor(i / 3) % 2 ? blue : white;
+        pos.push(x, 0, -z, x, 1.0, -z);
+        col.push(c.r, c.g, c.b, c.r, c.g, c.b);
+        if (i < n) {
+          const q = i * 2;
+          idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const wall = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: THREE.DoubleSide }));
+      wall.castShadow = true;
+      g.add(wall);
+    }
+    // chequered start / finish line at the first point
+    const a = P[0];
+    const b = P[1];
+    const l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 8;
+    const cx = c.getContext('2d')!;
+    for (let i = 0; i < 16; i++)
+      for (let j = 0; j < 2; j++) {
+        cx.fillStyle = (i + j) % 2 ? '#111' : '#fff';
+        cx.fillRect(i * 4, j * 4, 4, 4);
+      }
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = THREE.NearestFilter;
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 1.4), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+    line.rotation.x = -Math.PI / 2;
+    line.rotation.z = Math.atan2(b.x - a.x, b.z - a.z);
+    line.position.set(a.x, 0.05, -a.z);
+    g.add(line);
+    // an arch over the start
+    const archMat = new THREE.MeshStandardMaterial({ color: '#e8483b', roughness: 0.5 });
+    const rx = (b.z - a.z) / l;
+    const rz = -(b.x - a.x) / l;
+    for (const sd of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6, 0.5), archMat);
+      post.position.set(a.x + rx * (off + 0.6) * sd, 3, -(a.z + rz * (off + 0.6) * sd));
+      post.castShadow = true;
+      g.add(post);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry((off + 0.6) * 2 + 0.5, 0.9, 0.5), archMat);
+    beam.position.set(a.x, 6, -a.z);
+    beam.rotation.y = -Math.atan2(rz, rx);
+    beam.castShadow = true;
+    g.add(beam);
+    this.trackGroup = g;
+    this.scene.add(g);
+  }
+
   private clear(): void {
+    if (this.trackGroup) {
+      this.scene.remove(this.trackGroup);
+      this.trackGroup.traverse((x) => {
+        const m = x as THREE.Mesh;
+        if (m.isMesh) {
+          m.geometry.dispose();
+          (m.material as THREE.Material).dispose();
+        }
+      });
+      this.trackGroup = undefined;
+    }
     for (const e of this.entries.values()) {
       this.scene.remove(e.node);
       e.node.traverse((n) => {
@@ -255,6 +386,51 @@ export class Scene3D {
           const vm = this.mat('#1d2430', { roughness: 0.3, metalness: 0.3 });
           add(new THREE.BoxGeometry(sx * 0.8, sy * 0.16, 0.02), vm, [0, sy * 0.05, -sz / 2 - 0.01], false);
         }
+        break;
+      }
+      case 'car': {
+        // the body: a mesh whose vertices come from the world (so dents show)
+        const m = this.mat(o.color, { roughness: 0.35, metalness: 0.45 });
+        mats.push(m);
+        const geo = new THREE.BufferGeometry();
+        const mesh = o.mesh!;
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(mesh.verts.length * 3), 3));
+        const idx: number[] = [];
+        for (let i = 0; i < mesh.tris.length; i += 3) idx.push(mesh.tris[i], mesh.tris[i + 2], mesh.tris[i + 1]);
+        geo.setIndex(idx);
+        const body = add(geo, m);
+        body.userData.meshVersion = -1;
+        body.userData.body = true;
+        // headlights
+        const lamp = this.mat('#fff6d8', { emissive: new THREE.Color('#fff2c0'), emissiveIntensity: 0.8 });
+        mats.push(lamp);
+        for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.35, 0.12, 0.05), lamp, [sx * o.half.x * 0.6, 0.05, -o.half.z - 0.01], false);
+        break;
+      }
+      case 'wheel': {
+        const m = this.mat('#1b1c1f', { roughness: 0.9 });
+        const rim = this.mat('#b8bcc4', { roughness: 0.4, metalness: 0.7 });
+        mats.push(m, rim);
+        const tyre = add(new THREE.CylinderGeometry(sy / 2, sy / 2, sx, 20), m);
+        tyre.rotation.z = Math.PI / 2;
+        const hub = add(new THREE.CylinderGeometry(sy * 0.28, sy * 0.28, sx * 1.04, 10), rim);
+        hub.rotation.z = Math.PI / 2;
+        // a spoke so you can see it spin
+        add(new THREE.BoxGeometry(sx * 1.06, sy * 0.7, 0.06), rim);
+        break;
+      }
+      case 'tree': {
+        const trunk = this.mat('#6b4a2f', { roughness: 0.9 });
+        const leaves = this.mat(o.color, { roughness: 0.85 });
+        mats.push(leaves);
+        add(new THREE.CylinderGeometry(0.18, 0.25, sy * 0.4, 8), trunk, [0, -sy * 0.3, 0]);
+        add(new THREE.ConeGeometry(sx / 2, sy * 0.75, 10), leaves, [0, sy * 0.12, 0]);
+        break;
+      }
+      case 'cylinder': {
+        const m = this.mat(o.color);
+        mats.push(m);
+        add(new THREE.CylinderGeometry(sx / 2, sx / 2, sy, 20), m);
         break;
       }
       case 'capsule': {
@@ -358,6 +534,31 @@ export class Scene3D {
             m.emissiveIntensity = o.emissive ? 1.1 : 0;
           }
         }
+      }
+      if (o.mesh) {
+        const body = e.node.children.find((c) => c.userData.body) as THREE.Mesh | undefined;
+        if (body && body.userData.meshVersion !== o.mesh.version) {
+          const attr = body.geometry.getAttribute('position') as THREE.BufferAttribute;
+          o.mesh.verts.forEach((v, i) => attr.setXYZ(i, v.x, v.y, -v.z));
+          attr.needsUpdate = true;
+          body.geometry.computeVertexNormals();
+          body.geometry.computeBoundingSphere();
+          body.userData.meshVersion = o.mesh.version;
+        }
+      }
+      const op = o.opacity ?? 1;
+      if (e.opacity !== op) {
+        e.opacity = op;
+        e.node.traverse((x) => {
+          const m = (x as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+          if (!m || !(x as THREE.Mesh).isMesh) return;
+          for (const mm of [m].flat()) {
+            mm.transparent = op < 1;
+            mm.opacity = op;
+            mm.depthWrite = op >= 0.99;
+          }
+          (x as THREE.Mesh).castShadow = op >= 0.99;
+        });
       }
       // gently pulse goal circles
       if (o.shape === 'zone') e.node.children[1]?.scale.set(1, 0.8 + 0.2 * Math.sin(w.time * 3 + o.id), 1);

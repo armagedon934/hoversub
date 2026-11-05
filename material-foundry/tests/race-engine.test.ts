@@ -118,7 +118,7 @@ public class S : MonoBehaviour {
     w.simulate(0.05, [{ until: 1e9 }]);
     const f = (n: string) => w.insts[0].self!.fields.get(n)!.v;
     expect(f('what')).toBe('Barrier');
-    expect(f('front') as number).toBeGreaterThan(5);
-    expect(f('front') as number).toBeLessThan(8);
+    expect(f('front') as number).toBeGreaterThan(9);
+    expect(f('front') as number).toBeLessThan(11);
   });
 });

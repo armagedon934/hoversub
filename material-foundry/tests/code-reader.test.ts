@@ -9,6 +9,9 @@ import { LEVELS } from '../src/code/run/levels';
 import { PROJECT } from '../src/code/run/project';
 import { RECIPES } from '../src/code/workshop/recipes';
 import { MISSIONS, OFFICIAL, answerOf } from '../src/code/run/shooter';
+import { RACE_MISSIONS, RACE_OFFICIAL } from '../src/code/run/racing';
+import { SOUND_LESSONS } from '../src/code/sound/soundLessons';
+import { answerCode } from '../src/code/run/blanks';
 
 setLocale('ru', false);
 
@@ -19,6 +22,9 @@ const sources: [string, string][] = [
   ...[...LEVELS, ...PROJECT].map((l) => [`level ${l.id}`, l.solution] as [string, string]),
   ...MISSIONS.map((m) => [`mission ${m.id}`, answerOf(m)] as [string, string]),
   ...Object.entries(OFFICIAL).map(([k, v]) => [`official ${k}`, v] as [string, string]),
+  ...RACE_MISSIONS.map((m) => [`race ${m.id}`, answerCode(m.code())] as [string, string]),
+  ...Object.entries(RACE_OFFICIAL).map(([k, v]) => [`race official ${k}`, v] as [string, string]),
+  ...SOUND_LESSONS.map((l) => [`sound ${l.id}`, answerCode(l.code())] as [string, string]),
 ];
 
 describe('code reader', () => {

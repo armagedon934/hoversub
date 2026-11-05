@@ -124,6 +124,8 @@ export interface Spec3 {
   armor?: number;
   /** A ghost car: no collisions, see-through. */
   ghost?: boolean;
+  /** A car that hits barriers but drives through other cars (and other cars' sensors do not see it). */
+  passThroughCars?: boolean;
   /** 0…1, see-through when less than 1. */
   opacity?: number;
 }
@@ -167,7 +169,7 @@ export interface Obj3 {
   /** A deformable mesh (car body): vertices in local space, triangles, and a version that grows on change. */
   mesh?: { verts: V3[]; base: V3[]; tris: number[]; version: number };
   /** Cars: speed and steering seen from outside, the last position, contact with a barrier. */
-  car?: { ghost: boolean; lastPos: V3; touching: boolean; steer: number; spin: number; steer2?: number };
+  car?: { ghost: boolean; phantom?: boolean; lastPos: V3; touching: boolean; steer: number; spin: number; steer2?: number };
   /** Spinning parts that fell off (degrees per second around x, y, z). */
   spinVel?: V3;
 }
@@ -269,11 +271,17 @@ export interface Level3 {
   track?: Track3;
   /** Race mode: a built-in chase camera (default true). */
   chaseCamera?: boolean;
+  /** Race mode: which car the camera chases (default: the player). */
+  chase?: string;
+  /** Hide the player (lessons where you only watch other cars). */
+  hidePlayer?: boolean;
 }
 
 export interface Track3 {
   points: [number, number][];
   width: number;
+  /** Grass between the asphalt edge and the barrier, metres (default 4). */
+  runoff?: number;
 }
 
 /** A closed Catmull-Rom curve through the points, sampled every ~1.5 m. */
@@ -453,7 +461,8 @@ export class World3D {
       this.player.solid = true;
     }
     this.player.health = { value: L.player.health ?? 100, max: L.player.health ?? 100 };
-    this.player.hidden = !L.player.visibleBody && !race;
+    this.player.hidden = (!L.player.visibleBody && !race) || !!L.hidePlayer;
+    if (L.hidePlayer) this.player.alive = race ? false : this.player.alive;
     this.player.rot = qEuler(0, L.player.yaw ?? 0, 0);
     this.head = this.add({ name: 'Head', shape: 'none', pos: [0, 0, 0] });
     this.head.parent = this.player;
@@ -549,7 +558,10 @@ export class World3D {
     }
     this.objects.push(o);
     if (s.shape === 'humanoid') o.bones = this.makeBones(o);
-    if (s.shape === 'car') this.makeCar(o, !!s.ghost);
+    if (s.shape === 'car') {
+      this.makeCar(o, !!s.ghost);
+      if (s.passThroughCars) o.car!.phantom = true;
+    }
     if (s.opacity !== undefined) o.opacity = s.opacity;
     return o;
   }
@@ -908,7 +920,7 @@ export class World3D {
       if (!o.alive || o.shape === 'point' || o.shape === 'none' || o.shape === 'light' || o.shape === 'zone' || o.shape === 'gun' || skip.has(o) || (o.parent && skip.has(o.parent))) continue;
       // body parts are drawn, but the ray hits the whole body (its box)
       if (o.parent && (o.parent.bones || o.parent.parent?.bones || o.parent.parent?.parent?.bones)) continue;
-      if (o.car?.ghost || (o.parent?.car?.ghost)) continue;
+      if (o.car?.ghost || o.car?.phantom || o.parent?.car?.ghost || o.parent?.car?.phantom) continue;
       const { min, max } = this.aabb(o);
       // like Unity: a ray that starts inside a collider does not hit that collider (the shooter itself)
       if (origin.x > min.x && origin.x < max.x && origin.y > min.y && origin.y < max.y && origin.z > min.z && origin.z < max.z) continue;
@@ -1097,7 +1109,7 @@ export class World3D {
 
   /** How far the barriers are from the centre line. */
   get barrierOffset(): number {
-    return (this.level.track?.width ?? 12) / 2 + 0.6;
+    return (this.level.track?.width ?? 12) / 2 + (this.level.track?.runoff ?? 4);
   }
 
   private surface(tag: 'Road' | 'Grass' | 'Barrier'): Obj3 {
@@ -1181,6 +1193,29 @@ export class World3D {
         }
       c.lastPos = { ...o.pos };
     }
+    // cars bump into each other (circles of 1.3 m), and both scripts hear about it
+    const cars = this.objects.filter((o) => o.car && !o.car.ghost && !o.car.phantom && o.alive);
+    for (let i = 0; i < cars.length; i++)
+      for (let j = i + 1; j < cars.length; j++) {
+        const a = cars[i];
+        const b = cars[j];
+        const d = v3(b.pos.x - a.pos.x, 0, b.pos.z - a.pos.z);
+        const dist = Math.hypot(d.x, d.z);
+        if (dist >= 2.6 || dist < 1e-6) continue;
+        const nrm = mul(d, 1 / dist);
+        const push = (2.6 - dist) / 2;
+        a.pos = sub(a.pos, mul(nrm, push));
+        b.pos = add(b.pos, mul(nrm, push));
+        const rel = sub(a.vel, b.vel);
+        const impact = Math.abs(rel.x * nrm.x + rel.z * nrm.z);
+        if (impact > 1) {
+          const point = add(a.pos, mul(nrm, 1.3));
+          for (const [me, other, sign] of [[a, b, 1], [b, a, -1]] as const) {
+            const col = { point, normal: mul(nrm, -sign), relativeVelocity: mul(rel, sign), impact, other };
+            for (const inst of this.insts) if (inst.obj === me) this.call(inst, 'OnCollisionEnter', [host('collision', col)]);
+          }
+        }
+      }
   }
 
   lastCollision: { obj: Obj3; impact: number; at: number } | null = null;
@@ -1188,7 +1223,7 @@ export class World3D {
 
   /** The built-in chase camera of race mode: behind and above the car, a little late — feels fast. */
   private chaseCam(): void {
-    const car = this.player;
+    const car = (this.level.chase && this.objects.find((o) => o.name === this.level.chase && o.alive)) || this.player;
     const fwd = qRotate(qEuler(0, qToEuler(car.rot).y, 0), v3(0, 0, 1));
     const want = add(sub(car.pos, mul(fwd, 7)), v3(0, 2.8, 0));
     this.chase.pos = this.chase.pos ? add(this.chase.pos, mul(sub(want, this.chase.pos), Math.min(1, 6 * this.sdt))) : want;
@@ -1431,6 +1466,11 @@ export class World3D {
           cell.v = host('transform', bot);
           note(name, bot.name);
         }
+      } else if (t === 'Transform' && this.objects.some((o) => o.name.toLowerCase() === name.toLowerCase())) {
+        // a field named like an object in the scene (ghost → "Ghost")
+        const o = this.objects.find((x) => x.name.toLowerCase() === name.toLowerCase())!;
+        cell.v = host('transform', o);
+        note(name, o.name);
       } else if (t === 'Transform' && /player|target/i.test(name)) {
         cell.v = host('transform', this.player);
         note(name, tr('the player', 'игрок'));

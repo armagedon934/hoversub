@@ -170,6 +170,8 @@ const cond = (c: string) => c.replace(/&&/g, ' И ').replace(/\|\|/g, ' ИЛИ '
 const condEn = (c: string) => c.replace(/&&/g, ' AND ').replace(/\|\|/g, ' OR ').replace(/!=/g, ' ≠ ').replace(/==/g, ' = ').replace(/>=/g, ' ≥ ').replace(/<=/g, ' ≤ ').replace(/\s+/g, ' ').trim();
 
 const RULES: Rule[] = [
+  [/^(?:([\w.]+)\.)?GetComponent<Renderer>\(\)\.material\.color\s*=\s*(.+);$/, (m) => T(`Paint ${m[1] ?? 'this object'}: its colour becomes ${m[2]}.`, `Красим ${m[1] ?? 'этот объект'}: его цвет становится ${m[2]}.`)],
+  [/^(float|int|bool|string|Vector3|GameObject|Transform)\[\]\s+(\w+)\s*;$/, (m) => T(`An empty array (a numbered row of boxes) "${m[2]}" for ${m[1]} values — created later with new.`, `Пустой массив (пронумерованный ряд коробок) «${m[2]}» для значений ${m[1]} — создаётся позже через new.`)],
   [/^([\w.]+)\.GetComponent<(\w+)>\(\)\.(\w+)\((.*)\);$/, (m) => T(`Take the ${m[2]} part of ${m[1]} and ask it to do ${m[3]}(${m[4]}).`, `Берём у ${m[1]} деталь ${m[2]} и просим её сделать ${m[3]}(${m[4]}).`)],
   [/^\/\/\s*(.*)$/, (m) => T(`A note for people (the computer ignores it): ${m[1]}`, `Заметка для людей (компьютер её пропускает): ${m[1]}`)],
   [/^using\s+UnityEngine\s*;/, () => T('Connect Unity: GameObject, transform, Input, Time, physics…', 'Подключаем Unity: GameObject, transform, Input, Time, физику…')],

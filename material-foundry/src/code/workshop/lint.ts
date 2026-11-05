@@ -111,7 +111,17 @@ export function lintCSharp(src: string, fileName?: string): LintFinding[] {
 
     // = instead of == in a condition.
     if ((m = /\b(if|while)\s*\((.*)\)/.exec(line))) {
-      const cond = m[2];
+      // only what is inside the brackets of the condition (not "if (x) y = 1;")
+      let depth = 1;
+      let end = 0;
+      for (let k = 0; k < m[2].length; k++) {
+        if (m[2][k] === '(') depth++;
+        else if (m[2][k] === ')' && --depth === 0) {
+          end = k;
+          break;
+        }
+      }
+      const cond = depth === 0 ? m[2].slice(0, end) : m[2];
       const eq = /(^|[^=!<>+\-*/%&|^])=([^=]|$)/.exec(cond);
       if (eq && !/=>/.test(cond)) {
         const from = line.indexOf(cond, m.index) + eq.index + eq[1].length;

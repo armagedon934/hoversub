@@ -100,20 +100,20 @@ const target = (name: string, x: number, z: number, hp = 1, extra: Partial<Spec3
 const crate = (x: number, z: number, s = 1.2, h = s): Spec3 => ({ name: 'Crate', shape: 'box', pos: [x, h / 2, z], size: [s, h, s], color: '#a07a4e' });
 const wall = (x: number, z: number, w: number, d: number, h = 3, color = '#c2a77f'): Spec3 => ({ name: 'Wall', shape: 'box', pos: [x, h / 2, z], size: [w, h, d], color });
 
-const objByName = (w: World3D, name: string) => w.objects.find((o) => o.name === name);
-const logged = (w: World3D, re: RegExp) => w.logs.some((l) => !l.text.startsWith('Inspector:') && re.test(l.text));
+export const objByName = (w: World3D, name: string) => w.objects.find((o) => o.name === name);
+export const logged = (w: World3D, re: RegExp) => w.logs.some((l) => !l.text.startsWith('Inspector:') && re.test(l.text));
 const anyLog = (w: World3D) => w.logs.some((l) => !l.text.startsWith('Inspector:') && !/^[☠🎯👥🔊]/u.test(l.text) && l.text.trim().length > 0);
-const field = (w: World3D, name: string): unknown => {
+export const field = (w: World3D, name: string): unknown => {
   for (const i of w.insts) {
     const c = i.self?.fields.get(name);
     if (c) return c.v;
   }
   return undefined;
 };
-const num = (v: unknown) => (typeof v === 'number' ? v : NaN);
+export const num = (v: unknown) => (typeof v === 'number' ? v : NaN);
 
 /** Is the player standing in the zone? Marks it as reached (it turns green). */
-function inZone(w: World3D, name: string): boolean {
+export function inZone(w: World3D, name: string): boolean {
   const z = objByName(w, name);
   if (!z) return false;
   const p = w.player;
@@ -141,7 +141,7 @@ function lookedAt(w: World3D, name: string, deg = 7): boolean {
   return ok;
 }
 const aliveWith = (w: World3D, tag: string) => w.objects.filter((o) => o.alive && o.tag === tag);
-const sticky = (run: MissionRun, key: string, now: boolean) => {
+export const sticky = (run: MissionRun, key: string, now: boolean) => {
   if (now) run.mem[key] = 1;
   return run.mem[key] === 1;
 };
@@ -208,7 +208,7 @@ export function aimAt(w: World3D, p: V3, sens = 2): { mouse: [number, number]; e
   return { mouse: [Math.max(-lim, Math.min(lim, ey / sens)), Math.max(-lim, Math.min(lim, -ep / sens))], err: Math.hypot(ey, ep) };
 }
 /** Keys that walk towards a point (the player turns with the mouse first). */
-function walkTo(w: World3D, p: V3, extra: string[] = []): DemoStep3 {
+export function walkTo(w: World3D, p: V3, extra: string[] = []): DemoStep3 {
   const a = aimAt(w, v3(p.x, w.camera.pos.y, p.z));
   const far = Math.hypot(p.x - w.player.pos.x, p.z - w.player.pos.z) > 0.25;
   // blocked by something low? jump over it (press Space every few frames)
@@ -216,7 +216,7 @@ function walkTo(w: World3D, p: V3, extra: string[] = []): DemoStep3 {
   return { until: 1e9, mouse: a.mouse, keys: far && a.err < 25 ? ['w', ...extra, ...(stuck ? [' '] : [])] : extra };
 }
 /** Shoot every alive object with the tag: aim, then click (or hold for automatic weapons). */
-function shootAll(w: World3D, tag: string | ((o: Obj3) => boolean), hold = false, keys: string[] = []): DemoStep3 {
+export function shootAll(w: World3D, tag: string | ((o: Obj3) => boolean), hold = false, keys: string[] = []): DemoStep3 {
   const list = w.objects.filter((o) => o.alive && (typeof tag === 'string' ? o.tag === tag : tag(o)));
   list.sort((a, b) => Math.hypot(a.pos.x - w.player.pos.x, a.pos.z - w.player.pos.z) - Math.hypot(b.pos.x - w.player.pos.x, b.pos.z - w.player.pos.z));
   const t = list.find((o) => {
