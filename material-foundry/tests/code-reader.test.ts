@@ -11,6 +11,7 @@ import { RECIPES } from '../src/code/workshop/recipes';
 import { MISSIONS, OFFICIAL, answerOf } from '../src/code/run/shooter';
 import { RACE_MISSIONS, RACE_OFFICIAL } from '../src/code/run/racing';
 import { SOUND_LESSONS } from '../src/code/sound/soundLessons';
+import { MODEL_MISSIONS } from '../src/code/run/models';
 import { answerCode } from '../src/code/run/blanks';
 
 setLocale('ru', false);
@@ -25,6 +26,7 @@ const sources: [string, string][] = [
   ...RACE_MISSIONS.map((m) => [`race ${m.id}`, answerCode(m.code())] as [string, string]),
   ...Object.entries(RACE_OFFICIAL).map(([k, v]) => [`race official ${k}`, v] as [string, string]),
   ...SOUND_LESSONS.map((l) => [`sound ${l.id}`, answerCode(l.code())] as [string, string]),
+  ...MODEL_MISSIONS.map((m) => [`model ${m.id}`, answerCode(m.code())] as [string, string]),
 ];
 
 describe('code reader', () => {

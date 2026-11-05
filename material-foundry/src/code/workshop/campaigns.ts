@@ -5,10 +5,11 @@ import type { Text2 } from '../i18n';
 import { CHAPTERS, FREE_PLAY_SCRIPTS, MISSIONS, matchLevel, type Mission } from '../run/shooter';
 import { RACE_CHAPTERS, RACE_MISSIONS, raceFreeLevel, raceFreeScripts } from '../run/racing';
 import type { Level3, World3D } from '../run/unity3d';
-import { useRacing, useShooter, type CampaignStore } from './shooterProgress';
+import { MODEL_CHAPTERS, MODEL_MISSIONS, modelFreeLevel, modelFreeScripts } from '../run/models';
+import { useModels, useRacing, useShooter, type CampaignStore } from './shooterProgress';
 
 export interface Campaign {
-  id: 'shooter' | 'racing';
+  id: 'shooter' | 'racing' | 'models';
   missions: Mission[];
   chapters: { n: number; icon: string; title: Text2; about: Text2 }[];
   store: CampaignStore;
@@ -61,5 +62,23 @@ export const RACING: Campaign = {
     goal: { en: 'Drive a lap', ru: 'Проедь круг' },
     check: (w) => w.insts.some((i) => typeof i.self?.fields.get('laps')?.v === 'number' && (i.self.fields.get('laps')!.v as number) >= 1),
     keys: ['W', 'A/D', 'S'],
+  },
+};
+
+export const MODELS: Campaign = {
+  id: 'models',
+  missions: MODEL_MISSIONS,
+  chapters: MODEL_CHAPTERS,
+  store: useModels,
+  xp: 25,
+  hud: 'fps',
+  free: {
+    title: { en: 'Free scene: dress a room', ru: 'Свободная сцена: одень комнату' },
+    about: { en: 'A room with crates, pillars and a block. Open "Materials" under the game and give every kind of object a material from your texture studio — or change the scripts.', ru: 'Комната с ящиками, колоннами и блоком. Открой «Материалы» под игрой и дай каждому виду предметов материал из своей студии текстур — или меняй скрипты.' },
+    scripts: modelFreeScripts,
+    level: (s) => modelFreeLevel(s),
+    goal: { en: 'Give materials to things', ru: 'Дай вещам материалы' },
+    check: (w) => new Set(w.objects.filter((o) => o.material?.id).map((o) => o.name)).size >= 3,
+    keys: ['WASD', 'mouse'],
   },
 };

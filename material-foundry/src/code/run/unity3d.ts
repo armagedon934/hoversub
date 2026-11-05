@@ -172,6 +172,23 @@ export interface Obj3 {
   car?: { ghost: boolean; phantom?: boolean; lastPos: V3; touching: boolean; steer: number; spin: number; steer2?: number };
   /** Spinning parts that fell off (degrees per second around x, y, z). */
   spinVel?: V3;
+  /** A material from the texture generator: preset id, how it repeats, relief strength. */
+  material?: GameMat;
+  /** Size of a primitive before scaling (half extents), for CreatePrimitive objects. */
+  baseHalf?: V3;
+}
+
+/**
+ * A texture-generator material on an object. mode "scale": like Unity's mainTextureScale (repeats
+ * per face); mode "world": the texture keeps its real size (tile metres) on every face.
+ */
+export interface GameMat {
+  id: string;
+  mode: 'scale' | 'world';
+  scale: { x: number; y: number };
+  tile: number;
+  bump: number;
+  version: number;
 }
 
 /**
@@ -275,6 +292,10 @@ export interface Level3 {
   chase?: string;
   /** Hide the player (lessons where you only watch other cars). */
   hidePlayer?: boolean;
+  /** A material on the floor (from the texture generator). */
+  floorMaterial?: { id: string; tile: number };
+  /** Extra building after the objects are created (parts of ready-made models). */
+  setup?: (w: World3D) => void;
 }
 
 export interface Track3 {
@@ -473,6 +494,7 @@ export class World3D {
       this.camera.local = { pos: v3(), rot: QI };
     }
     this.chase.pos = null;
+    this.floorMat = L.floorMaterial ? { ...L.floorMaterial, version: 1 } : null;
     this.camera.fov = 70;
     if (L.player.gun) {
       this.gun = this.add({ name: 'Gun', tag: 'Untagged', shape: 'gun', pos: [0, 0, 0] });
@@ -483,6 +505,7 @@ export class World3D {
       tip.local = { pos: v3(0, 0.03, 0.35), rot: QI };
     }
     for (const s of L.objects) this.add(s);
+    L.setup?.(this);
     this.time = 0;
     this.frameNo = 0;
     this.logs = [];
@@ -1638,7 +1661,14 @@ export class World3D {
           case 'Application':
           case 'RaceTrack':
           case 'PrimitiveType':
+          case 'Resources':
             return { k: 'type', name };
+          case 'PrimitiveType.Cube':
+          case 'PrimitiveType.Sphere':
+          case 'PrimitiveType.Cylinder':
+          case 'PrimitiveType.Capsule':
+          case 'PrimitiveType.Plane':
+            return { k: 'enum', type: 'PrimitiveType', name: name.split('.')[1] };
           case 'RaceTrack.Length':
             return world.trackLen;
           case 'Quaternion.identity':
@@ -1795,6 +1825,19 @@ export class World3D {
             if (outArg) setRef(outArg, hit ? host('hit3', hit) : host('hit3', null));
             return !!hit;
           }
+          case 'GameObject.CreatePrimitive': {
+            const kind = args[0] && typeof args[0] === 'object' && args[0].k === 'enum' ? args[0].name : 'Cube';
+            const shape: Shape3 = kind === 'Sphere' ? 'sphere' : kind === 'Cylinder' ? 'cylinder' : kind === 'Capsule' ? 'capsule' : 'box';
+            const size: [number, number, number] = kind === 'Plane' ? [10, 0.02, 10] : kind === 'Capsule' ? [1, 2, 1] : kind === 'Cylinder' ? [1, 2, 1] : [1, 1, 1];
+            const o = world.add({ name: kind, shape, pos: [0, 0, 0], size, color: '#c8ccd2', solid: kind !== 'Plane' });
+            o.baseHalf = { ...o.half };
+            return host('gameObject', o);
+          }
+          case 'Resources.Load<Material>':
+          case 'Resources.Load': {
+            const id = csText(args[0]);
+            return host('matdef', { id });
+          }
           case 'GameObject.FindWithTag':
           case 'GameObject.FindGameObjectWithTag': {
             const o = world.objects.find((x) => x.alive && x.tag === csText(args[0]));
@@ -1848,6 +1891,8 @@ export class World3D {
                 return host('gameObject', o);
               case 'parent':
                 return o.parent ? host('transform', o.parent) : null;
+              case 'childCount':
+                return world.objects.filter((x) => x.parent === o && x.alive).length;
               case 'name':
                 return o.name;
               case 'tag':
@@ -1916,9 +1961,17 @@ export class World3D {
           case 'renderer':
             if (name === 'material' || name === 'sharedMaterial') return host('material', o);
             if (name === 'enabled') return !o.hidden;
+            if (name === 'bounds') return host('bounds', o);
+            break;
+          case 'bounds':
+            if (name === 'size') return vv(v3(o.half.x * 2, o.half.y * 2, o.half.z * 2));
+            if (name === 'center') return vv(o.pos);
+            if (name === 'extents') return vv(o.half);
             break;
           case 'material':
             if (name === 'color') return host('color', { ...fromHex(o.color), a: o.opacity ?? 1 });
+            if (name === 'name') return o.material?.id ?? 'Default';
+            if (name === 'mainTextureScale') return { k: 'vec', x: o.material?.scale.x ?? 1, y: o.material?.scale.y ?? 1, z: 0, dim: 2 };
             break;
           case 'color': {
             const c = target.ref as Rgba;
@@ -1991,6 +2044,8 @@ export class World3D {
           }
           if (name === 'localScale' && vec) {
             o.scale = vec;
+            // a created primitive grows its collider too (a 1×1×1 cube scaled to 2×0.1×1 is 2×0.1×1)
+            if (o.baseHalf) o.half = v3(o.baseHalf.x * vec.x, o.baseHalf.y * vec.y, o.baseHalf.z * vec.z);
             return true;
           }
         }
@@ -2037,6 +2092,20 @@ export class World3D {
             }
             if (o === world.player) world.head.local!.pos.y = Math.max(0.2, h / 2 - 0.2);
           } else o.cc.radius = value;
+          return true;
+        }
+        if (target.kind === 'renderer' && (name === 'material' || name === 'sharedMaterial')) {
+          const def = value && typeof value === 'object' && value.k === 'host' && value.kind === 'matdef' ? (value.ref as { id: string }) : null;
+          const src = value && typeof value === 'object' && value.k === 'host' && value.kind === 'material' ? (value.ref as Obj3).material : undefined;
+          const id = def?.id ?? src?.id;
+          if (id) o.material = { id, mode: 'scale', scale: src ? { ...src.scale } : { x: 1, y: 1 }, tile: 2, bump: src?.bump ?? 1, version: (o.material?.version ?? 0) + 1 };
+          return true;
+        }
+        if (target.kind === 'material' && name === 'mainTextureScale' && value && typeof value === 'object' && value.k === 'vec') {
+          o.material ??= { id: '', mode: 'scale', scale: { x: 1, y: 1 }, tile: 2, bump: 1, version: 0 };
+          o.material.mode = 'scale';
+          o.material.scale = { x: value.x, y: value.y };
+          o.material.version++;
           return true;
         }
         if (target.kind === 'material' && name === 'color') {
@@ -2149,6 +2218,23 @@ export class World3D {
             return vv(qRotate(o.rot, asV3(args[0]) ?? v3(num(args[0]), num(args[1]), num(args[2]))));
           case 'transform.InverseTransformDirection':
             return vv(qRotate(qInv(o.rot), asV3(args[0]) ?? v3()));
+          case 'transform.GetChild': {
+            const kids = world.objects.filter((x) => x.parent === o && x.alive);
+            const k = kids[num(args[0])];
+            if (!k) throw new CsError(tr(`There is no child number ${num(args[0])} (there are ${kids.length}).`, `Ребёнка с номером ${num(args[0])} нет (их ${kids.length}).`), line, 'runtime', 'IndexOutOfRangeException');
+            return host('transform', k);
+          }
+          case 'material.SetFloat': {
+            const key = csText(args[0]);
+            if (key === '_BumpScale' || key === 'bump') {
+              o.material ??= { id: '', mode: 'scale', scale: { x: 1, y: 1 }, tile: 2, bump: 1, version: 0 };
+              o.material.bump = num(args[1]);
+              o.material.version++;
+            }
+            return undefined;
+          }
+          case 'material.GetFloat':
+            return csText(args[0]) === '_BumpScale' ? (o.material?.bump ?? 1) : 0;
           case 'transform.InverseTransformPoint': {
             const p = asV3(args[0]) ?? v3();
             const l = qRotate(qInv(o.rot), sub(p, o.pos));
@@ -2269,6 +2355,24 @@ export class World3D {
         return NOT_FOUND;
       },
     };
+  }
+
+  /** The floor's material (texture generator) and its tile size in metres. */
+  floorMat: { id: string; tile: number; version: number } | null = null;
+
+  /** Puts a generator material on every object with this name ("Wall", "Crate"…, or "Floor"). */
+  paintByName(name: string, id: string | null, tile = 2): number {
+    if (name === 'Floor') {
+      this.floorMat = id ? { id, tile, version: (this.floorMat?.version ?? 0) + 1 } : null;
+      return 1;
+    }
+    let n = 0;
+    for (const o of this.objects)
+      if (o.name === name && !o.parent?.bones) {
+        o.material = id ? { id, mode: 'world', scale: { x: 1, y: 1 }, tile, bump: 1, version: (o.material?.version ?? 0) + 1 } : undefined;
+        n++;
+      }
+    return n;
   }
 
   /** Spectator mode: watch a bot through its eyes or from behind (null = your own eyes). */

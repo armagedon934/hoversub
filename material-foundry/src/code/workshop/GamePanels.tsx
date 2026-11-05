@@ -161,3 +161,107 @@ export function SpectatorBar({ world, vision, setVision, onChange }: { world: Wo
     </div>
   );
 }
+
+// ------------------------------------------------------------------------------------ materials
+
+const MAT_KEY = 'mf.gameMats.v1';
+type SavedMats = Record<string, Record<string, { id: string; tile: number }>>;
+function readMats(): SavedMats {
+  try {
+    return JSON.parse(localStorage.getItem(MAT_KEY) ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+}
+function writeMats(m: SavedMats) {
+  try {
+    localStorage.setItem(MAT_KEY, JSON.stringify(m));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Puts the materials you chose before back on the new world (all walls stay brick, etc.). */
+export function applySavedMaterials(world: World3D, campaign: string): void {
+  const saved = readMats()[campaign] ?? {};
+  for (const [name, m] of Object.entries(saved)) world.paintByName(name, m.id, m.tile);
+}
+
+const SKIP = new Set(['Player', 'Head', 'Main Camera', 'Gun', 'GunTip', 'GameManager', 'Trainer']);
+
+/** Pick any object kind (or the floor) and give it a material from the texture generator. */
+export function MaterialPanel({ world, campaign, choices }: { world: World3D | null; campaign: string; choices: { id: string; name: string; family: string }[] }) {
+  const targets = world ? ['Floor', ...new Set(world.objects.filter((o) => !o.parent && !SKIP.has(o.name) && !o.bot && o.shape !== 'zone' && o.shape !== 'none' && o.shape !== 'point').map((o) => o.name))] : [];
+  const [target, setTarget] = useState(targets[1] ?? 'Floor');
+  const saved = readMats()[campaign]?.[target];
+  const [mat, setMat] = useState(saved?.id ?? choices[0]?.id ?? '');
+  const [tile, setTile] = useState(saved?.tile ?? 2);
+  if (!world) return null;
+  const families = [...new Set(choices.map((c) => c.family))];
+  const apply = (id: string | null) => {
+    world.paintByName(target, id, tile);
+    const all = readMats();
+    all[campaign] ??= {};
+    if (id) all[campaign][target] = { id, tile };
+    else delete all[campaign][target];
+    writeMats(all);
+  };
+  return (
+    <div className="gp-panel" data-testid="material-panel">
+      <h4>🎨 {tr('Materials from the texture studio — offline', 'Материалы из студии текстур — офлайн')}</h4>
+      <label className="snd-slider">
+        <span>{tr('What to paint', 'Что красить')}</span>
+        <select
+          value={target}
+          onChange={(e) => {
+            setTarget(e.target.value);
+            const s = readMats()[campaign]?.[e.target.value];
+            if (s) {
+              setMat(s.id);
+              setTile(s.tile);
+            }
+          }}
+          data-testid="mat-target"
+        >
+          {targets.map((t) => (
+            <option key={t} value={t}>
+              {t === 'Floor' ? tr('Floor', 'Пол') : t}
+            </option>
+          ))}
+        </select>
+        <span />
+      </label>
+      <label className="snd-slider">
+        <span>{tr('Material', 'Материал')}</span>
+        <select value={mat} onChange={(e) => setMat(e.target.value)} data-testid="mat-choice">
+          {families.map((f) => (
+            <optgroup key={f} label={f.replace(/_/g, ' ')}>
+              {choices
+                .filter((c) => c.family === f)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+        </select>
+        <span />
+      </label>
+      <label className="snd-slider">
+        <span>{tr('One tile = metres (so it sits right)', 'Одна плитка = метров (чтобы сидело ровно)')}</span>
+        <input type="range" min={0.25} max={8} step={0.25} value={tile} onChange={(e) => setTile(Number(e.target.value))} data-testid="mat-tile" />
+        <b>{tile} {tr('m', 'м')}</b>
+      </label>
+      <div className="gp-row">
+        <button className="btn small primary" onClick={() => apply(mat)} data-testid="mat-apply">
+          {tr('Apply', 'Применить')}
+        </button>
+        <button className="btn small ghost" onClick={() => apply(null)}>
+          {tr('Remove', 'Убрать')}
+        </button>
+        <span className="muted small">{tr('★ = the material open in your texture studio right now.', '★ — материал, который сейчас открыт в твоей студии текстур.')}</span>
+      </div>
+    </div>
+  );
+}

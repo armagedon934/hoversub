@@ -218,7 +218,7 @@ export function ResumeCard() {
       useLearn.getState().openLesson(last.id);
       setView('learn');
     } else if (last.kind === 'level') setView('unity');
-    else if (last.kind === 'mission') setView(last.extra === 'racing' ? 'racing' : 'shooter');
+    else if (last.kind === 'mission') setView(last.extra === 'racing' ? 'racing' : last.extra === 'models' ? 'models' : 'shooter');
     else {
       useWorkshop.getState().open(last.id);
       setView('workshop');

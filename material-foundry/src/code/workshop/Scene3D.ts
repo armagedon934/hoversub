@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import type { Obj3, World3D } from '../run/unity3d';
+import { loadGameMaterial, type GameMaterial } from './gameMaterials';
 
 const toPos = (o: { x: number; y: number; z: number }, out: THREE.Vector3) => out.set(o.x, o.y, -o.z);
 const toQuat = (q: { x: number; y: number; z: number; w: number }, out: THREE.Quaternion) => out.set(-q.x, -q.y, q.z, q.w);
@@ -96,6 +97,7 @@ interface Entry {
   color: string;
   emissive: boolean;
   opacity?: number;
+  matVersion?: number;
 }
 
 export class Scene3D {
@@ -576,10 +578,12 @@ export class Scene3D {
           (x as THREE.Mesh).castShadow = op >= 0.99;
         });
       }
+      if ((o.material?.version ?? 0) !== (e.matVersion ?? 0)) this.applyMaterial(e);
       // gently pulse goal circles
       if (o.shape === 'zone') e.node.children[1]?.scale.set(1, 0.8 + 0.2 * Math.sin(w.time * 3 + o.id), 1);
     }
 
+    if ((w.floorMat?.version ?? 0) !== this.floorMatVersion) this.applyFloor(w);
     // sun follows the player so shadows stay sharp near you
     toPos(w.player.pos, this.tmpV);
     this.sun.target.position.copy(this.tmpV);
@@ -657,6 +661,83 @@ export class Scene3D {
     this.sun.intensity = 0.2 + 1.45 * p;
     this.renderer.render(this.scene, this.camera);
     return labels;
+  }
+
+  private floorMatVersion = 0;
+
+  /** Floor material from the texture generator (real size: one tile = "tile" metres). */
+  private applyFloor(w: World3D): void {
+    this.floorMatVersion = w.floorMat?.version ?? 0;
+    const fm = this.floor?.material as THREE.MeshStandardMaterial | undefined;
+    if (!fm || !this.floor) return;
+    const want = w.floorMat;
+    const size = (this.floor.geometry as THREE.PlaneGeometry).parameters.width;
+    if (!want) return;
+    void loadGameMaterial(want.id).then((gm) => {
+      if (!gm || this.world !== w || w.floorMat?.version !== this.floorMatVersion) return;
+      this.useMaps(fm, gm, size / want.tile, size / want.tile, 1);
+      fm.color.set('#ffffff');
+    });
+  }
+
+  private useMaps(m: THREE.MeshStandardMaterial, gm: GameMaterial, rx: number, ry: number, bump: number): void {
+    const own = (t: THREE.Texture) => {
+      const c = t.clone();
+      c.repeat.set(rx, ry);
+      c.wrapS = c.wrapT = THREE.RepeatWrapping;
+      c.needsUpdate = true;
+      return c;
+    };
+    for (const old of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap]) if (old && !Object.values(this.tex).includes(old as THREE.CanvasTexture)) old.dispose();
+    m.map = own(gm.map);
+    m.normalMap = own(gm.normalMap);
+    m.normalScale.set(bump, bump);
+    m.roughnessMap = own(gm.roughnessMap);
+    m.metalnessMap = own(gm.metalnessMap);
+    m.roughness = 1;
+    m.metalness = 1;
+    m.needsUpdate = true;
+  }
+
+  /** A generator material on an object: Unity-like repeats per face ("scale"), or true size ("world"). */
+  private applyMaterial(e: Entry): void {
+    const o = e.obj;
+    const gmat = o.material;
+    e.matVersion = gmat?.version ?? 0;
+    if (!gmat?.id) return;
+    const version = e.matVersion;
+    void loadGameMaterial(gmat.id).then((gm) => {
+      if (!gm || e.matVersion !== version) return;
+      e.node.traverse((x) => {
+        const mesh = x as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const m = mesh.material as THREE.MeshStandardMaterial;
+        if (!m || Array.isArray(m) || !(m as THREE.MeshStandardMaterial).isMeshStandardMaterial) return;
+        if (gmat.mode === 'world' && mesh.geometry instanceof THREE.BoxGeometry) {
+          // every face of the box gets UVs in metres / tile, so bricks are never stretched
+          const g = mesh.geometry as THREE.BoxGeometry;
+          const { width, height, depth } = g.parameters;
+          const sx = width * o.scale.x;
+          const sy = height * o.scale.y;
+          const sz = depth * o.scale.z;
+          const uv = g.getAttribute('uv') as THREE.BufferAttribute;
+          const base = (g.userData.uv0 as Float32Array | undefined) ?? Float32Array.from(uv.array as Float32Array);
+          g.userData.uv0 = base;
+          const dims: [number, number][] = [[sz, sy], [sz, sy], [sx, sz], [sx, sz], [sx, sy], [sx, sy]];
+          for (let f = 0; f < 6; f++)
+            for (let k = 0; k < 4; k++) {
+              const i = f * 4 + k;
+              uv.setXY(i, (base[i * 2] * dims[f][0]) / gmat.tile, (base[i * 2 + 1] * dims[f][1]) / gmat.tile);
+            }
+          uv.needsUpdate = true;
+          this.useMaps(m, gm, 1, 1, gmat.bump);
+        } else if (gmat.mode === 'world') {
+          const big = Math.max(o.half.x, o.half.y, o.half.z) * 2;
+          this.useMaps(m, gm, big / gmat.tile, big / gmat.tile, gmat.bump);
+        } else this.useMaps(m, gm, gmat.scale.x, gmat.scale.y, gmat.bump);
+        m.color.set('#ffffff');
+      });
+    });
   }
 
   /** Draws the world and reads one pixel (x, y from 0 to 1) — for automated checks of the look. */

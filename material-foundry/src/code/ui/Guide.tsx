@@ -31,7 +31,7 @@ export function useGuide(): GuideState | null {
     return { text: tr('Write code. Grey text = a guess of what comes next (Tab accepts). Red underline = a problem with a fix on the right. "Run" runs it safely.', 'Пиши код. Серый текст — догадка, что дальше (Tab — принять). Красное подчёркивание — проблема, справа есть исправление. «Запустить» — безопасный запуск.'), target: null };
   if (view === 'unity')
     return { text: tr('1) Read the task. 2) Change the code on the left. 3) Press "Play" and use the arrow keys. Stuck? Press "Hint".', '1) Прочитай задание. 2) Измени код слева. 3) Нажми «Играть» и жми стрелки. Застрял? Нажми «Подсказка».'), target: null };
-  if (view === 'shooter' || view === 'racing')
+  if (view === 'shooter' || view === 'racing' || view === 'models')
     return { text: tr('1) Read the radio message. 2) Fill the highlighted ___ in the code. 3) "Upload the script", click the game and play. Stuck? "Hint" or "Show me how to play".', '1) Прочитай сообщение по рации. 2) Заполни подсвеченные ___ в коде. 3) «Загрузить прошивку», нажми на игру и играй. Застрял? «Подсказка» или «Покажи, как играть».'), target: null };
   if (view === 'sound')
     return { text: tr('Lessons: fill the ___ and press "Build and listen" — the wave is on the right, the sliders change the sound live. Synthesizer: presets and sliders, every change plays at once.', 'Уроки: заполни ___ и нажми «Собрать и послушать» — справа волна, ползунки меняют звук вживую. Синтезатор: заготовки и ползунки, каждое изменение сразу звучит.'), target: null };

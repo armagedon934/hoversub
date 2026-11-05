@@ -4,6 +4,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { MISSIONS } from '../run/shooter';
 import { RACE_MISSIONS } from '../run/racing';
+import { MODEL_MISSIONS } from '../run/models';
 
 export interface CampaignProgress {
   done: string[];
@@ -47,3 +48,4 @@ function makeStore(key: string, ids: string[]): CampaignStore {
 
 export const useShooter = makeStore('mf.shooter.v1', MISSIONS.map((m) => m.id));
 export const useRacing = makeStore('mf.racing.v1', RACE_MISSIONS.map((m) => m.id));
+export const useModels = makeStore('mf.models.v1', MODEL_MISSIONS.map((m) => m.id));

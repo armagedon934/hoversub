@@ -20,9 +20,10 @@ import { blankHighlighter, createEditor, type WorkshopEditor } from './editor';
 import { useWorkshop } from './store';
 import { Scene3D } from './Scene3D';
 import { engineHum, setSfx, sfx, sfxOn } from './sfx';
-import { BotBrainPanel, LiveInspector, SpectatorBar, VisionLabels } from './GamePanels';
+import { applySavedMaterials, BotBrainPanel, LiveInspector, MaterialPanel, SpectatorBar, VisionLabels } from './GamePanels';
+import { materialChoices } from './gameMaterials';
 import type { VisionLabel } from './Scene3D';
-import { RACING, SHOOTER, type Campaign } from './campaigns';
+import { MODELS, RACING, SHOOTER, type Campaign } from './campaigns';
 
 // ------------------------------------------------------------------------------------ input
 
@@ -121,7 +122,8 @@ export function Campaign3D({ c }: { c: Campaign }) {
   const [tick, setTick] = useState(0);
   const loopRef = useRef<((t: number) => void) | null>(null);
   const visionRef = useRef(false);
-  const [panel, setPanel] = useState<'inspector' | 'brain' | null>(null);
+  const [panel, setPanel] = useState<'inspector' | 'brain' | 'materials' | null>(null);
+  const matChoices = useMemo(() => materialChoices(), []);
 
   ensureMainThreadTreeSitter();
 
@@ -158,6 +160,7 @@ export function Campaign3D({ c }: { c: Campaign }) {
   /** Shows the world before it is played (the camera at the player's eyes). */
   const showStill = useCallback(() => {
     const w = new World3D(levelOf());
+    applySavedMaterials(w, c.id);
     worldRef.current = w;
     const offline = !!c.offlineFirst && mission?.id === c.offlineFirst && !useShooter.getState().done.includes(c.offlineFirst);
     powerRef.current = offline ? 0 : 1;
@@ -291,6 +294,7 @@ export function Campaign3D({ c }: { c: Campaign }) {
     const w = new World3D(levelOf());
     const source = free ? (useShooter.getState().free[freeScripts[0].file] ?? freeScripts[0].source) : code;
     const problems = await w.load(source, free ? freeScripts[0].on : (mission!.attachTo ?? 'Player'));
+    applySavedMaterials(w, c.id);
     worldRef.current = w;
     sceneRef.current?.render(w);
     if (problems) {
@@ -744,6 +748,9 @@ export function Campaign3D({ c }: { c: Campaign }) {
                 <button className={`btn small${panel === 'inspector' ? ' on' : ''}`} onClick={() => setPanel(panel === 'inspector' ? null : 'inspector')} data-testid="open-inspector">
                   🎚 {tr('Inspector (live numbers)', 'Inspector (числа вживую)')}
                 </button>
+                <button className={`btn small${panel === 'materials' ? ' on' : ''}`} onClick={() => setPanel(panel === 'materials' ? null : 'materials')} data-testid="open-materials">
+                  🎨 {tr('Materials', 'Материалы')}
+                </button>
                 {worldRef.current?.watchable().length && worldRef.current.level.botBrain !== 'script' ? (
                   <button className={`btn small${panel === 'brain' ? ' on' : ''}`} onClick={() => setPanel(panel === 'brain' ? null : 'brain')} data-testid="open-brain">
                     🧠 {tr('Bot brain', 'Мозг ботов')}
@@ -752,6 +759,7 @@ export function Campaign3D({ c }: { c: Campaign }) {
               </div>
               {panel === 'inspector' ? <LiveInspector world={worldRef.current} tick={tick} /> : null}
               {panel === 'brain' ? <BotBrainPanel world={worldRef.current} tick={tick} /> : null}
+              {panel === 'materials' ? <MaterialPanel world={worldRef.current} campaign={c.id} choices={matChoices} /> : null}
             </div>
           ) : null}
         </section>
@@ -875,4 +883,8 @@ function RaceTools({ world }: { world: World3D | null }) {
       ))}
     </span>
   );
+}
+
+export function Models() {
+  return <Campaign3D key="models" c={MODELS} />;
 }

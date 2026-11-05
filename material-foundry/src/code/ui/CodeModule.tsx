@@ -43,6 +43,7 @@ import './code.css';
 const Shooter = lazy(() => import('../workshop/Shooter'));
 const SoundLab = lazy(() => import('../sound/SoundLab'));
 const Racing = lazy(() => import('../workshop/Racing'));
+const Models = lazy(() => import('../workshop/Models'));
 import '../workshop/workshop.css';
 
 function shortcuts(): [string, string][] {
@@ -449,7 +450,7 @@ export default function CodeModule() {
         } else s.toast('info', undo ? tr('Nothing to undo.', 'Нечего отменять.') : tr('Nothing to redo.', 'Нечего возвращать.'));
         return;
       }
-      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'racing' || s.view === 'sound' || s.view === 'errors') return;
+      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'racing' || s.view === 'models' || s.view === 'sound' || s.view === 'errors') return;
       if (/^[1-5]$/.test(e.key)) s.setLevel(Number(e.key) as 1 | 2 | 3 | 4 | 5);
       else if (e.key === '?') s.simpler();
       else if (e.key === 'e') s.toggleExample();
@@ -564,6 +565,10 @@ export default function CodeModule() {
             <Workshop />
           ) : shownView === 'unity' ? (
             <MiniUnity />
+          ) : shownView === 'models' ? (
+            <Suspense fallback={<div className="muted" style={{ padding: 20 }}>…</div>}>
+              <Models />
+            </Suspense>
           ) : shownView === 'racing' ? (
             <Suspense fallback={<div className="muted" style={{ padding: 20 }}>{tr('Loading the race…', 'Загружаю гонку…')}</div>}>
               <Racing />
