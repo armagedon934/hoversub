@@ -6,7 +6,7 @@
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { Bot, Brain, BookOpenText, Code2, Crosshair, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Moon, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Sun, Timer, Type, X } from 'lucide-react';
+import { Bot, Brain, BookOpenText, Code2, Crosshair, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -19,7 +19,10 @@ import { ErrorTranslator } from '../workshop/ErrorTranslator';
 import { MiniUnity } from '../workshop/MiniUnity';
 import { Workshop } from '../workshop/Workshop';
 import { getLanguage } from '../languages/registry';
-import { tr, type Locale } from '../i18n';
+import { pick, tr, type Locale, type Text2 } from '../i18n';
+import { THEMES, themeById } from './themes';
+import { loudness, playUi, UI_SOUNDS, useSound, type UiSound } from './uiSound';
+import { sfx } from '../workshop/sfx';
 import { CoursesView } from '../learn/CourseView';
 import { DailyGoal, Trainers } from '../learn/Trainers';
 import { Learn } from '../learn/Learn';
@@ -142,6 +145,46 @@ function Welcome() {
   );
 }
 
+const SOUND_NAMES: Record<UiSound, Text2> = {
+  click: { en: 'Button clicks', ru: 'Нажатия кнопок' },
+  success: { en: 'Success', ru: 'Успех' },
+  error: { en: 'Mistake', ru: 'Ошибка' },
+  xp: { en: 'Experience (XP)', ru: 'Опыт (XP)' },
+  notice: { en: 'Notices', ru: 'Уведомления' },
+  game: { en: 'Game sounds (shots, engine…)', ru: 'Звуки игр (выстрелы, мотор…)' },
+};
+
+/** Sound volumes: everything, and each kind of sound separately, with a "listen" button. */
+function SoundSettings() {
+  const s = useSound();
+  return (
+    <div className="pop-col" data-testid="sound-settings">
+      <div className="pop-row">
+        <span>{tr('Sounds', 'Звуки')}</span>
+        <button className={`btn small${s.on ? ' on' : ''}`} onClick={() => s.set({ on: !s.on })} aria-pressed={s.on} data-testid="sound-toggle">
+          {s.on ? tr('On', 'Включены') : tr('Off', 'Выключены')}
+        </button>
+        <label className="sound-row">
+          <span className="muted small">{tr('All', 'Все')}</span>
+          <input type="range" min={0} max={1} step={0.05} value={s.master} onChange={(e) => s.set({ master: Number(e.target.value) })} aria-label={tr('Volume of all sounds', 'Громкость всех звуков')} data-testid="sound-master" />
+        </label>
+      </div>
+      {s.on
+        ? UI_SOUNDS.map((k) => (
+            <div key={k} className="sound-row">
+              <span className="small">{pick(SOUND_NAMES[k])}</span>
+              <input type="range" min={0} max={1} step={0.05} value={s.vol[k]} onChange={(e) => s.setVol(k, Number(e.target.value))} aria-label={pick(SOUND_NAMES[k])} data-testid={`sound-vol-${k}`} />
+              <button className="btn small ghost" onClick={() => (k === 'game' ? sfx.shot() : playUi(k, undefined, Math.max(0.3, loudness(k))))} aria-label={tr('Listen', 'Послушать')} title={tr('Listen', 'Послушать')}>
+                ▶
+              </button>
+            </div>
+          ))
+        : null}
+      <span className="muted small">{tr('Every theme has its own voice. Make your own sounds in the Sound Lab.', 'У каждой темы свой голос. Свои звуки — в Звуковой лаборатории.')}</span>
+    </div>
+  );
+}
+
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const prefs = useCode((s) => s.prefs);
   const setPrefs = useCode((s) => s.setPrefs);
@@ -158,15 +201,32 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           English
         </button>
       </div>
-      <div className="pop-row">
-        <span>{tr('Colours', 'Цвета')}</span>
-        <button className={`btn small${prefs.theme === 'dark' ? ' on' : ''}`} onClick={() => setPrefs({ theme: 'dark' })} data-testid="theme-dark">
-          <Moon size={13} /> {tr('Dark', 'Тёмные')}
-        </button>
-        <button className={`btn small${prefs.theme === 'light' ? ' on' : ''}`} onClick={() => setPrefs({ theme: 'light' })} data-testid="theme-light">
-          <Sun size={13} /> {tr('Light', 'Светлые')}
-        </button>
+      <div className="pop-col">
+        <span>{tr('Theme', 'Тема оформления')}</span>
+        <div className="theme-grid" data-testid="theme-grid">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              className={`theme-swatch${prefs.palette === t.id ? ' on' : ''}`}
+              onClick={() => {
+                setPrefs({ palette: t.id });
+                playUi('notice', t.id);
+              }}
+              title={pick(t.about)}
+              data-testid={t.id === 'graphite' ? 'theme-dark' : t.id === 'paper' ? 'theme-light' : `theme-${t.id}`}
+              style={{ background: t.vars['--panel'], color: t.vars['--text'], borderColor: prefs.palette === t.id ? t.vars['--accent'] : t.vars['--line'] }}
+            >
+              <span className="theme-dots" aria-hidden>
+                <i style={{ background: t.vars['--bg'] }} />
+                <i style={{ background: t.vars['--accent'] }} />
+                <i style={{ background: t.vars['--text'] }} />
+              </span>
+              {pick(t.name)}
+            </button>
+          ))}
+        </div>
       </div>
+      <SoundSettings />
       <div className="pop-row">
         <span>{tr('Text size', 'Размер текста')}</span>
         <button className="btn small" onClick={() => setPrefs({ fontSize: Math.max(12, prefs.fontSize - 1) })} aria-label={tr('Smaller text', 'Мельче')} data-testid="font-smaller">
@@ -440,8 +500,11 @@ export default function CodeModule() {
   return (
     <div
       key={prefs.locale}
-      className={`cm theme-${prefs.theme}${prefs.spacing ? ' roomy' : ''}${prefs.readable ? ' readable' : ''} layout-${layout}`}
-      style={{ ['--cm-font' as string]: `${prefs.fontSize}px` }}
+      className={`cm theme-${prefs.theme} palette-${prefs.palette}${prefs.spacing ? ' roomy' : ''}${prefs.readable ? ' readable' : ''} layout-${layout}`}
+      style={{ ['--cm-font' as string]: `${prefs.fontSize}px`, ...themeById(prefs.palette).vars }}
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest('button')) playUi('click');
+      }}
       data-testid="code-module"
       data-guide-now={prefs.hints && guide?.target ? guide.target : undefined}
       lang={prefs.locale}

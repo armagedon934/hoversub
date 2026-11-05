@@ -2,6 +2,7 @@
 // day streak. Stored only in this browser (localStorage).
 
 import { create } from 'zustand';
+import { playUi } from '../ui/uiSound';
 import type { TrackId } from './lessons';
 import { useTrainers } from './achievements';
 
@@ -80,6 +81,7 @@ export const useLearn = create<LearnState>((set, get) => ({
       streak = s.lastDay === yesterday ? s.streak + 1 : 1;
     }
     set({ xp: s.xp + n, streak, lastDay: d });
+    playUi('xp');
     save(get());
     useTrainers.getState().earned(n);
   },

@@ -2,6 +2,7 @@
 // selected element, explanation preferences and the "what if" flow.
 
 import { create } from 'zustand';
+import { playUi } from './uiSound';
 import type { OpenResult } from '../analysis/engine';
 import { buildProjectIndex, crossReferences, projectOverview, type ProjectIndex, type ProjectOverview } from '../analysis/project';
 import type { ElementInfo, FileSummary, FlowStep, Range } from '../analysis/types';
@@ -13,12 +14,16 @@ import { createStore } from '../workspace/idb';
 import { Workspace } from '../workspace/workspace';
 import { getCodeClient } from '../worker/client';
 import type { LoadResult } from './fileLoading';
+import { applyTheme, isThemeId, themeById, type ThemeId } from './themes';
 
 export type CodeView = 'welcome' | 'learn' | 'workshop' | 'unity' | 'shooter' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
 export type DiagramKind = 'auto' | 'flow' | 'connections' | 'data' | 'files';
 
 export interface Prefs {
+  /** Base of the theme (decides the colours of code words); follows the chosen palette. */
   theme: 'dark' | 'light';
+  /** One of the 10 looks of the program. */
+  palette: ThemeId;
   fontSize: number;
   spacing: boolean;
   level: Level;
@@ -33,10 +38,13 @@ const PREFS_KEY = 'mf.code.prefs.v1';
 const LEVEL_SESSION_KEY = 'mf.code.level';
 
 function loadPrefs(): Prefs {
-  const d: Prefs = { theme: 'dark', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale(), readable: false };
+  const d: Prefs = { theme: 'dark', palette: 'graphite', fontSize: 16, spacing: false, level: 2, hints: true, locale: getLocale(), readable: false };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
     if (raw.theme === 'light' || raw.theme === 'dark') d.theme = raw.theme;
+    if (isThemeId(raw.palette)) d.palette = raw.palette;
+    else d.palette = d.theme === 'light' ? 'paper' : 'graphite';
+    d.theme = themeById(d.palette).base;
     if (typeof raw.fontSize === 'number' && raw.fontSize >= 12 && raw.fontSize <= 24) d.fontSize = raw.fontSize;
     if (typeof raw.spacing === 'boolean') d.spacing = raw.spacing;
     if (typeof raw.hints === 'boolean') d.hints = raw.hints;
@@ -332,6 +340,10 @@ export const useCode = create<State>((set, get) => ({
 
   setPrefs(p) {
     const prefs = { ...get().prefs, ...p };
+    // choosing "dark"/"light" picks the matching classic palette; a palette sets its base
+    if (p.theme && !p.palette) prefs.palette = p.theme === 'light' ? 'paper' : 'graphite';
+    prefs.theme = themeById(prefs.palette).base;
+    if (p.palette || p.theme) applyTheme(prefs.palette);
     if (p.locale && p.locale !== getLocale()) {
       setLocale(p.locale);
       getCodeClient().setLocale(p.locale);
@@ -373,6 +385,7 @@ export const useCode = create<State>((set, get) => ({
 
   toast(kind, text) {
     const t = { id: toastId++, kind, text };
+    playUi(kind === 'error' ? 'error' : 'notice');
     set({ toasts: [...get().toasts, t].slice(-3) });
     setTimeout(() => set({ toasts: get().toasts.filter((x) => x.id !== t.id) }), kind === 'error' || kind === 'warning' ? 9000 : 4000);
   },

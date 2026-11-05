@@ -4,6 +4,7 @@
 // the script's public fields and the Console shows Debug.Log — like the real editor.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { playUi } from '../ui/uiSound';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, Eye, Lightbulb, Play, RotateCcw, Square } from 'lucide-react';
 import { create } from 'zustand';
 import { getLocale, pick, tr } from '../i18n';
@@ -351,6 +352,7 @@ export function MiniUnity() {
     const problems = await w.load(codeRef.current);
     if (problems) {
       setPhase('error');
+      playUi('error');
       setErr({ line: problems[0].line, message: problems.map((p) => p.message).join('\n') });
       setTries((t) => t + 1);
       return;
@@ -383,6 +385,7 @@ export function MiniUnity() {
       raf.current = 0;
       setPhase(r.status as Phase);
       setMessage(r.message ?? '');
+      playUi(r.status === 'won' ? 'success' : 'error');
       if (r.status === 'error') {
         setErr({ line: r.error?.line ?? -1, message: r.message ?? '' });
         setTries((t) => t + 1);

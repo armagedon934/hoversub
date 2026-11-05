@@ -359,6 +359,8 @@ export class CsProgram {
   output: string[] = [];
   stack: CallFrame[] = [];
   rngState = 12345;
+  /** Set right before Random.Range: the arguments were written as floats (1f, 0.5). */
+  private floatArgs = false;
   host: Host = {};
 
   constructor(
@@ -1452,6 +1454,8 @@ export class CsProgram {
     }
     if (fnNode.type === 'member_access_expression') {
       const name = fnNode.childForFieldName('name')?.text ?? '';
+      // Random.Range(-1f, 1f) is the float version even though -1 and 1 look like whole numbers
+      if (name === 'Range') this.floatArgs = /\d[fFdDmM]\b|\d\.\d|\.\d/.test(n.childForFieldName('arguments')?.text ?? named(n).find((c) => c.type === 'argument_list')?.text ?? '');
       const target = yield* this.eval(fnNode.childForFieldName('expression')!, scope, self, cls);
       if (fnNode.text.includes('?.') && (target === null || target === undefined)) return null;
       const nameNode = fnNode.childForFieldName('name');
@@ -1667,8 +1671,12 @@ export class CsProgram {
 
   private rand(): number {
     // Deterministic pseudo-random numbers (so a program behaves the same every run).
-    this.rngState = (this.rngState * 1103515245 + 12345) & 0x7fffffff;
-    return this.rngState / 0x80000000;
+    // mulberry32: good quality and exact in JavaScript (Math.imul keeps all 32 bits)
+    this.rngState = (this.rngState + 0x6d2b79f5) | 0;
+    let t = this.rngState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
   private *builtinStatic(type: string, name: string, args: V[], line: number): Gen<V | typeof NOT_FOUND> {
@@ -1774,8 +1782,9 @@ export class CsProgram {
       case 'Random.Range': {
         const lo = a(0);
         const hi = a(1);
-        const ints = Number.isInteger(lo) && Number.isInteger(hi);
-        return ints ? lo + Math.floor(this.rand() * Math.max(0, hi - lo)) : lo + this.rand() * (hi - lo);
+        const ints = Number.isInteger(lo) && Number.isInteger(hi) && !this.floatArgs;
+        this.floatArgs = false;
+        return ints ? lo + Math.floor(this.rand() * Math.max(0, hi - lo)) : Math.fround(lo + this.rand() * (hi - lo));
       }
       case 'Random.value':
         return this.rand();

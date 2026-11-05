@@ -2621,3 +2621,58 @@ button.start-card:hover:not(:disabled) {
   font-size: 26px;
   color: var(--accent);
 }
+
+/* Settings: themes and sounds */
+.popover {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  width: min(420px, calc(100vw - 24px));
+}
+.pop-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pop-col > span:first-child {
+  color: var(--text-2);
+}
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.theme-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 2px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+.theme-swatch.on {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.theme-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+.theme-dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+}
+.sound-row {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  align-items: center;
+  gap: 6px;
+}
+label.sound-row {
+  grid-template-columns: auto 1fr;
+  flex: 1;
+}

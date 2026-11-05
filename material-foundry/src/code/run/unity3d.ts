@@ -913,7 +913,7 @@ export class World3D {
 
   private seed = 12345;
   private rand(): number {
-    this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
+    this.seed = (Math.imul(this.seed, 1103515245) + 12345) & 0x7fffffff;
     return this.seed / 0x7fffffff;
   }
 

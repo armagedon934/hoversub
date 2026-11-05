@@ -4,6 +4,7 @@
 // bots. Free play opens the whole finished game with every script editable.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { playUi } from '../ui/uiSound';
 import { Crosshair, Eye, Lightbulb, Play, RotateCcw, Square, Volume2, VolumeX } from 'lucide-react';
 import { pick, tr, type Text2 } from '../i18n';
 import { errorText, explainError } from '../run/errors';
@@ -291,6 +292,7 @@ export default function Shooter() {
     sceneRef.current?.render(w);
     if (problems) {
       setPhase('error');
+      playUi('error');
       setErr({ line: problems[0].line, message: problems.map((p) => p.message).join('\n') });
       setTries((t) => t + 1);
       return;
@@ -365,6 +367,7 @@ export default function Shooter() {
       if (document.pointerLockElement) document.exitPointerLock();
       if (status === 'error') {
         setPhase('error');
+        playUi('error');
         setErr({ line: errLine, message });
         setTries((t) => t + 1);
       } else if (status === 'lost') {
@@ -375,7 +378,7 @@ export default function Shooter() {
     const onWin = () => {
       setPhase('won');
       if (mission) setHud(readHud(w, checkGoals(mission, w, runRef.current)));
-      if (sound) sfx.win();
+      playUi('success');
       if (mission) {
         const p = useShooter.getState();
         if (!p.done.includes(mission.id)) {

@@ -2,7 +2,11 @@
 // distant enemy shot, a hit "tick", a quiet hurt thump and a success chime. Volume is kept low
 // on purpose (calm for sensitive ears) and can be turned off; the choice is remembered.
 
+import { loudness } from '../ui/uiSound';
+
 let ctx: AudioContext | null = null;
+/** Settings → Sounds → "Game sounds" (1 = the default level). */
+const gameVol = () => loudness('game') / 0.42;
 let noise: AudioBuffer | null = null;
 const KEY = 'mf.sfx.v1';
 
@@ -52,7 +56,7 @@ function burst(freq: number, dur: number, vol: number, q = 0.8): void {
   f.Q.value = q;
   const g = a.createGain();
   const t = a.currentTime;
-  g.gain.setValueAtTime(vol, t);
+  g.gain.setValueAtTime(Math.max(0.0001, vol * gameVol()), t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   src.connect(f).connect(g).connect(a.destination);
   src.start(t);
@@ -68,7 +72,7 @@ function tone(freq: number, dur: number, vol: number, type: OscillatorType = 'si
   const g = a.createGain();
   const t = a.currentTime + at;
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0001, vol * gameVol()), t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(a.destination);
   o.start(t);
