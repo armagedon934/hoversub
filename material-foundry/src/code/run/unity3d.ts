@@ -101,7 +101,7 @@ const qInv = (q: Q): Q => ({ x: -q.x, y: -q.y, z: -q.z, w: q.w });
 
 // ------------------------------------------------------------------------------------ world
 
-export type Shape3 = 'box' | 'capsule' | 'sphere' | 'humanoid' | 'gun' | 'point' | 'none' | 'target' | 'light';
+export type Shape3 = 'box' | 'capsule' | 'sphere' | 'humanoid' | 'gun' | 'point' | 'none' | 'target' | 'light' | 'zone';
 
 export interface Spec3 {
   name: string;
@@ -118,6 +118,10 @@ export interface Spec3 {
   rigidbody?: boolean;
   bot?: { team?: string; waypoints?: [number, number, number][]; speed?: number; accuracy?: number; fireRate?: number; damage?: number; sight?: number };
   emissive?: boolean;
+  /** Armour: health comes back to full after this many seconds without a hit. */
+  regen?: number;
+  /** Armour plates: a hit weaker than this does nothing. */
+  armor?: number;
 }
 
 export interface Obj3 {
@@ -148,6 +152,10 @@ export interface Obj3 {
   bones?: Record<string, Obj3>;
   fov?: number;
   lastHitAt?: number;
+  /** CharacterController.Move: where the object was at the start of this frame (for velocity). */
+  moveFrom?: { frame: number; pos: V3 };
+  regen?: number;
+  armor?: number;
 }
 
 interface Bot {
@@ -163,7 +171,9 @@ interface Bot {
   state: 'patrol' | 'chase' | 'attack' | 'dead';
   seenAt: number;
   walk: number;
-  scripted: boolean;
+  lastPos: V3;
+  lastSeen?: V3;
+  strafe: number;
 }
 
 export interface Shot3 {
@@ -191,6 +201,17 @@ export interface Level3 {
   scripts?: ScriptSpec3[];
   /** Fill empty reference fields of the learner's scripts (camera, controller, gun tip…). */
   autoInspector?: boolean;
+  /** Who thinks for the bots: the built-in AI (default) or the scripts on them. */
+  botBrain?: 'builtin' | 'script';
+  /** Who moves the arms and legs of the bots: the built-in walk (default) or the scripts. */
+  botLegs?: 'builtin' | 'script';
+}
+
+export interface DemoStep3 {
+  until: number;
+  keys?: string[];
+  mouse?: [number, number];
+  buttons?: number[];
 }
 
 export interface Frame3 {
@@ -222,6 +243,8 @@ interface Coroutine3 {
 export class World3D {
   objects: Obj3[] = [];
   player!: Obj3;
+  /** The neck: a pivot between the body and the camera (lean, bob). */
+  head!: Obj3;
   camera!: Obj3;
   gun?: Obj3;
   time = 0;
@@ -264,12 +287,16 @@ export class World3D {
     const L = this.level;
     this.player = this.add({ name: 'Player', tag: 'Player', shape: L.player.visibleBody ? 'humanoid' : 'capsule', pos: L.player.pos, size: [0.6, 1.8, 0.6] });
     this.player.cc = { grounded: false, height: 1.8, radius: 0.3 };
+    this.player.solid = true;
     this.player.health = { value: L.player.health ?? 100, max: L.player.health ?? 100 };
     this.player.hidden = !L.player.visibleBody;
     this.player.rot = qEuler(0, L.player.yaw ?? 0, 0);
+    this.head = this.add({ name: 'Head', shape: 'none', pos: [0, 0, 0] });
+    this.head.parent = this.player;
+    this.head.local = { pos: v3(0, 0.7, 0), rot: QI };
     this.camera = this.add({ name: 'Main Camera', tag: 'MainCamera', shape: 'none', pos: [0, 0, 0] });
-    this.camera.parent = this.player;
-    this.camera.local = { pos: v3(0, 0.7, 0), rot: QI };
+    this.camera.parent = this.head;
+    this.camera.local = { pos: v3(), rot: QI };
     this.camera.fov = 70;
     if (L.player.gun) {
       this.gun = this.add({ name: 'Gun', tag: 'Untagged', shape: 'gun', pos: [0, 0, 0] });
@@ -287,6 +314,7 @@ export class World3D {
     this.rays = [];
     this.ui = [];
     this.kills = 0;
+    this.lastRay = null;
     this.status = 'playing';
     this.message = '';
     this.started = false;
@@ -312,16 +340,17 @@ export class World3D {
       scale: v3(1, 1, 1),
       half: v3(size[0] / 2, size[1] / 2, size[2] / 2),
       color: s.color ?? '#9aa3ad',
-      solid: s.solid ?? (s.shape === 'box'),
-      trigger: !!s.trigger,
+      solid: s.solid ?? (s.shape === 'box' || (s.shape === 'humanoid' && !!s.bot)),
+      trigger: s.trigger ?? s.shape === 'zone',
       alive: true,
-      hidden: s.shape === 'point' || s.shape === 'none',
+      hidden: s.shape === 'point' || s.shape === 'none' || s.shape === 'light',
       emissive: !!s.emissive,
       vel: v3(),
     };
     if (s.rigidbody) o.rb = { useGravity: true, grounded: false };
     if (s.health) o.health = { value: s.health, max: s.health };
-    if (s.shape === 'humanoid') o.bones = this.makeBones(o);
+    if (s.regen) o.regen = s.regen;
+    if (s.armor) o.armor = s.armor;
     if (s.bot) {
       o.health ??= { value: 100, max: 100 };
       o.bot = {
@@ -337,10 +366,12 @@ export class World3D {
         state: 'patrol',
         seenAt: -10,
         walk: 0,
-        scripted: false,
+        lastPos: v3(...s.pos),
+        strafe: 1,
       };
     }
     this.objects.push(o);
+    if (s.shape === 'humanoid') o.bones = this.makeBones(o);
     return o;
   }
 
@@ -355,7 +386,7 @@ export class World3D {
       return p;
     };
     const skin = '#d9b38c';
-    const body = o.tag === 'Player' ? '#3b6db5' : '#b5503b';
+    const body = o.tag === 'Player' || o.bot?.team === 'blue' ? '#3b6db5' : '#b5503b';
     const hips = part('Hips', o, [0, 0.05, 0], [0.34, 0.2, 0.22], '#2d3436');
     const spine = part('Spine', hips, [0, 0.38, 0], [0.4, 0.55, 0.24], body);
     part('Head', spine, [0, 0.45, 0], [0.24, 0.26, 0.24], skin);
@@ -494,7 +525,6 @@ export class World3D {
             const inst: ScriptInst = { program, cls, obj, self: null };
             inst.self = this.drain(program.instantiate(cls, [], 0, obj as never) as Generator<unknown, V, string | undefined>) as ObjV;
             this.insts.push(inst);
-            if (obj.bot && /Bot|Enemy|AI/i.test(cls.name)) obj.bot.scripted = true;
           }
         }
         if (this.level.autoInspector) for (const inst of this.insts) this.autoInspector(inst);
@@ -511,6 +541,8 @@ export class World3D {
       this.runCoroutines();
       this.follow();
       this.bots();
+      for (const o of this.objects)
+        if (o.regen && o.alive && o.health && o.health.value > 0 && o.health.value < o.health.max && this.time - (o.lastHitAt ?? 0) > o.regen) o.health.value = o.health.max;
       this.callAll('LateUpdate');
       this.follow();
       this.triggers();
@@ -539,25 +571,32 @@ export class World3D {
     this.coroutines = this.coroutines.filter((c) => !c.done);
   }
 
+  private prevKeys = new Set<string>();
+  private prevButtons = new Set<number>();
+
+  /** One frame with the given input held (keys, mouse movement, buttons). Presses are detected between calls. */
+  step(input: DemoStep3): Frame3 {
+    const now = new Set(input.keys ?? []);
+    const nb = new Set(input.buttons ?? []);
+    this.keys = now;
+    this.pressed = new Set([...now].filter((k) => !this.prevKeys.has(k)));
+    this.released = new Set([...this.prevKeys].filter((k) => !now.has(k)));
+    this.mouseDown = nb;
+    this.mousePressed = new Set([...nb].filter((b) => !this.prevButtons.has(b)));
+    this.mouseReleased = new Set([...this.prevButtons].filter((b) => !nb.has(b)));
+    this.prevKeys = now;
+    this.prevButtons = nb;
+    this.mouse = { dx: input.mouse?.[0] ?? 0, dy: input.mouse?.[1] ?? 0 };
+    return this.frame();
+  }
+
   /** Simulates without drawing (tests): demo steps hold keys, move the mouse and press buttons. */
-  simulate(seconds: number, demo: { until: number; keys?: string[]; mouse?: [number, number]; buttons?: number[] }[]): Frame3 {
+  simulate(seconds: number, demo: DemoStep3[] | ((t: number, w: World3D) => DemoStep3), stop?: (w: World3D) => boolean): Frame3 {
     let r: Frame3 = { status: 'playing' };
-    let prev = new Set<string>();
-    let prevB = new Set<number>();
     for (let t = 0; t < seconds && r.status === 'playing'; t += this.dt) {
-      const step = demo.find((d) => t < d.until) ?? demo[demo.length - 1] ?? { until: 0 };
-      const now = new Set(step.keys ?? []);
-      const nb = new Set(step.buttons ?? []);
-      this.keys = now;
-      this.pressed = new Set([...now].filter((k) => !prev.has(k)));
-      this.released = new Set([...prev].filter((k) => !now.has(k)));
-      this.mouseDown = nb;
-      this.mousePressed = new Set([...nb].filter((b) => !prevB.has(b)));
-      this.mouseReleased = new Set([...prevB].filter((b) => !nb.has(b)));
-      prev = now;
-      prevB = nb;
-      this.mouse = { dx: step.mouse?.[0] ?? 0, dy: step.mouse?.[1] ?? 0 };
-      r = this.frame();
+      if (stop?.(this)) break;
+      const step = typeof demo === 'function' ? demo(t, this) : (demo.find((d) => t < d.until) ?? demo[demo.length - 1] ?? { until: 0 });
+      r = this.step(step);
     }
     return r;
   }
@@ -574,11 +613,15 @@ export class World3D {
     return { min: sub(o.pos, o.half), max: add(o.pos, o.half) };
   }
 
+  overlapsPublic(a: Obj3, b: Obj3): boolean {
+    return this.overlaps(a, b);
+  }
+
   private overlaps(a: Obj3, b: Obj3): boolean {
     return Math.abs(a.pos.x - b.pos.x) < a.half.x + b.half.x && Math.abs(a.pos.y - b.pos.y) < a.half.y + b.half.y && Math.abs(a.pos.z - b.pos.z) < a.half.z + b.half.z;
   }
 
-  private solids(except: Obj3): Obj3[] {
+  solids(except: Obj3): Obj3[] {
     return this.objects.filter((o) => o.alive && o.solid && o !== except && o.parent !== except && !(o.parent && o.parent.parent === except));
   }
 
@@ -644,11 +687,12 @@ export class World3D {
     let best: { obj: Obj3; point: V3; normal: V3; distance: number } | null = null;
     const skip = new Set(ignore);
     for (const o of this.objects) {
-      if (!o.alive || o.shape === 'point' || o.shape === 'none' || o.shape === 'light' || skip.has(o) || (o.parent && skip.has(o.parent))) continue;
-      if (o.bones && !o.solid && !o.bot && o !== this.player) continue;
-      if (o.parent?.bones || (o.parent && o.parent.parent && o.parent.parent.bones)) continue;
-      if (o.shape === 'gun') continue;
+      if (!o.alive || o.shape === 'point' || o.shape === 'none' || o.shape === 'light' || o.shape === 'zone' || o.shape === 'gun' || skip.has(o) || (o.parent && skip.has(o.parent))) continue;
+      // body parts are drawn, but the ray hits the whole body (its box)
+      if (o.parent && (o.parent.bones || o.parent.parent?.bones || o.parent.parent?.parent?.bones)) continue;
       const { min, max } = this.aabb(o);
+      // like Unity: a ray that starts inside a collider does not hit that collider (the shooter itself)
+      if (origin.x > min.x && origin.x < max.x && origin.y > min.y && origin.y < max.y && origin.z > min.z && origin.z < max.z) continue;
       let tmin = 0;
       let tmax = maxDist;
       let n = v3();
@@ -686,8 +730,33 @@ export class World3D {
     return this.floorCache;
   }
 
-  damage(o: Obj3, amount: number, byBot = false): void {
+  /** The last ray from Physics.Raycast this frame: damage right after it can be a headshot. */
+  lastRay: { obj: Obj3; point: V3; frame: number } | null = null;
+
+  teamOf(o: Obj3): string | undefined {
+    return o === this.player ? 'blue' : o.bot?.team;
+  }
+
+  /** Bots of the enemy team (red) that are still in the fight. */
+  redLeft(): number {
+    return this.objects.filter((o) => o.bot && o.alive && o.bot.team !== 'blue' && o.bot.state !== 'dead').length;
+  }
+
+  damage(o: Obj3, amount: number, by: Obj3 | null = this.player): void {
     if (!o.health || o.health.value <= 0) return;
+    if (by && by !== o && this.teamOf(by) && this.teamOf(by) === this.teamOf(o)) {
+      if (by === this.player && !this.logs.some((l) => l.time > this.time - 2 && /👥/.test(l.text))) this.logs.push({ time: this.time, text: tr('👥 Friendly — do not shoot your own!', '👥 Это свой — не стреляй по своим!') });
+      return;
+    }
+    if (by === this.player && o.bones && this.lastRay?.obj === o && this.lastRay.frame === this.frameNo && this.lastRay.point.y > o.pos.y + o.half.y - 0.34) {
+      amount *= 2;
+      this.logs.push({ time: this.time, text: tr('🎯 Headshot! Double damage', '🎯 В голову! Двойной урон') });
+    }
+    if (o.armor && amount < o.armor) {
+      o.lastHitAt = this.time;
+      if (by === this.player && !this.logs.some((l) => l.time > this.time - 1 && /🛡/u.test(l.text))) this.logs.push({ time: this.time, text: tr(`🛡 The armour holds: ${amount} is less than ${o.armor}`, `🛡 Броня держит: ${amount} меньше ${o.armor}`) });
+      return;
+    }
     o.health.value = Math.max(0, o.health.value - amount);
     o.lastHitAt = this.time;
     if (o.health.value <= 0) {
@@ -695,30 +764,42 @@ export class World3D {
       if (o.bot) {
         o.bot.state = 'dead';
         o.solid = false;
-        this.kills++;
+        o.tag = 'Dead';
+        if (by === this.player) this.kills++;
         this.logs.push({ time: this.time, text: tr(`☠ ${o.name} is down`, `☠ ${o.name} выведен из боя`) });
       } else if (o.shape === 'target' || o.tag === 'Target') {
         o.alive = false;
+        if (by === this.player) this.kills++;
       }
     }
-    void byBot;
   }
 
   // ------------------------------------------------------------------------------------- bots
 
   private canSee(b: Obj3, target: Obj3): boolean {
     const eye = add(b.pos, v3(0, 0.7, 0));
-    const to = sub(add(target.pos, v3(0, 0.6, 0)), eye);
+    const to = sub(add(target.pos, v3(0, target === this.player ? 0.6 : 0.5, 0)), eye);
     const dist = len(to);
     if (dist > (b.bot?.sight ?? 18)) return false;
     const fwd = qRotate(b.rot, v3(0, 0, 1));
     const cos = (fwd.x * to.x + fwd.z * to.z) / ((Math.hypot(fwd.x, fwd.z) * Math.hypot(to.x, to.z)) || 1);
-    if (cos < Math.cos(70 * D2R) && this.time - (b.bot?.seenAt ?? -10) > 2) return false;
+    // outside the field of view (70° each side) — unless it just saw the target or was just shot
+    if (cos < Math.cos(70 * D2R) && this.time - (b.bot?.seenAt ?? -10) > 2 && this.time - (b.lastHitAt ?? -10) > 1) return false;
     const hit = this.raycast(eye, to, dist, [b]);
-    return !!hit && (hit.obj === target || hit.obj.parent === target);
+    return !!hit && this.isPartOf(hit.obj, target);
+  }
+
+  private foesOf(o: Obj3): Obj3[] {
+    const team = o.bot!.team;
+    const out: Obj3[] = [];
+    if (team !== 'blue' && this.player.alive && (this.player.health?.value ?? 1) > 0) out.push(this.player);
+    for (const x of this.objects) if (x.bot && x !== o && x.alive && x.bot.state !== 'dead' && x.bot.team !== team) out.push(x);
+    return out;
   }
 
   private bots(): void {
+    const brain = this.level.botBrain ?? 'builtin';
+    const legs = this.level.botLegs ?? 'builtin';
     for (const o of this.objects) {
       const b = o.bot;
       if (!b || !o.alive) continue;
@@ -726,48 +807,80 @@ export class World3D {
         // fall over, then disappear after a while
         const t = Math.min(1, (this.time - (o.health?.deadAt ?? this.time)) * 2.5);
         o.rot = qMul(qEuler(0, qToEuler(o.rot).y, 0), qEuler(-88 * t, 0, 0));
+        if (o.bones?.Spine?.local) o.bones.Spine.local.rot = qEuler(-20 * t, 0, 0);
         if (this.time - (o.health?.deadAt ?? 0) > 6) o.alive = false;
         continue;
       }
-      if (b.scripted) {
-        this.animateWalk(o, len(v3(o.vel.x, 0, o.vel.z)));
-        continue;
+      if (brain === 'builtin') this.think(o, b);
+      const moved = Math.hypot(o.pos.x - b.lastPos.x, o.pos.z - b.lastPos.z) / Math.max(1e-6, this.sdt);
+      b.lastPos = { ...o.pos };
+      if (legs === 'builtin') {
+        this.animateWalk(o, moved);
+        // a short flinch when hit
+        const k = (this.time - (o.lastHitAt ?? -10)) / 0.3;
+        if (o.bones?.Spine?.local) o.bones.Spine.local.rot = k < 1 ? qEuler(-18 * (1 - k), 8 * (1 - k), 0) : QI;
       }
-      const sees = this.player.alive && (this.player.health?.value ?? 1) > 0 && this.canSee(o, this.player);
-      if (sees) b.seenAt = this.time;
-      const remembers = this.time - b.seenAt < 3;
-      b.state = sees ? 'attack' : remembers ? 'chase' : 'patrol';
-      let goal: V3 | null = null;
-      if (b.state === 'patrol' && b.waypoints.length) {
-        goal = b.waypoints[b.wp % b.waypoints.length];
-        if (Math.hypot(goal.x - o.pos.x, goal.z - o.pos.z) < 0.4) b.wp = (b.wp + 1) % b.waypoints.length;
-      } else if (b.state !== 'patrol') goal = this.player.pos;
-      let speed = 0;
-      if (goal) {
-        const to = v3(goal.x - o.pos.x, 0, goal.z - o.pos.z);
-        const dist = Math.hypot(to.x, to.z);
-        const want = qLook(to);
-        o.rot = qSlerp(o.rot, want, Math.min(1, 6 * this.sdt));
-        const keep = b.state === 'attack' ? 6 : 0.1;
-        if (dist > keep) {
-          speed = b.state === 'patrol' ? b.speed * 0.6 : b.speed;
-          const step = mul(norm(to), speed * this.sdt);
-          this.moveCollide(o, step);
-        }
+    }
+  }
+
+  /** The built-in bot brain: patrol → sees a foe → attack (strafing, shooting) → chase where it was seen. */
+  private think(o: Obj3, b: Bot): void {
+    let target: Obj3 | null = null;
+    let best = Infinity;
+    for (const f of this.foesOf(o)) {
+      const d = len(sub(f.pos, o.pos));
+      if (d < best && this.canSee(o, f)) {
+        best = d;
+        target = f;
       }
-      o.vel = v3(0, 0, 0);
-      this.animateWalk(o, speed);
-      if (b.state === 'attack' && this.time >= b.nextShot) {
-        b.nextShot = this.time + b.fireRate * (0.7 + 0.6 * this.rand());
-        const eye = add(o.pos, v3(0, 0.7, 0));
-        const aim = sub(add(this.player.pos, v3(0, 0.5, 0)), eye);
-        const spread = b.accuracy * (1 + len(aim) / 20);
-        const dir = norm(add(norm(aim), v3((this.rand() - 0.5) * spread, (this.rand() - 0.5) * spread, (this.rand() - 0.5) * spread)));
-        const hit = this.raycast(eye, dir, 60, [o]);
-        const end = hit ? hit.point : add(eye, mul(dir, 60));
-        this.shots.push({ from: eye, to: end, at: this.time, hit: !!hit && hit.obj === this.player, byBot: true });
-        if (hit && hit.obj === this.player) this.damage(this.player, b.damage, true);
+    }
+    if (target) {
+      if (b.state !== 'attack') b.nextShot = Math.max(b.nextShot, this.time + 0.45 + 0.4 * this.rand()); // reaction time
+      b.seenAt = this.time;
+      b.lastSeen = { ...target.pos };
+    }
+    const remembers = this.time - b.seenAt < 4 && !!b.lastSeen;
+    b.state = target ? 'attack' : remembers ? 'chase' : 'patrol';
+    let goal: V3 | null = null;
+    if (b.state === 'patrol' && b.waypoints.length) {
+      goal = b.waypoints[b.wp % b.waypoints.length];
+      if (Math.hypot(goal.x - o.pos.x, goal.z - o.pos.z) < 0.4) b.wp = (b.wp + 1) % b.waypoints.length;
+    } else if (b.state === 'attack' && target) goal = target.pos;
+    else if (b.state === 'chase') goal = b.lastSeen!;
+    if (goal) {
+      const to = v3(goal.x - o.pos.x, 0, goal.z - o.pos.z);
+      const dist = Math.hypot(to.x, to.z);
+      if (dist > 0.05) o.rot = qSlerp(o.rot, qLook(to), Math.min(1, 6 * this.sdt));
+      if (b.state === 'attack') {
+        // keep some distance and side-step, like a person in a firefight
+        if (Math.floor(this.time / 1.4) % 2 === 0) b.strafe = b.strafe || 1;
+        else if (b.strafe === 1 && this.rand() < 0.02) b.strafe = -1;
+        const side = mul(norm(v3(to.z, 0, -to.x)), b.strafe * b.speed * 0.45 * this.sdt);
+        const approach = dist > 7 ? mul(norm(to), b.speed * 0.7 * this.sdt) : v3();
+        const before = { ...o.pos };
+        this.moveCollide(o, add(side, approach));
+        if (Math.hypot(o.pos.x - before.x, o.pos.z - before.z) < 1e-4) b.strafe = -b.strafe;
+      } else if (dist > 0.1) {
+        const step = mul(norm(to), (b.state === 'patrol' ? b.speed * 0.6 : b.speed) * this.sdt);
+        const before = { ...o.pos };
+        this.moveCollide(o, step);
+        // walked into a box? side-step around it
+        if (Math.hypot(o.pos.x - before.x, o.pos.z - before.z) < len(step) * 0.3) this.moveCollide(o, mul(v3(step.z, 0, -step.x), b.strafe * 1.5));
+        if (b.state === 'chase' && dist < 0.5) b.seenAt = -10;
       }
+    }
+    o.vel = v3(0, 0, 0);
+    if (b.state === 'attack' && target && this.time >= b.nextShot) {
+      b.nextShot = this.time + b.fireRate * (0.7 + 0.6 * this.rand());
+      const eye = add(o.pos, v3(0, 0.7, 0));
+      const aim = sub(add(target.pos, v3(0, target === this.player ? 0.5 : 0.4, 0)), eye);
+      const spread = b.accuracy * (1 + len(aim) / 20);
+      const dir = norm(add(norm(aim), v3((this.rand() - 0.5) * spread, (this.rand() - 0.5) * spread, (this.rand() - 0.5) * spread)));
+      const hit = this.raycast(eye, dir, 60, [o]);
+      const end = hit ? hit.point : add(eye, mul(dir, 60));
+      const struck = hit ? this.objects.find((x) => x.health && this.isPartOf(hit.obj, x) && (x === this.player || x.bot)) : undefined;
+      this.shots.push({ from: eye, to: end, at: this.time, hit: !!struck, byBot: true });
+      if (struck) this.damage(struck, b.damage, o);
     }
   }
 
@@ -783,8 +896,11 @@ export class World3D {
     };
     set('LeftLeg', s);
     set('RightLeg', -s);
-    set('LeftArm', -s * 0.8);
-    set('RightArm', o.bot.state === 'attack' ? -80 : s * 0.8);
+    set('LeftArm', o.bot.state === 'attack' ? -70 : -s * 0.8);
+    set('RightArm', o.bot.state === 'attack' ? -85 : s * 0.8);
+    // a little bounce of the hips at every step
+    const hips = o.bones.Hips;
+    if (hips?.local) hips.local.pos = v3(0, 0.05 + Math.abs(Math.sin(o.bot.walk)) * 0.04 * Math.min(1, speed / 3), 0);
   }
 
   private seed = 12345;
@@ -825,7 +941,10 @@ export class World3D {
     for (const [name, cell] of inst.self!.fields) {
       if (cell.v !== null && cell.v !== undefined) continue;
       const t = cell.type.replace(/^UnityEngine\./, '');
-      if (t === 'Transform' && /cam|head|view|look/i.test(name)) {
+      if (t === 'Transform' && /head|neck|pivot/i.test(name)) {
+        cell.v = host('transform', this.head);
+        note(name, tr('the head (neck pivot)', 'голова (шарнир шеи)'));
+      } else if (t === 'Transform' && /cam|view|look|eye/i.test(name)) {
         cell.v = host('transform', this.camera);
         note(name, tr('the camera', 'камера'));
       } else if (t === 'Transform' && /gun|weapon|muzzle|tip/i.test(name) && this.gun) {
@@ -835,6 +954,9 @@ export class World3D {
       } else if (t === 'Transform' && /player|target/i.test(name)) {
         cell.v = host('transform', this.player);
         note(name, tr('the player', 'игрок'));
+      } else if (t === 'Health' && /player|me|my|own/i.test(name)) {
+        cell.v = host('health', this.player);
+        note(name, tr('the player\'s Health', 'Health игрока'));
       } else if (t === 'Camera') {
         cell.v = host('camera', this.camera);
         note(name, tr('the camera', 'камера'));
@@ -917,6 +1039,28 @@ export class World3D {
       for (const inst of world.insts) if (inst.obj === o && inst.cls.name === type) return inst.self;
       return null;
     };
+    /** GetComponent looks at the object; …InParent also at its parents; …InChildren also at its children. */
+    const findComponent = (how: string, type: string, o: Obj3, line: number): V => {
+      const has = (x: Obj3) => {
+        if (type === 'CharacterController') return !!x.cc;
+        if (type === 'Health' || type === 'Damageable') return !!x.health;
+        if (type === 'Rigidbody') return !!x.rb;
+        if (type === 'Camera') return x === world.camera || x === world.player;
+        if (['Transform', 'Animator', 'AudioSource', 'Collider', 'BoxCollider', 'CapsuleCollider'].includes(type)) return true;
+        return world.insts.some((i) => i.obj === x && i.cls.name === type);
+      };
+      if (how === 'GetComponentInParent') for (let p: Obj3 | undefined = o; p; p = p.parent) if (has(p)) return component(type, p, line);
+      if (how === 'GetComponentInChildren') {
+        if (has(o)) return component(type, o, line);
+        const c = world.objects.find((x) => x !== o && world.isPartOf(x, o) && has(x));
+        if (c) return component(type, c, line);
+      }
+      if (how !== 'GetComponent' && !has(o)) {
+        if (type === 'CharacterController') throw new CsError(tr('No CharacterController found here (the result is null).', 'CharacterController здесь не найден (результат null).'), line, 'runtime', 'NullReferenceException');
+        return null;
+      }
+      return component(type, o, line);
+    };
     const right = (o: Obj3) => qRotate(o.rot, v3(1, 0, 0));
     const fwd = (o: Obj3) => qRotate(o.rot, v3(0, 0, 1));
     const up = (o: Obj3) => qRotate(o.rot, v3(0, 1, 0));
@@ -998,8 +1142,8 @@ export class World3D {
           world.coroutines = world.coroutines.filter((c) => c.inst !== inst);
           return undefined;
         }
-        const gc = /^(?:GetComponent|GetComponentInChildren|GetComponentInParent)<(\w+)>$/.exec(name);
-        if (gc) return component(gc[1], me, line);
+        const gc = /^(GetComponent|GetComponentInChildren|GetComponentInParent)<(\w+)>$/.exec(name);
+        if (gc) return findComponent(gc[1], gc[2], me, line);
         if (name === 'print') {
           world.logs.push({ time: world.time, text: csText(args[0]) });
           return undefined;
@@ -1039,10 +1183,8 @@ export class World3D {
             }
             const outArg = rest.find((a) => a && typeof a === 'object' && a.k === 'host' && a.kind === 'ref');
             const dist = (rest.find((a) => typeof a === 'number') as number | undefined) ?? 1000;
-            // ignore the caster: the player's own rig (body, camera, gun) when the ray starts inside it
-            const near = Math.hypot(world.player.pos.x - origin.x, world.player.pos.z - origin.z) < 0.8 && Math.abs(world.player.pos.y - origin.y) < 1.4;
-            const ignore = near ? world.objects.filter((o) => world.isPartOf(o, world.player)) : [];
-            const hit = world.raycast(origin, dir, dist, ignore);
+            const hit = world.raycast(origin, dir, dist);
+            world.lastRay = hit ? { obj: hit.obj, point: hit.point, frame: world.frameNo } : null;
             const end = hit ? hit.point : add(origin, mul(norm(dir), Math.min(dist, 80)));
             world.shots.push({ from: origin, to: end, at: world.time, hit: !!hit, byBot: false });
             if (outArg) setRef(outArg, hit ? host('hit3', hit) : host('hit3', null));
@@ -1142,8 +1284,10 @@ export class World3D {
             if (name === 'transform') return host('transform', o);
             break;
           case 'health':
-            if (name === 'value' || name === 'current' || name === 'Health' || name === 'health') return o.health?.value ?? 0;
+            if (name === 'value' || name === 'current' || name === 'currentHealth' || name === 'Health' || name === 'health') return o.health?.value ?? 0;
             if (name === 'max' || name === 'maxHealth') return o.health?.max ?? 0;
+            if (name === 'transform') return host('transform', o);
+            if (name === 'gameObject') return host('gameObject', o);
             if (name === 'IsDead' || name === 'isDead') return (o.health?.value ?? 0) <= 0;
             break;
           case 'hit3': {
@@ -1226,10 +1370,20 @@ export class World3D {
         if ((target.kind === 'cc' && (name === 'height' || name === 'radius')) && typeof value === 'number' && o.cc) {
           if (name === 'height') {
             const old = o.cc.height;
-            o.cc.height = value;
-            o.half.y = value / 2;
-            o.pos.y -= (old - value) / 2;
-            world.camera.local!.pos.y = Math.max(0.2, value / 2 - 0.2);
+            const h = Math.max(0.6, value);
+            if (Math.abs(h - old) < 1e-6) return true;
+            const saved = { pos: { ...o.pos }, half: o.half.y };
+            o.cc.height = h;
+            o.half.y = h / 2;
+            o.pos.y -= (old - h) / 2;
+            // standing up under something low is impossible: stay crouched (like a real body)
+            if (h > old && world.solids(o).some((x) => world.overlapsPublic(o, x))) {
+              o.cc.height = old;
+              o.half.y = saved.half;
+              o.pos = saved.pos;
+              return true;
+            }
+            if (o === world.player) world.head.local!.pos.y = Math.max(0.2, h / 2 - 0.2);
           } else o.cc.radius = value;
           return true;
         }
@@ -1247,8 +1401,8 @@ export class World3D {
       method(target: HostV, name: string, args: V[], line: number): V | typeof NOT_FOUND {
         const o = target.ref as Obj3;
         const plain = name.replace(/<.*$/, '');
-        const gc = /^(?:GetComponent|GetComponentInChildren|GetComponentInParent)<(\w+)>$/.exec(name);
-        if (gc && ['gameObject', 'collider', 'transform', 'rigidbody', 'cc'].includes(target.kind)) return component(gc[1], o, line);
+        const gc = /^(GetComponent|GetComponentInChildren|GetComponentInParent)<(\w+)>$/.exec(name);
+        if (gc && ['gameObject', 'collider', 'transform', 'rigidbody', 'cc', 'camera', 'health'].includes(target.kind)) return findComponent(gc[1], gc[2], o, line);
         switch (`${target.kind}.${plain}`) {
           case 'Input.GetKey':
             return world.keyState(args[0], world.keys, world.mouseDown);
@@ -1301,7 +1455,7 @@ export class World3D {
           }
           case 'transform.LookAt': {
             const t = objOf(args[0])?.pos ?? asV3(args[0]);
-            if (t) o.rot = qLook(sub(t, o.pos));
+            if (t && len(sub(t, o.pos)) > 1e-6) o.rot = qLook(sub(t, o.pos));
             return undefined;
           }
           case 'transform.TransformDirection':
@@ -1324,12 +1478,13 @@ export class World3D {
             return undefined;
           case 'cc.Move': {
             const d = asV3(args[0]) ?? v3();
-            const before = { ...o.pos };
+            if (o.moveFrom?.frame !== world.frameNo) o.moveFrom = { frame: world.frameNo, pos: { ...o.pos } };
             const landed = world.moveCollide(o, d);
             // like Unity: grounded when the move pushed into the ground, or (moving sideways only) still standing on it
             const grounded = landed || (d.y <= 0 && world.supported(o));
             o.cc = { ...(o.cc ?? { height: 1.8, radius: 0.3 }), grounded };
-            o.vel = mul(sub(o.pos, before), 1 / Math.max(1e-6, world.sdt));
+            // velocity of the whole frame (scripts often call Move twice: walking, then gravity)
+            o.vel = mul(sub(o.pos, o.moveFrom.pos), 1 / Math.max(1e-6, world.sdt));
             return undefined;
           }
           case 'cc.SimpleMove': {
