@@ -344,3 +344,41 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
   the enemy from the side and loses; in step 5 it never writes the win message).
 * **Browser e2e `npm run e2e:workshop`: 59/59** — adds the three course cards and step 1 of the project won with a
   real held arrow key.
+
+## 12. "Shooter from zero": Unity C# learned by playing a 3D shooter (ninth iteration)
+
+* **Mini-Unity 3D engine** (`src/code/run/unity3d.ts`, pure logic, tested): Unity-style left-handed world with
+  quaternions (`Quaternion.Euler` in Unity's Z→X→Y order, `eulerAngles`, `LookRotation`, `Slerp`, `q * q`, `q * v`),
+  a player rig (body → Head pivot → Main Camera → gun), `CharacterController.Move` with axis-separated box collisions,
+  0.35 step offset, `isGrounded`, per-frame `velocity`, crouch height that cannot stand up under an obstacle,
+  `Physics.Raycast(…, out RaycastHit hit, …)` (rays starting inside a collider ignore it, like Unity), `Health`,
+  headshots, armour, teams, `GetComponent`/`InParent`/`InChildren`, `transform.Find`, auto-Inspector for camera/head/
+  gun/texts. Built-in bots: patrol → see (field of view + line of sight) → react after a short delay → attack with
+  spread, keep distance and strafe → chase where last seen; allies fight the red team; hit flinch, death fall,
+  procedural walk. The interpreter gained `ref`/`out` arguments for engine functions, quaternion arithmetic hooks and
+  more `Vector3`/`Mathf` functions (`Cross`, `Dot`, `Angle`, `SmoothDamp`, `LerpAngle`, `PerlinNoise`…).
+* **Campaign** (`src/code/run/shooter.ts`): 25 missions in 5 chapters, each = a radio briefing, 1–5 blanks `___`,
+  in-game goals, hints, "the same in real Unity". Chapters: waking up (basics, movement, mouse look,
+  CharacterController, gravity/jump, sprint/crouch), shooting range (raycast, damage, magazine + coroutine reload,
+  automatic fire, shotgun loop, weapon classes), the enemy (patrol, eyes, state machine that shoots), atmosphere
+  (inertia, head bob, FOV kick, leaning, weapon sway/recoil, procedural bot walk), operation (a full match with a
+  GameManager on the map "Dusty Yard", 3 vs 5). Free play opens all 8 scripts of the finished game for editing.
+* **Unit tests: 415, all passing.** `tests/unity3d.test.ts` (10): quaternion conventions, walking, mouse look clamped
+  at ±80°, jumping, walls, shooting a bot down, bots shooting back, patrol legs, a null-hit explanation, an endless
+  loop stopped. `tests/shooter.test.ts` (60): in RU and EN, every mission's finished script compiles, passes the
+  live linter and — played by its own "show me" input with real key/button press detection between frames —
+  completes **every** goal; plus 7 checks that wrong code does **not** pass (Translate instead of `Move` cannot climb
+  stairs, no sprint misses the timer, no crouch is stopped by the pipe, one pellet cannot break armour, the rifle
+  cannot take the far armoured target, a bot that sees all around notices you, legs swinging together are not "in
+  turn"); free play loads all scripts together. `tests/code-reader.test.ts`: every line of all 25 missions and the
+  official scripts has a plain translation (one-line `if … → action`, `else if`, constructors and `A && B` with an
+  input check are now read as whole sentences).
+* **Browser e2e `npx tsx scripts/e2e-shooter.ts`: 28/28** (Chromium, real WebGL via SwiftShader, every non-local
+  request blocked): the welcome hero card; mission 1 starts on a soft light screen (measured pixel rgb 221,225,230 —
+  light but not white); upload is refused while `___` is left; typing the answer into the highlighted blank wins and
+  the `Debug.Log` arrives on the in-game radio; mission 3 is won by holding the real W key; missions 5, 8, 10, 16, 18,
+  22, 24 complete in the real game loop via "show me"; a syntax mistake is explained with its line; the 5-lines reader
+  opens; the final match is won (≈13 s); free play shows the timer and "Enemies: 5" and moves with the keyboard; done
+  missions are remembered; tablet width has no sideways scroll; no page errors. Screenshots: `verification/shooter/`.
+* Honest limits: boxes only (no rotated colliders or slopes), humanoids made of boxes, no prefabs/`Instantiate` in 3D,
+  no NavMesh (bots side-step around crates instead), `Health` is built in (in real Unity it is a small script).

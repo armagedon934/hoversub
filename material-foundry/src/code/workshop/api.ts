@@ -168,6 +168,15 @@ const STATICS: Record<string, ApiItem[]> = {
     I('GetString', 'method', '(string key, string default)', 'Reads saved text.', 'Читает сохранённый текст.', 'GetString("${name}", "")'),
     I('Save', 'method', '()', 'Writes everything to disk now.', 'Записывает всё на диск прямо сейчас.', 'Save();'),
   ],
+  Physics: [
+    I('Raycast', 'method', '(Vector3 origin, Vector3 dir, out RaycastHit hit, float distance)', 'Shoots an invisible ray. true = it hit something; "hit" then tells what, where and how far. This is how shots work in shooters.', 'Пускает невидимый луч. true — во что-то попал; тогда «hit» скажет, во что, где и как далеко. Так устроены выстрелы в шутерах.', 'Raycast(${cam.position}, ${cam.forward}, out RaycastHit hit, ${100f})'),
+    I('gravity', 'property', 'Vector3', 'The gravity of the world (0, -9.81, 0).', 'Гравитация мира (0, -9.81, 0).'),
+  ],
+  Cursor: [
+    I('lockState', 'property', 'CursorLockMode', 'Locked = the cursor is hidden and stays in the centre (first-person view).', 'Locked — курсор спрятан и держится в центре (вид от первого лица).', 'lockState = CursorLockMode.Locked;'),
+    I('visible', 'property', 'bool', 'Show or hide the mouse cursor.', 'Показать или спрятать курсор мыши.'),
+  ],
+  CursorLockMode: [I('Locked', 'enum', 'CursorLockMode', 'Cursor hidden and locked in the centre.', 'Курсор спрятан и закреплён в центре.'), I('None', 'enum', 'CursorLockMode', 'Normal free cursor.', 'Обычный свободный курсор.'), I('Confined', 'enum', 'CursorLockMode', 'The cursor cannot leave the window.', 'Курсор не выходит за окно.')],
   Physics2D: [
     I('Raycast', 'method', '(Vector2 origin, Vector2 dir, float distance)', 'Shoots an invisible ray and tells what it hits. Used for "am I on the ground?".', 'Пускает невидимый луч и говорит, во что он попал. Используется для «стою ли я на земле?».', 'Raycast(transform.position, Vector2.down, ${1.1f})'),
     I('OverlapCircle', 'method', '(Vector2 point, float radius, int layerMask)', 'Is there any collider inside this circle?', 'Есть ли какой-то коллайдер в этом круге?', 'OverlapCircle(${groundCheck.position}, ${0.2f}, ${groundLayer})'),
@@ -257,6 +266,33 @@ const VECTOR_MEMBERS: ApiItem[] = [
   I('magnitude', 'property', 'float', 'Length of the vector (for velocity: the speed).', 'Длина вектора (для скорости — сама скорость).'),
 ];
 
+const CHARACTER_CONTROLLER: ApiItem[] = [
+  I('Move', 'method', '(Vector3 motion)', 'Moves the body by this much, with collisions: walls stop it, small steps are climbed. Multiply by Time.deltaTime.', 'Двигает тело на столько, со столкновениями: стены держат, ступеньки преодолеваются. Умножай на Time.deltaTime.', 'Move(${move} * ${speed} * Time.deltaTime);'),
+  I('isGrounded', 'property', 'bool', 'true when the body stands on something (after the last Move).', 'true, когда тело на чём-то стоит (после последнего Move).'),
+  I('height', 'property', 'float', 'The height of the body: 1.8 standing, about 1 crouched.', 'Рост тела: 1.8 стоя, около 1 пригнувшись.'),
+  I('radius', 'property', 'float', 'How wide the body is.', 'Насколько тело широкое.'),
+  I('velocity', 'property', 'Vector3', 'How fast the body moved during the last frame.', 'Как быстро тело двигалось за последний кадр.'),
+  I('SimpleMove', 'method', '(Vector3 speed)', 'Moves with gravity added automatically (no jumping).', 'Двигает и сам добавляет гравитацию (без прыжков).', 'SimpleMove(${move} * ${speed});'),
+];
+const RAYCAST_HIT: ApiItem[] = [
+  I('collider', 'property', 'Collider', 'What the ray hit. hit.collider.GetComponent<…>() takes a part of it.', 'Во что попал луч. hit.collider.GetComponent<…>() — взять у него деталь.'),
+  I('point', 'property', 'Vector3', 'The exact point of the hit (for sparks and holes).', 'Точная точка попадания (для искр и дырок).'),
+  I('normal', 'property', 'Vector3', 'Which way the hit surface faces.', 'Куда смотрит поверхность в месте попадания.'),
+  I('distance', 'property', 'float', 'How far the hit is.', 'Как далеко попадание.'),
+  I('transform', 'property', 'Transform', 'The Transform of what was hit.', 'Transform того, во что попали.'),
+];
+const CAMERA: ApiItem[] = [
+  I('fieldOfView', 'property', 'float', 'How wide the camera sees (degrees). Wider when sprinting feels fast.', 'Насколько широко видит камера (градусы). Шире на бегу — ощущение скорости.'),
+  I('transform', 'property', 'Transform', 'The position and rotation of the camera.', 'Положение и поворот камеры.'),
+  I('ScreenPointToRay', 'method', '(Vector3 screenPoint)', 'A ray from the camera through a point of the screen.', 'Луч из камеры через точку экрана.', 'ScreenPointToRay(Input.mousePosition)'),
+];
+const HEALTH: ApiItem[] = [
+  I('TakeDamage', 'method', '(int amount)', 'Take away health (the Health part of targets and bots in the Shooter).', 'Отнять здоровье (деталь Health мишеней и ботов в Шутере).', 'TakeDamage(${damage});'),
+  I('Heal', 'method', '(int amount)', 'Give health back.', 'Вернуть здоровье.', 'Heal(${10});'),
+  I('currentHealth', 'property', 'int', 'How much health is left.', 'Сколько здоровья осталось.'),
+  I('maxHealth', 'property', 'int', 'Full health.', 'Полное здоровье.'),
+];
+
 /** Types of well-known variables, so "rb." or "other." suggest the right members. */
 const TYPE_MEMBERS: Record<string, ApiItem[]> = {
   Transform: TRANSFORM,
@@ -272,6 +308,10 @@ const TYPE_MEMBERS: Record<string, ApiItem[]> = {
   string: STRING_MEMBERS,
   Vector2: VECTOR_MEMBERS,
   Vector3: VECTOR_MEMBERS,
+  CharacterController: CHARACTER_CONTROLLER,
+  RaycastHit: RAYCAST_HIT,
+  Camera: CAMERA,
+  Health: HEALTH,
 };
 
 /** Members for "<receiver>." in C#, using variable declarations found in the text. */
@@ -292,6 +332,8 @@ export function csMembers(receiver: string, doc: string): ApiItem[] {
   }
   // Common names when the type is not visible.
   if (/^(rb|body|rigidbody|rb2d)$/i.test(name)) return /Rigidbody\b(?!2D)/.test(doc) && !/Rigidbody2D/.test(doc) ? RIGIDBODY : RIGIDBODY2D;
+  if (/^hit$/i.test(name) && /RaycastHit/.test(doc)) return RAYCAST_HIT;
+  if (/^(controller|cc|characterController)$/i.test(name)) return CHARACTER_CONTROLLER;
   if (/^(other|col|collider|collision|hit)$/i.test(name)) return COLLIDER;
   return [];
 }

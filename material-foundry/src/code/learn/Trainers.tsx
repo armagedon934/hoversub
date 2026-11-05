@@ -13,6 +13,8 @@ import { useNotebook } from '../memory/notebook';
 import { Speak } from '../memory/MemoryViews';
 import { TraceView } from '../workshop/TraceView';
 import { useUnityProgress } from '../workshop/MiniUnity';
+import { useShooter } from '../workshop/shooterProgress';
+import { MISSION_IDS } from '../run/shooter';
 import { LEVELS } from '../run/levels';
 import { PROJECT } from '../run/project';
 import { ACHIEVEMENTS, DAILY_GOAL_XP, useTrainers, xpToday, type Facts } from './achievements';
@@ -59,6 +61,7 @@ function useFacts(): Facts {
   const xp = useLearn((s) => s.xp);
   const streak = useLearn((s) => s.streak);
   const unity = useUnityProgress((s) => s.done);
+  const shooter = useShooter((s) => s.done);
   const cards = useReview((s) => s.cards.length);
   const notes = useNotebook((s) => s.notes.length);
   const t = useTrainers();
@@ -82,6 +85,8 @@ function useFacts(): Facts {
     lifecycleBest: t.lifecycleBest,
     cheatOpened: t.cheatOpened,
     goalDays: Object.values(t.days).filter((v) => v >= DAILY_GOAL_XP).length,
+    shooterDone: shooter.filter((id) => MISSION_IDS.has(id)).length,
+    shooterTotal: MISSION_IDS.size,
   };
 }
 

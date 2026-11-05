@@ -105,6 +105,8 @@ export interface Facts {
   lifecycleBest: number;
   cheatOpened: boolean;
   goalDays: number;
+  shooterDone: number;
+  shooterTotal: number;
 }
 
 export interface Achievement {
@@ -128,6 +130,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'hello-unity', icon: '👋', title: T('Hello, Unity', 'Привет, Unity'), how: T('Win your first Mini-Unity level.', 'Пройди первый уровень Мини-Unity.'), done: (f) => f.unityLevels >= 1, progress: (f) => p(f.unityLevels, 1) },
   { id: 'unity-five', icon: '🕹', title: T('Script writer', 'Сценарист'), how: T('Win 5 Mini-Unity levels.', 'Пройди 5 уровней Мини-Unity.'), done: (f) => f.unityLevels >= 5, progress: (f) => p(f.unityLevels, 5) },
   { id: 'unity-all', icon: '🏆', title: T('Mini-Unity master', 'Мастер Мини-Unity'), how: T('Win every Mini-Unity level.', 'Пройди все уровни Мини-Unity.'), done: (f) => f.unityLevels >= f.unityTotal, progress: (f) => p(f.unityLevels, f.unityTotal) },
+  { id: 'shooter-online', icon: '📻', title: T('Online', 'На связи'), how: T('Finish the first mission of "Shooter from zero".', 'Пройди первую миссию «Шутера с нуля».'), done: (f) => f.shooterDone >= 1, progress: (f) => p(f.shooterDone, 1) },
+  { id: 'shooter-half', icon: '🎯', title: T('Half a suit', 'Полкостюма'), how: T('Finish 13 missions of "Shooter from zero".', 'Пройди 13 миссий «Шутера с нуля».'), done: (f) => f.shooterDone >= 13, progress: (f) => p(f.shooterDone, 13) },
+  { id: 'shooter-all', icon: '🏅', title: T('Mission accomplished', 'Операция выполнена'), how: T('Finish all missions of "Shooter from zero" — your own shooter with bots.', 'Пройди все миссии «Шутера с нуля» — свой шутер с ботами.'), done: (f) => f.shooterDone >= f.shooterTotal, progress: (f) => p(f.shooterDone, f.shooterTotal) },
   { id: 'bug-5', icon: '🐞', title: T('Bug hunter', 'Охотник на баги'), how: T('Find 5 bugs in "Find the bug".', 'Найди 5 багов в «Найди баг».'), done: (f) => f.bugs >= 5, progress: (f) => p(f.bugs, 5) },
   { id: 'bug-all', icon: '🦸', title: T('Debugger', 'Отладчик'), how: T('Find every bug.', 'Найди все баги.'), done: (f) => f.bugs >= f.bugsTotal, progress: (f) => p(f.bugs, f.bugsTotal) },
   { id: 'predict-10', icon: '🔮', title: T('Code reader', 'Читаю код'), how: T('Predict 10 outputs correctly.', 'Правильно предскажи 10 выводов.'), done: (f) => f.predictRight >= 10, progress: (f) => p(f.predictRight, 10) },

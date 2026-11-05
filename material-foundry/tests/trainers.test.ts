@@ -71,9 +71,9 @@ describe('Unity facts and achievements', () => {
   });
 
   it('achievements unlock from progress', () => {
-    const zero: Facts = { lessonsDone: 0, courseDone: 0, advancedDone: 0, projectDone: 0, projectTotal: 5, unityLevels: 0, unityTotal: 14, streak: 0, xp: 0, reviewCards: 0, notes: 0, bugs: 0, bugsTotal: 26, predictRight: 0, predictBestStreak: 0, lifecycleBest: 0, cheatOpened: false, goalDays: 0 };
+    const zero: Facts = { lessonsDone: 0, courseDone: 0, advancedDone: 0, projectDone: 0, projectTotal: 5, unityLevels: 0, unityTotal: 14, streak: 0, xp: 0, reviewCards: 0, notes: 0, bugs: 0, bugsTotal: 26, predictRight: 0, predictBestStreak: 0, lifecycleBest: 0, cheatOpened: false, goalDays: 0, shooterDone: 0, shooterTotal: 25 };
     expect(ACHIEVEMENTS.filter((a) => a.done(zero))).toEqual([]);
-    const all: Facts = { ...zero, lessonsDone: 8, courseDone: 16, advancedDone: 9, projectDone: 5, unityLevels: 14, streak: 7, xp: 900, reviewCards: 30, notes: 6, bugs: 26, predictRight: 20, predictBestStreak: 6, lifecycleBest: 8, cheatOpened: true, goalDays: 3 };
+    const all: Facts = { ...zero, lessonsDone: 8, courseDone: 16, advancedDone: 9, projectDone: 5, unityLevels: 14, streak: 7, xp: 900, reviewCards: 30, notes: 6, bugs: 26, predictRight: 20, predictBestStreak: 6, lifecycleBest: 8, cheatOpened: true, goalDays: 3, shooterDone: 25 };
     expect(ACHIEVEMENTS.every((a) => a.done(all))).toBe(true);
     for (const a of ACHIEVEMENTS) expect(a.progress(zero)).toBeLessThan(1);
   });

@@ -8,7 +8,20 @@ the texture studio, which is unchanged.
 Everything runs in your browser on your own computer. There is no account, no internet connection, no cloud AI
 service and no API key involved. (An AI model running on your own computer can optionally be connected.)
 
-## New in this version (fifth iteration: write, run, play)
+## New: "Shooter from zero" — learn Unity C# by playing (ninth iteration)
+
+* The main entry on the start screen. Code on the left, a **3D first-person game** on the right (three.js, loaded
+  only when opened). 25 missions in 5 chapters bring a soldier's "suit" back to life: comms, legs, eyes, body,
+  jump, sprint/crouch → raycast weapon, damage, magazine, automatic fire, shotgun, weapon classes → bot patrol,
+  bot eyes, bot brain (state machine) → atmosphere (inertia, head bob, FOV kick, leaning, weapon sway/recoil,
+  procedural walking) → a full match on the map "Dusty Yard" (you + 2 allies vs 5 bots).
+* Every mission has 1–5 highlighted blanks `___`, a radio briefing, new words with plain explanations, progressive
+  hints, "show me how to play" (the game plays itself with *your* code), the 5-lines reader, and "the same in real
+  Unity". Goals are checked inside the game. Mission 1 starts on a soft light-grey screen.
+* Free play opens the whole finished game with all 8 scripts editable.
+* Details and the test evidence: `docs/RU_GUIDE.md` §4½ and `VERIFICATION.md` §12.
+
+## Earlier: fifth iteration (write, run, play)
 
 * **Workshop** — a code editor (CodeMirror 6) with three layers of help: (1) suggestions with a plain-language
   explanation of every word, Unity-aware after a dot (`transform.`, `Input.`, `rb.` → `AddForce`… using the
