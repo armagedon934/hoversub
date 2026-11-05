@@ -154,6 +154,22 @@ async function main() {
     await page.waitForFunction(() => document.querySelector('[data-testid="ws-editor"] .cm-content')?.textContent?.includes('void Update()'));
     check('One-click fix renames update → Update', true);
 
+    // Read it simply: map → 5 lines with plain words, the problem is shown in red.
+    await setEditor(page, 'ws-editor', 'using UnityEngine;\n\npublic class Player : MonoBehaviour\n{\n    public float speed = 5f;\n\n    void Update()\n    {\n        float x = Input.GetAxis("Horizontal");\n        transform.position.x += x;\n    }\n}\n');
+    await page.waitForTimeout(1200);
+    await page.getByTestId('ws-read').click();
+    await page.getByTestId('code-reader').waitFor();
+    await page.getByTestId('reader-read').click();
+    const firstPage = (await page.getByTestId('reader-lines').textContent()) ?? '';
+    await page.getByTestId('reader-next').click();
+    const secondPage = (await page.getByTestId('reader-lines').textContent()) ?? '';
+    check('Read simply: 5 lines at a time with plain Russian under each', (await page.getByTestId('reader-line').count()) <= 5 && /Подключаем Unity/.test(firstPage) && /влево\/вправо/.test(firstPage + secondPage), secondPage.slice(0, 80));
+    check('Read simply: the problem line is marked red', /🔴/.test(secondPage) || /🔴/.test((await page.getByTestId('reader-light').textContent()) ?? ''));
+    await shot(page, '04b-read-simply');
+    await page.getByTestId('reader-map').click();
+    check('Read simply: the script map has a few named parts', (await page.getByTestId('reader-block').count()) >= 3);
+    await page.getByTestId('reader-close').click();
+
     // "I want…" recipes.
     await page.getByTestId('ws-want').click();
     await page.getByTestId('ws-recipe-search').fill('хочу чтобы персонаж прыгал');

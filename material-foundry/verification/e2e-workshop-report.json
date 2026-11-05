@@ -1,6 +1,6 @@
 {
-  "when": "2026-11-05T02:19:37.980Z",
-  "passed": 59,
+  "when": "2026-11-05T02:31:20.022Z",
+  "passed": 62,
   "failed": 0,
   "dialogs": 0,
   "checks": [
@@ -56,6 +56,21 @@
     },
     {
       "name": "One-click fix renames update → Update",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Read simply: 5 lines at a time with plain Russian under each",
+      "ok": true,
+      "detail": "10transform.position.x += x;Прибавляем x к transform.position.x.🔴 Ошибка CS1612"
+    },
+    {
+      "name": "Read simply: the problem line is marked red",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Read simply: the script map has a few named parts",
       "ok": true,
       "detail": ""
     },

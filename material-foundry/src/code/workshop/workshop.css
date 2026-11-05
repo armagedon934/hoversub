@@ -1627,3 +1627,205 @@
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+
+/* ---------------------------------------------------------------- code reader */
+
+.rd-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 12, 16, 0.55);
+}
+.rd {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 18px 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  font-size: var(--cm-font, 16px);
+}
+.rd-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.rd-light {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+}
+.rd-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.rd-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 0;
+  background: var(--panel);
+  color: var(--text);
+}
+.rd-switch button.on {
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+.rd-map {
+  display: grid;
+  gap: 8px;
+}
+.rd-block {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1em;
+}
+.rd-block:hover {
+  border-color: var(--accent);
+}
+.rd-block-icon {
+  font-size: 24px;
+}
+.rd-block-text {
+  display: flex;
+  flex-direction: column;
+}
+.role-using {
+  border-left-color: #8a909a !important;
+}
+.role-class {
+  border-left-color: #9b6bdf !important;
+}
+.role-fields {
+  border-left-color: #e0a24a !important;
+}
+.role-start {
+  border-left-color: #3ecf8e !important;
+}
+.role-update {
+  border-left-color: #4f9cff !important;
+}
+.role-physics {
+  border-left-color: #22d3ee !important;
+}
+.role-touch {
+  border-left-color: #f472b6 !important;
+}
+.role-coroutine {
+  border-left-color: #a78bfa !important;
+}
+.role-method,
+.role-top {
+  border-left-color: #94a3b8 !important;
+}
+.rd-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.rd-dot.red {
+  background: var(--danger, #e5484d);
+}
+.rd-where {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  border-left: 6px solid var(--line);
+  margin-bottom: 10px;
+}
+.rd-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.rd-lines li {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.rd-lines li.bad {
+  border-color: var(--danger, #e5484d);
+}
+.rd-lines li.warn {
+  border-color: var(--warn, #d9a400);
+}
+.rd-n {
+  color: var(--muted);
+  font-family: var(--mono);
+  text-align: right;
+}
+.rd-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rd-pair code {
+  font-family: var(--mono);
+  font-size: 0.95em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--tk-function);
+}
+.rd-say {
+  font-size: 1.05em;
+  line-height: 1.5;
+}
+.rd-problem {
+  font-size: 0.92em;
+}
+.rd-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.rd-progress {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.rd-progress span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.rd-progress span.done {
+  background: var(--ok, #3ecf8e);
+}
+.rd-progress span.on {
+  background: var(--accent);
+}
+.mu-read {
+  align-self: flex-start;
+}

@@ -19,6 +19,7 @@ import { useResume } from '../memory/resume';
 import { useCode } from '../ui/store';
 import { createEditor, type WorkshopEditor } from './editor';
 import { useWorkshop } from './store';
+import { ReaderModal } from '../learn/CodeReader';
 import { parseCSharp, syntaxProblems } from '../run/runner';
 
 // ------------------------------------------------------------------------------------ progress
@@ -270,6 +271,7 @@ export function MiniUnity() {
   const [insp, setInsp] = useState<{ name: string; value: string }[]>([]);
   const [hint, setHint] = useState(false);
   const [tries, setTries] = useState(0);
+  const [reading, setReading] = useState(false);
   const raf = useRef(0);
 
   ensureMainThreadTreeSitter();
@@ -524,7 +526,11 @@ export function MiniUnity() {
               </button>
             ) : null}
           </div>
+          <button className="btn small mu-read" onClick={() => setReading(true)} data-testid="mu-read">
+            📖 {tr('Read the code simply', 'Читать код по-простому')}
+          </button>
           <div className="mu-editor" ref={hostRef} data-testid="mu-editor" />
+          {reading ? <ReaderModal code={codeRef.current} title={pick(level.title)} problems={err && err.line >= 0 ? [{ line: err.line, severity: 'error', message: err.message }] : []} onClose={() => setReading(false)} /> : null}
         </section>
 
         <section className="mu-right">

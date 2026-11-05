@@ -23,6 +23,7 @@ import { RECIPES, recipeFileName, recipeLineNotes, recipeWithComments, searchRec
 import { EXT, langOfName, template, useWorkshop, type WsFile } from './store';
 import { TraceView } from './TraceView';
 import { useNotebook } from '../memory/notebook';
+import { ReaderModal } from '../learn/CodeReader';
 
 const LANG_LABEL: Record<WsFile['lang'], string> = { cs: 'C#', py: 'Python', js: 'JavaScript', cpp: 'C++', c: 'C' };
 const LANGUAGE_ID: Record<WsFile['lang'], string> = { cs: 'csharp', py: 'python', js: 'javascript', cpp: 'cpp', c: 'c' };
@@ -102,6 +103,7 @@ function ProblemsList({ problems, onGo, onFix }: { problems: LiveProblem[]; onGo
 
 function RecipeCard({ r, onInsert, onNewFile }: { r: Recipe; onInsert: (code: string) => void; onNewFile: (r: Recipe, code: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [reading, setReading] = useState(false);
   const [comments, setComments] = useState(true);
   const notes = useMemo(() => recipeLineNotes(r), [r]);
   const code = comments ? recipeWithComments(r) : r.code;
@@ -132,6 +134,10 @@ function RecipeCard({ r, onInsert, onNewFile }: { r: Recipe; onInsert: (code: st
               </div>
             ))}
           </div>
+          <button className="btn small" onClick={() => setReading(true)} data-testid="ws-recipe-read">
+            📖 {tr('Read it simply, 5 lines at a time', 'Читать по-простому, по 5 строк')}
+          </button>
+          {reading ? <ReaderModal code={r.code} title={pick(r.title)} onClose={() => setReading(false)} /> : null}
           <label className="ws-check">
             <input type="checkbox" checked={comments} onChange={(e) => setComments(e.target.checked)} /> {tr('Insert with explanations as comments', 'Вставить с пояснениями в комментариях')}
           </label>
@@ -289,6 +295,7 @@ export function Workshop() {
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiFixText, setAiFixText] = useState<string | null>(null);
   const [showInput, setShowInput] = useState(!!ws.input);
+  const [reading, setReading] = useState(false);
   const session = useRef<CSharpSession | null>(null);
   const answers = useRef<string[]>([]);
 
@@ -554,6 +561,9 @@ export function Workshop() {
         <button className="btn primary big" onClick={() => void run()} disabled={running} data-testid="ws-run" title="Ctrl+Enter">
           {file.lang === 'cs' && isUnity(file.text) ? <Gamepad2 size={17} /> : <Play size={17} />} {file.lang === 'cs' && isUnity(file.text) ? tr('Play in Mini-Unity', 'Играть в Мини-Unity') : tr('Run', 'Запустить')}
         </button>
+        <button className="btn" onClick={() => setReading(true)} data-testid="ws-read" title={tr('The script as a short map and 5 lines at a time, with plain words', 'Скрипт как короткая карта и по 5 строк, простыми словами')}>
+          📖 {tr('Read simply', 'Читать просто')}
+        </button>
         <button className={`btn${side === 'recipes' ? ' on' : ''}`} onClick={() => setSide('recipes')} data-testid="ws-want">
           <Search size={15} /> {tr('I want…', 'Хочу…')}
         </button>
@@ -710,6 +720,7 @@ export function Workshop() {
           )}
         </aside>
       </div>
+      {reading ? <ReaderModal code={file.text} title={file.name} problems={problems.map((p) => ({ line: p.line, severity: p.severity, message: p.message }))} onClose={() => setReading(false)} /> : null}
       <p className="ws-footer muted small">
         {tr(`Files are kept in this browser (${ws.files.length}). "Download" saves a .${EXT[file.lang]} copy. Nothing is sent anywhere.`, `Файлы хранятся в этом браузере (${ws.files.length}). «Скачать» сохраняет копию .${EXT[file.lang]}. Ничего никуда не отправляется.`)}
       </p>

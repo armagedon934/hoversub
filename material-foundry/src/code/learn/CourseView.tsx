@@ -16,6 +16,7 @@ import { createEditor, type WorkshopEditor } from '../workshop/editor';
 import { TraceView } from '../workshop/TraceView';
 import { useWorkshop } from '../workshop/store';
 import { COURSES, type Course, type CourseLesson, type Quiz } from './courses';
+import { ReaderModal } from './CodeReader';
 import { useLearn } from './progress';
 
 type Stage = 'read' | 'watch' | 'quiz' | 'task' | 'done';
@@ -219,6 +220,7 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
   const [qi, setQi] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [trace, setTrace] = useState<{ steps: TraceStep[]; output: string[] } | null>(null);
+  const [reading, setReading] = useState(false);
   const addXp = useLearn((s) => s.addXp);
   const finish = useLearn((s) => s.finishCourseLesson);
   useEffect(() => {
@@ -270,6 +272,10 @@ function CourseLessonPlayer({ course, lesson, onExit, onNext }: { course: Course
           ))}
           <Speak text={lesson.intro.map(pick).join(' ')} />
           <NotedCode code={lesson.code} notes={lesson.notes} />
+          <button className="btn small" onClick={() => setReading(true)} data-testid="course-read-simply">
+            📖 {tr('Read it simply, 5 lines at a time', 'Читать по-простому, по 5 строк')}
+          </button>
+          {reading ? <ReaderModal code={lesson.code} title={pick(lesson.title)} onClose={() => setReading(false)} /> : null}
           <p className="ln-note">
             🎮 <b>{tr('In real games:', 'В настоящих играх:')}</b> {pick(lesson.inGame)}
           </p>
