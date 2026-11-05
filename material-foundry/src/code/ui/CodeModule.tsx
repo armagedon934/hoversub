@@ -6,7 +6,7 @@
 // A one-line helper on top always says what to do next. Opening files only reads them.
 
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { Bot, Brain, BookOpenText, Code2, Crosshair, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
+import { AudioLines, Bot, Brain, BookOpenText, Code2, Crosshair, Dumbbell, FileDiff, FolderOpen, Gamepad2, GraduationCap, Hammer, Home, Languages, Map as MapIcon, Minus, Network, NotebookPen, Plus, Rows3, Search, Settings, ShieldCheck, Sparkles, Timer, Type, X } from 'lucide-react';
 import '@fontsource/pt-sans/cyrillic-400.css';
 import '@fontsource/pt-sans/cyrillic-700.css';
 import '@fontsource/pt-sans/latin-400.css';
@@ -41,6 +41,7 @@ import './code.css';
 
 // The 3D game (three.js) loads only when it is opened.
 const Shooter = lazy(() => import('../workshop/Shooter'));
+const SoundLab = lazy(() => import('../sound/SoundLab'));
 import '../workshop/workshop.css';
 
 function shortcuts(): [string, string][] {
@@ -447,7 +448,7 @@ export default function CodeModule() {
         } else s.toast('info', undo ? tr('Nothing to undo.', 'Нечего отменять.') : tr('Nothing to redo.', 'Нечего возвращать.'));
         return;
       }
-      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'errors') return;
+      if (e.altKey || s.view === 'learn' || s.view === 'workshop' || s.view === 'unity' || s.view === 'shooter' || s.view === 'sound' || s.view === 'errors') return;
       if (/^[1-5]$/.test(e.key)) s.setLevel(Number(e.key) as 1 | 2 | 3 | 4 | 5);
       else if (e.key === '?') s.simpler();
       else if (e.key === 'e') s.toggleExample();
@@ -475,6 +476,7 @@ export default function CodeModule() {
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
         { v: 'shooter', label: tr('Shooter 3D', 'Шутер 3D'), icon: <Crosshair size={16} /> },
         { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
+        { v: 'sound', label: tr('Sound', 'Звук'), icon: <AudioLines size={16} /> },
         { v: 'overview', label: tr('About the project', 'О проекте'), icon: <BookOpenText size={16} /> },
         { v: 'code', label: tr('Code', 'Код'), icon: <Code2 size={16} /> },
         { v: 'map', label: tr('Map', 'Карта'), icon: <Network size={16} /> },
@@ -488,6 +490,7 @@ export default function CodeModule() {
         { v: 'workshop', label: tr('Workshop', 'Мастерская'), icon: <Hammer size={16} /> },
         { v: 'shooter', label: tr('Shooter 3D', 'Шутер 3D'), icon: <Crosshair size={16} /> },
         { v: 'unity', label: tr('Mini-Unity', 'Мини-Unity'), icon: <Sparkles size={16} /> },
+        { v: 'sound', label: tr('Sound', 'Звук'), icon: <AudioLines size={16} /> },
         { v: 'errors', label: tr('Errors', 'Ошибки'), icon: <Languages size={16} /> },
         { v: 'glossary', label: tr('Dictionary', 'Словарь'), icon: <MapIcon size={16} /> },
       ];
@@ -558,6 +561,10 @@ export default function CodeModule() {
             <Workshop />
           ) : shownView === 'unity' ? (
             <MiniUnity />
+          ) : shownView === 'sound' ? (
+            <Suspense fallback={<div className="muted" style={{ padding: 20 }}>…</div>}>
+              <SoundLab />
+            </Suspense>
           ) : shownView === 'shooter' ? (
             <Suspense fallback={<div className="muted" style={{ padding: 20 }}>{tr('Loading the 3D game…', 'Загружаю 3D-игру…')}</div>}>
               <Shooter />

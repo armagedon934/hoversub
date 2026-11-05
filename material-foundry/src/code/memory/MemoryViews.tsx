@@ -207,7 +207,8 @@ export function ResumeCard() {
   if (!last && !due) return null;
   const go = () => {
     if (!last) return;
-    if (last.kind === 'lesson' && last.extra?.startsWith('course:')) {
+    if (last.kind === 'lesson' && last.extra === 'sound') setView('sound');
+    else if (last.kind === 'lesson' && last.extra?.startsWith('course:')) {
       courseRequest.value = { course: last.extra.slice(7), lesson: last.id };
       useLearnHub.set('courses');
       setView('learn');

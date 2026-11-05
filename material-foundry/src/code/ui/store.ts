@@ -16,7 +16,7 @@ import { getCodeClient } from '../worker/client';
 import type { LoadResult } from './fileLoading';
 import { applyTheme, isThemeId, themeById, type ThemeId } from './themes';
 
-export type CodeView = 'welcome' | 'learn' | 'workshop' | 'unity' | 'shooter' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
+export type CodeView = 'welcome' | 'learn' | 'workshop' | 'unity' | 'shooter' | 'sound' | 'errors' | 'code' | 'overview' | 'map' | 'changes' | 'glossary';
 export type DiagramKind = 'auto' | 'flow' | 'connections' | 'data' | 'files';
 
 export interface Prefs {

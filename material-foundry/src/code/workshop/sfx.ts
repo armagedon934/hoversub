@@ -3,6 +3,8 @@
 // on purpose (calm for sensitive ears) and can be turned off; the choice is remembered.
 
 import { loudness } from '../ui/uiSound';
+import { getCustomSound, type GameSoundSlot } from '../sound/customSounds';
+import { SAMPLE_RATE } from '../sound/synth';
 
 let ctx: AudioContext | null = null;
 /** Settings → Sounds → "Game sounds" (1 = the default level). */
@@ -79,13 +81,30 @@ function tone(freq: number, dur: number, vol: number, type: OscillatorType = 'si
   o.stop(t + dur + 0.02);
 }
 
+/** A sound made in the Sound Lab, if the player chose one for this slot. */
+function custom(slot: GameSoundSlot, vol = 0.8): boolean {
+  const s = getCustomSound(slot);
+  const a = s && audio();
+  if (!s || !a) return false;
+  const b = a.createBuffer(1, s.length, SAMPLE_RATE);
+  b.getChannelData(0).set(s);
+  const src = a.createBufferSource();
+  src.buffer = b;
+  const g = a.createGain();
+  g.gain.value = vol * gameVol();
+  src.connect(g).connect(a.destination);
+  src.start();
+  return true;
+}
+
 export const sfx = {
   shot: () => {
+    if (custom('shot')) return;
     burst(2400, 0.12, 0.16);
     tone(110, 0.09, 0.06, 'triangle');
   },
   enemyShot: (distance: number) => burst(900, 0.18, Math.max(0.015, 0.07 - distance * 0.002)),
-  hit: () => tone(1500, 0.05, 0.05, 'square'),
+  hit: () => void (custom('hit', 0.6) || tone(1500, 0.05, 0.05, 'square')),
   kill: () => {
     tone(880, 0.08, 0.05, 'triangle');
     tone(1320, 0.1, 0.04, 'triangle', 0.07);

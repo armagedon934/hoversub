@@ -271,3 +271,26 @@ export function stop(): void {
   }
   current = null;
 }
+
+/**
+ * Twice as slow, same pitch, for any recorded sound (overlap-add of short windows): used for
+ * sounds made by scripts, where the sound cannot simply be computed again at half speed.
+ */
+export function stretch2x(src: Float32Array): Float32Array {
+  const grain = 1024;
+  const hopOut = 256;
+  const out = new Float32Array(src.length * 2 + grain);
+  const norm = new Float32Array(out.length);
+  const win = new Float32Array(grain);
+  for (let i = 0; i < grain; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (grain - 1));
+  for (let o = 0; o + grain < out.length; o += hopOut) {
+    const at = Math.floor(o / 2);
+    for (let i = 0; i < grain; i++) {
+      const s = at + i < src.length ? src[at + i] : 0;
+      out[o + i] += s * win[i];
+      norm[o + i] += win[i];
+    }
+  }
+  for (let i = 0; i < out.length; i++) if (norm[i] > 1e-3) out[i] /= norm[i];
+  return out.subarray(0, src.length * 2);
+}
