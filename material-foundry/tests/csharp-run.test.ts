@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS, codeLines, expectedOutput } from '../src/code/learn/lessons';
 import { LEVELS, asLevel } from '../src/code/run/levels';
+import { PROJECT } from '../src/code/run/project';
 import { runCSharp } from '../src/code/run/runner';
 import { UnityWorld } from '../src/code/run/unity';
 
@@ -78,7 +79,7 @@ class Hero { public string Name; public int Hp { get; private set; } = 10; publi
 });
 
 describe('Mini-Unity', () => {
-  for (const L of LEVELS) {
+  for (const L of [...LEVELS, ...PROJECT]) {
     it(`level "${L.id}": the solution wins, the starter does not`, async () => {
       const level = asLevel(L, 'en');
       const w = new UnityWorld(level);

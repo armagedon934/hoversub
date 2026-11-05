@@ -59,6 +59,8 @@ export interface FnV {
   body: SyntaxNode;
   scope: Scope;
   self?: ObjV;
+  /** A delegate with several subscribers (onScore += A; onScore += B;). */
+  multi?: FnV[];
 }
 export interface HostV {
   k: 'host';
@@ -392,7 +394,7 @@ export class CsProgram {
           .filter((c) => c.type === 'modifier')
           .map((c) => c.text);
         const isStatic = mods.includes('static') || mods.includes('const');
-        if (m.type === 'field_declaration') {
+        if (m.type === 'field_declaration' || m.type === 'event_field_declaration') {
           const decl = named(m).find((c) => c.type === 'variable_declaration');
           if (!decl) continue;
           const type = typeName(decl.childForFieldName('type'));
@@ -1167,6 +1169,17 @@ export class CsProgram {
   }
 
   private arith(op: string, a: V, b: V, line: number, intDiv: boolean): V {
+    // Delegates: onScore += Handler; onScore -= Handler;
+    const isFn = (x: V): x is FnV => !!x && typeof x === 'object' && x.k === 'fn';
+    if ((op === '+' || op === '-') && isFn(b) && (a === null || a === undefined || isFn(a))) {
+      const list = a ? (a.multi ?? [a]) : [];
+      const next = op === '+' ? [...list, ...(b.multi ?? [b])] : (() => {
+        const i = list.map((f) => f.body).lastIndexOf(b.body);
+        return i < 0 ? list : [...list.slice(0, i), ...list.slice(i + 1)];
+      })();
+      if (!next.length) return null;
+      return next.length === 1 ? next[0] : { ...next[next.length - 1], multi: next };
+    }
     if (op === '+' && (typeof a === 'string' || typeof b === 'string')) return csText(a) + csText(b);
     if (typeof a === 'object' && a?.k === 'vec' && typeof b === 'object' && b?.k === 'vec') {
       if (op === '+') return vec(a.x + b.x, a.y + b.y, a.z + b.z, Math.max(a.dim, b.dim) as 2 | 3);
@@ -1415,6 +1428,17 @@ export class CsProgram {
       const nameNode = fnNode.childForFieldName('name');
       return yield* this.callMethod(target, nameNode?.type === 'generic_name' ? nameNode.text.replace(/\s+/g, '') : name, args, line);
     }
+    // x?.Method(…): call only when x is not null (onScore?.Invoke(10), enemy?.TakeDamage(1)).
+    if (fnNode.type === 'conditional_access_expression') {
+      const parts = named(fnNode);
+      const binding = parts.find((c) => c.type === 'member_binding_expression');
+      if (binding && parts[0] !== binding) {
+        const target = yield* this.eval(parts[0], scope, self, cls);
+        if (target === null || target === undefined) return null;
+        const nameNode = named(binding)[0];
+        return yield* this.callMethod(target, nameNode?.type === 'generic_name' ? nameNode.text.replace(/\s+/g, '') : (nameNode?.text ?? ''), args, line);
+      }
+    }
     const f = yield* this.eval(fnNode, scope, self, cls);
     if (typeof f === 'object' && f?.k === 'fn') return yield* this.callFn(f, args, line);
     throw new CsError(tr('This cannot be called like a function.', 'Это нельзя вызвать как функцию.'), line);
@@ -1425,6 +1449,11 @@ export class CsProgram {
   }
 
   *callFn(f: FnV, args: V[], line: number): Gen<V> {
+    if (f.multi) {
+      let last: V = undefined;
+      for (const one of f.multi) last = yield* this.callFn({ ...one, multi: undefined }, args, line);
+      return last;
+    }
     const isMethod = f.body.type === 'method_declaration';
     if (isMethod && f.self) return yield* this.invokeMethod(f.body, f.self.cls, f.self, args, line);
     if (this.stack.length > this.limits.maxDepth) throw new CsError(tr('Too many calls inside each other (stack overflow) — probably a function that calls itself forever.', 'Слишком много вызовов друг в друге (переполнение стека) — скорее всего, функция бесконечно вызывает саму себя.'), line, 'limit', 'StackOverflowException');
@@ -2026,7 +2055,14 @@ function kindOf(v: V): string {
   return 'var';
 }
 
+/** Structs are values: assigning one makes a copy (classes share the same object). */
+function copyStruct(v: V): V {
+  if (!v || typeof v !== 'object' || v.k !== 'obj' || !v.cls.isStruct) return v;
+  return { ...v, fields: new Map([...v.fields].map(([k, c]) => [k, { v: copyStruct(c.v), type: c.type }])) };
+}
+
 function coerce(v: V, type: string): V {
+  if (v && typeof v === 'object' && v.k === 'obj' && v.cls.isStruct) return copyStruct(v);
   // Unity objects turn into true/false (bool onGround = Physics2D.OverlapCircle(…)).
   if (type === 'bool' && (v === null || (typeof v === 'object' && v?.k === 'host'))) return v !== null;
   if (typeof v !== 'number') return v;

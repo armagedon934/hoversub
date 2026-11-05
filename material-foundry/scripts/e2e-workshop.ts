@@ -7,6 +7,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { chromium, type Page } from '@playwright/test';
+import { PROJECT } from '../src/code/run/project';
 
 const OUT = 'verification';
 const SHOTS = join(OUT, 'workshop');
@@ -270,6 +271,21 @@ async function main() {
     check('Mini-Unity reacts to real key presses (Debug.Log on Space)', /Space!/.test(consoleText ?? ''), consoleText ?? '');
     await shot(page, '09-mini-unity-keys');
 
+    // Project: your own platformer — step 1 played with real key presses.
+    await page.getByTestId('mu-track-project').click();
+    await page.getByTestId('mu-level-p1-move').waitFor();
+    await setEditor(page, 'mu-editor', PROJECT[0].solution);
+    await page.getByTestId('mu-play').click();
+    await page.getByTestId('mu-stage').focus();
+    await page.keyboard.down('ArrowRight');
+    await page.getByTestId('mu-won').waitFor({ timeout: 8000 }).then(
+      () => check('Project step 1 (walk) is won by holding the arrow key', true),
+      () => check('Project step 1 (walk) is won by holding the arrow key', false),
+    );
+    await page.keyboard.up('ArrowRight');
+    await shot(page, '09c-project-step1');
+    await page.getByTestId('mu-track-levels').click();
+
     // Workshop → Mini-Unity sandbox.
     await page.getByTestId('view-workshop').click();
     await page.getByTestId('ws-new').click();
@@ -348,6 +364,7 @@ async function main() {
     await page.getByTestId('hub-courses').click();
     await page.getByTestId('courses').waitFor();
     check('Courses: C# for Unity has 16 lessons', (await page.getByTestId('course-lesson-card').count()) === 16);
+    check('Courses: three courses offered (C# for Unity, C# further, Unreal)', (await page.getByTestId('course-cs-advanced').count()) === 1 && (await page.getByTestId('course-unreal').count()) === 1);
     await page.getByTestId('course-start-next').click();
     await page.getByTestId('course-read').waitFor();
     await shot(page, '16-course-read');

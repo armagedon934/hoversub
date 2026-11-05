@@ -14,6 +14,7 @@ import { Speak } from '../memory/MemoryViews';
 import { TraceView } from '../workshop/TraceView';
 import { useUnityProgress } from '../workshop/MiniUnity';
 import { LEVELS } from '../run/levels';
+import { PROJECT } from '../run/project';
 import { ACHIEVEMENTS, DAILY_GOAL_XP, useTrainers, xpToday, type Facts } from './achievements';
 import { BUGS, fixedCode, prepareBug, type BugCase } from './bugs';
 import { PREDICT, makeQuestion, type PredictQuestion } from './predict';
@@ -65,6 +66,9 @@ function useFacts(): Facts {
   return {
     lessonsDone: keys.filter((k) => !k.startsWith('course:')).length,
     courseDone: keys.filter((k) => k.startsWith('course:cs-unity:')).length,
+    advancedDone: keys.filter((k) => k.startsWith('course:cs-advanced:')).length,
+    projectDone: unity.filter((id) => PROJECT.some((l) => l.id === id)).length,
+    projectTotal: PROJECT.length,
     unityLevels: unity.filter((id) => LEVELS.some((l) => l.id === id)).length,
     unityTotal: LEVELS.length,
     streak,

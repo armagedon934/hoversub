@@ -44,7 +44,7 @@ export interface CourseLesson {
 }
 
 export interface Course {
-  id: 'cs-unity' | 'unreal';
+  id: 'cs-unity' | 'cs-advanced' | 'unreal';
   icon: string;
   title: Text2;
   about: Text2;
@@ -856,8 +856,425 @@ void AHero::ApplyDamage(float Amount)
   },
 ];
 
+const ADV: CourseLesson[] = [
+  {
+    id: 'static',
+    icon: '🏛️',
+    title: T('static: one for everybody', 'static: одно на всех'),
+    goal: T('Share a value between all objects (a game manager, a total score).', 'Делить одно значение между всеми объектами (менеджер игры, общий счёт).'),
+    intro: [
+      T('A normal field belongs to EACH object: every enemy has its own health. A static field belongs to the CLASS: there is only one, shared by everybody.', 'Обычное поле есть у КАЖДОГО объекта: у каждого врага своё здоровье. Поле static принадлежит КЛАССУ: оно одно на всех.'),
+      T('You use it through the class name: Game.Score, Game.AddScore(5) — no object needed.', 'К нему обращаются через имя класса: Game.Score, Game.AddScore(5) — объект не нужен.'),
+    ],
+    inGame: T('GameManager.Instance, a total score, settings. But careful: too many statics make code hard to change.', 'GameManager.Instance, общий счёт, настройки. Но осторожно: если всё делать static, код трудно менять.'),
+    lang: 'cs',
+    code: `using System;
+
+Enemy a = new Enemy();
+Enemy b = new Enemy();
+a.Hit();
+b.Hit();
+b.Hit();
+Console.WriteLine("Enemies created: " + Enemy.Count);
+Console.WriteLine("Hits a: " + a.Hits + ", b: " + b.Hits);
+
+class Enemy
+{
+    public static int Count = 0;
+    public int Hits = 0;
+
+    public Enemy()
+    {
+        Count++;
+    }
+
+    public void Hit()
+    {
+        Hits++;
+    }
+}`,
+    notes: [
+      N('public static int Count = 0;', 'One counter for the whole class.', 'Один счётчик на весь класс.'),
+      N('public int Hits = 0;', 'Each enemy has its own Hits.', 'У каждого врага свои Hits.'),
+      N('Enemy.Count', 'Read through the class name, not through an object.', 'Читаем через имя класса, а не через объект.'),
+    ],
+    quiz: [
+      Q(T('3 enemies are created. What is Enemy.Count?', 'Создано 3 врага. Чему равно Enemy.Count?'), ['1', '3', T('each has its own', 'у каждого своё')], 1, T('A static field is shared: every constructor adds to the same counter.', 'static-поле общее: каждый конструктор прибавляет к одному и тому же счётчику.')),
+    ],
+    task: {
+      text: T('Make Score.Total static, call Score.Add(5) twice and print 10.', 'Сделай Score.Total статическим, вызови Score.Add(5) два раза и выведи 10.'),
+      starter: 'using System;\n\nScore.Add(5);\nScore.Add(5);\nConsole.WriteLine(Score.Total);\n\nclass Score\n{\n    // make Total and Add static\n}\n',
+      expect: ['10'],
+      hint: T('public static int Total; public static void Add(int n) { Total += n; }', 'public static int Total; public static void Add(int n) { Total += n; }'),
+      solution: 'using System;\n\nScore.Add(5);\nScore.Add(5);\nConsole.WriteLine(Score.Total);\n\nclass Score\n{\n    public static int Total;\n\n    public static void Add(int n)\n    {\n        Total += n;\n    }\n}\n',
+    },
+  },
+  {
+    id: 'struct-class',
+    icon: '📋',
+    title: T('struct and class: copy or the same thing?', 'struct и class: копия или то же самое?'),
+    goal: T('Understand why Vector3 behaves differently from a GameObject.', 'Понять, почему Vector3 ведёт себя не так, как GameObject.'),
+    intro: [
+      T('A class variable holds a LINK to an object: two variables can point to the same object, changing one changes "both".', 'Переменная-класс хранит ССЫЛКУ на объект: две переменные могут указывать на один объект — изменишь через одну, изменится «у обеих».'),
+      T('A struct is a VALUE: b = a makes a full copy. Vector3, Vector2, Quaternion and Color are structs — that is why transform.position.x = 5 is not allowed (CS1612): you would change a copy.', 'struct — это ЗНАЧЕНИЕ: b = a делает полную копию. Vector3, Vector2, Quaternion и Color — структуры. Поэтому transform.position.x = 5 нельзя (CS1612): ты изменил бы копию.'),
+    ],
+    inGame: T('Vector3 p = transform.position; p.y += 1; transform.position = p; — copy, change, put back.', 'Vector3 p = transform.position; p.y += 1; transform.position = p; — скопировать, изменить, положить обратно.'),
+    lang: 'cs',
+    code: `using System;
+
+Point a = new Point(1, 2);
+Point b = a;
+b.X = 10;
+Console.WriteLine("struct: a.X = " + a.X + ", b.X = " + b.X);
+
+Box c = new Box();
+Box d = c;
+d.X = 10;
+Console.WriteLine("class: c.X = " + c.X + ", d.X = " + d.X);
+
+struct Point
+{
+    public int X;
+    public int Y;
+    public Point(int x, int y) { X = x; Y = y; }
+}
+
+class Box
+{
+    public int X;
+}`,
+    notes: [
+      N('Point b = a;', 'struct: b is a separate copy.', 'struct: b — отдельная копия.'),
+      N('Box d = c;', 'class: d and c are two names for ONE box.', 'class: d и c — два имени ОДНОЙ коробки.'),
+    ],
+    quiz: [
+      Q(T('Vector3 is a…', 'Vector3 — это…'), ['struct', 'class'], 0, T('A value type: copied on every assignment.', 'Тип-значение: копируется при каждом присваивании.')),
+      Q(T('Why is transform.position.x = 5 an error?', 'Почему transform.position.x = 5 — ошибка?'), [T('position is a copy of a struct', 'position — копия структуры'), T('x is private', 'x — private'), T('5 needs f', '5 нужна f')], 0, T('You would change only the copy, so C# forbids it.', 'Ты изменил бы только копию, поэтому C# запрещает.')),
+    ],
+    task: {
+      text: T('Copy the struct, change the copy\'s Y to 7 and print both: 2 and 7 (two lines).', 'Скопируй структуру, измени у копии Y на 7 и выведи обе: 2 и 7 (две строки).'),
+      starter: 'using System;\n\nPoint a = new Point(1, 2);\n// make b a copy of a, set b.Y = 7, print a.Y and b.Y\n\nstruct Point\n{\n    public int X;\n    public int Y;\n    public Point(int x, int y) { X = x; Y = y; }\n}\n',
+      expect: ['2', '7'],
+      hint: T('Point b = a; b.Y = 7; Console.WriteLine(a.Y); Console.WriteLine(b.Y);', 'Point b = a; b.Y = 7; Console.WriteLine(a.Y); Console.WriteLine(b.Y);'),
+      solution: 'using System;\n\nPoint a = new Point(1, 2);\nPoint b = a;\nb.Y = 7;\nConsole.WriteLine(a.Y);\nConsole.WriteLine(b.Y);\n\nstruct Point\n{\n    public int X;\n    public int Y;\n    public Point(int x, int y) { X = x; Y = y; }\n}\n',
+    },
+  },
+  {
+    id: 'interface',
+    icon: '🔌',
+    title: T('Interfaces: "can take damage"', 'Интерфейсы: «умеет получать урон»'),
+    goal: T('Treat different things the same way through an interface.', 'Обращаться с разными вещами одинаково через интерфейс.'),
+    intro: [
+      T('An interface is a promise: "every class that implements IDamageable HAS a TakeDamage method". It contains no code itself.', 'Интерфейс — это обещание: «у каждого класса, который реализует IDamageable, ЕСТЬ метод TakeDamage». Своего кода в нём нет.'),
+      T('A bullet does not care whether it hit a box, an enemy or a barrel — it just calls TakeDamage.', 'Пуле всё равно, во что она попала — в ящик, врага или бочку, — она просто вызывает TakeDamage.'),
+    ],
+    inGame: T('other.GetComponent<IDamageable>()?.TakeDamage(1); — one line for every destructible thing.', 'other.GetComponent<IDamageable>()?.TakeDamage(1); — одна строка для всего, что можно разрушить.'),
+    lang: 'cs',
+    code: `using System;
+
+IDamageable[] targets = { new Crate(), new Enemy(), new Enemy() };
+foreach (IDamageable t in targets)
+{
+    t.TakeDamage(4);
+}
+
+interface IDamageable
+{
+    void TakeDamage(int amount);
+}
+
+class Crate : IDamageable
+{
+    public void TakeDamage(int amount)
+    {
+        Console.WriteLine("The crate breaks!");
+    }
+}
+
+class Enemy : IDamageable
+{
+    int health = 6;
+    public void TakeDamage(int amount)
+    {
+        health -= amount;
+        Console.WriteLine("Enemy health: " + health);
+    }
+}`,
+    notes: [
+      N('interface IDamageable', 'Names start with I by tradition.', 'Имена по традиции начинаются с I.'),
+      N('class Crate : IDamageable', 'Crate promises to have TakeDamage.', 'Crate обещает, что у него есть TakeDamage.'),
+      N('t.TakeDamage(4);', 'Works for every kind of target.', 'Работает для любого вида цели.'),
+    ],
+    quiz: [
+      Q(T('Does an interface contain the code of TakeDamage?', 'Есть ли в интерфейсе код метода TakeDamage?'), [T('No, only the promise', 'Нет, только обещание'), T('Yes', 'Да')], 0, T('Each class writes its own version.', 'Каждый класс пишет свою версию.')),
+    ],
+    task: {
+      text: T('Add a class Barrel : IDamageable that prints "Boom!", and damage it.', 'Добавь класс Barrel : IDamageable, который выводит "Boom!", и нанеси ему урон.'),
+      starter: 'using System;\n\nIDamageable b = new Barrel();\nb.TakeDamage(1);\n\ninterface IDamageable\n{\n    void TakeDamage(int amount);\n}\n\n// write class Barrel here\n',
+      expect: ['Boom!'],
+      hint: T('class Barrel : IDamageable { public void TakeDamage(int amount) { Console.WriteLine("Boom!"); } }', 'class Barrel : IDamageable { public void TakeDamage(int amount) { Console.WriteLine("Boom!"); } }'),
+      solution: 'using System;\n\nIDamageable b = new Barrel();\nb.TakeDamage(1);\n\ninterface IDamageable\n{\n    void TakeDamage(int amount);\n}\n\nclass Barrel : IDamageable\n{\n    public void TakeDamage(int amount)\n    {\n        Console.WriteLine("Boom!");\n    }\n}\n',
+    },
+  },
+  {
+    id: 'delegates',
+    icon: '📨',
+    title: T('Action and Func: code in a variable', 'Action и Func: код в переменной'),
+    goal: T('Store a piece of code and call it later; subscribe several handlers.', 'Хранить кусок кода и вызывать его позже; подписывать несколько обработчиков.'),
+    intro: [
+      T('Action<int> is a variable that holds a METHOD taking an int. Func<int, int, int> holds a method that also returns a result.', 'Action<int> — переменная, в которой лежит МЕТОД, принимающий int. Func<int, int, int> — метод, который ещё и возвращает результат.'),
+      T('+= adds one more handler: when you call it, ALL handlers run in order. ?.Invoke(…) calls it only if somebody subscribed.', '+= добавляет ещё один обработчик: при вызове выполняются ВСЕ по порядку. ?.Invoke(…) вызывает, только если кто-то подписан.'),
+    ],
+    inGame: T('Button.onClick, callbacks after an animation, "when health changes → update the bar and play a sound".', 'Button.onClick, обратные вызовы после анимации, «когда здоровье меняется → обнови полоску и проиграй звук».'),
+    lang: 'cs',
+    code: `using System;
+
+Action<int> onScore = null;
+onScore += (points) => Console.WriteLine("UI shows " + points);
+onScore += (points) => Console.WriteLine("Ding!");
+onScore?.Invoke(10);
+
+Func<int, int, int> damage = (attack, armor) => Math.Max(1, attack - armor);
+Console.WriteLine("Damage: " + damage(7, 3));`,
+    notes: [
+      N('Action<int> onScore = null;', 'Nobody is subscribed yet.', 'Пока никто не подписан.'),
+      N('onScore += (points) =>', 'Subscribe a handler (a small anonymous method).', 'Подписываем обработчик (маленький безымянный метод).'),
+      N('onScore?.Invoke(10);', 'Call every handler with 10.', 'Вызываем каждый обработчик с 10.'),
+      N('Func<int, int, int>', 'Two int inputs, an int result.', 'Два int на входе, int на выходе.'),
+    ],
+    quiz: [
+      Q(T('How many lines does onScore?.Invoke(10) print here?', 'Сколько строк выведет здесь onScore?.Invoke(10)?'), ['1', '2', '0'], 1, T('Two handlers are subscribed; both run.', 'Подписаны два обработчика — выполняются оба.')),
+    ],
+    task: {
+      text: T('Make a Func<int, int> square that returns n * n and print square(6) → 36.', 'Создай Func<int, int> square, который возвращает n * n, и выведи square(6) → 36.'),
+      starter: 'using System;\n\n// Func<int, int> square = …\n',
+      expect: ['36'],
+      hint: T('Func<int, int> square = n => n * n; Console.WriteLine(square(6));', 'Func<int, int> square = n => n * n; Console.WriteLine(square(6));'),
+      solution: 'using System;\n\nFunc<int, int> square = n => n * n;\nConsole.WriteLine(square(6));\n',
+    },
+  },
+  {
+    id: 'events',
+    icon: '📣',
+    title: T('Events: "tell everybody who cares"', 'События: «сообщи всем, кому интересно»'),
+    goal: T('Let a class announce something without knowing who listens.', 'Дать классу сообщить о чём-то, не зная, кто его слушает.'),
+    intro: [
+      T('public event Action Died; is a list of subscribers. The Player only says Died?.Invoke() — the UI, the sound and the score subscribe themselves.', 'public event Action Died; — список подписчиков. Игрок только говорит Died?.Invoke(), а интерфейс, звук и счёт подписываются сами.'),
+      T('So the Player does not need to know about the UI at all. This is the "observer" pattern — one of the most useful ideas in game code.', 'Значит, игроку вообще не нужно знать про интерфейс. Это шаблон «наблюдатель» — одна из самых полезных идей в игровом коде.'),
+    ],
+    inGame: T('In Unity: subscribe in OnEnable (player.Died += ShowGameOver;), unsubscribe in OnDisable (-=).', 'В Unity: подписка в OnEnable (player.Died += ShowGameOver;), отписка в OnDisable (-=).'),
+    lang: 'cs',
+    code: `using System;
+
+Player player = new Player();
+player.HealthChanged += (hp) => Console.WriteLine("Health bar: " + hp);
+player.Died += () => Console.WriteLine("GAME OVER screen");
+player.Hit(3);
+player.Hit(3);
+
+class Player
+{
+    public event Action<int> HealthChanged;
+    public event Action Died;
+    int health = 5;
+
+    public void Hit(int damage)
+    {
+        health -= damage;
+        HealthChanged?.Invoke(health);
+        if (health <= 0)
+        {
+            Died?.Invoke();
+        }
+    }
+}`,
+    notes: [
+      N('public event Action<int> HealthChanged;', 'An event that sends the new health.', 'Событие, которое передаёт новое здоровье.'),
+      N('HealthChanged?.Invoke(health);', 'Tell all subscribers (if any).', 'Сообщаем всем подписчикам (если они есть).'),
+      N('player.Died += ', 'The outside world subscribes.', 'Внешний мир подписывается.'),
+    ],
+    quiz: [
+      Q(T('Does Player know that a "GAME OVER screen" exists?', 'Знает ли Player, что существует «экран GAME OVER»?'), [T('No — it only raises the event', 'Нет — он только вызывает событие'), T('Yes', 'Да')], 0, T('That is the point: less coupling, easier changes.', 'В этом и смысл: меньше связей, проще изменения.')),
+    ],
+    task: {
+      text: T('Subscribe to Coin.Collected so that collecting prints "+1 coin".', 'Подпишись на Coin.Collected так, чтобы при сборе выводилось "+1 coin".'),
+      starter: 'using System;\n\nCoin coin = new Coin();\n// subscribe here\ncoin.Collect();\n\nclass Coin\n{\n    public event Action Collected;\n    public void Collect() { Collected?.Invoke(); }\n}\n',
+      expect: ['+1 coin'],
+      hint: T('coin.Collected += () => Console.WriteLine("+1 coin");', 'coin.Collected += () => Console.WriteLine("+1 coin");'),
+      solution: 'using System;\n\nCoin coin = new Coin();\ncoin.Collected += () => Console.WriteLine("+1 coin");\ncoin.Collect();\n\nclass Coin\n{\n    public event Action Collected;\n    public void Collect() { Collected?.Invoke(); }\n}\n',
+    },
+  },
+  {
+    id: 'generics',
+    icon: '🧰',
+    title: T('Generics <T>: one class for any type', 'Обобщения <T>: один класс для любого типа'),
+    goal: T('Read and write classes like List<T> yourself.', 'Читать и писать классы вроде List<T> самому.'),
+    intro: [
+      T('T is a placeholder for a type. Stack<T> written once works as Stack<int>, Stack<string>, Stack<Enemy>…', 'T — это заглушка для типа. Stack<T>, написанный один раз, работает как Stack<int>, Stack<string>, Stack<Enemy>…'),
+      T('That is exactly how List<T>, Dictionary<TKey, TValue> and GetComponent<T>() work.', 'Именно так устроены List<T>, Dictionary<TKey, TValue> и GetComponent<T>().'),
+    ],
+    inGame: T('An object pool Pool<Bullet>, a save system Load<T>(), GetComponent<T>().', 'Пул объектов Pool<Bullet>, система сохранений Load<T>(), GetComponent<T>().'),
+    lang: 'cs',
+    code: `using System;
+using System.Collections.Generic;
+
+Slot<string> weapon = new Slot<string>();
+weapon.Put("Sword");
+Slot<int> ammo = new Slot<int>();
+ammo.Put(12);
+Console.WriteLine(weapon.Item + ", ammo " + ammo.Item);
+Console.WriteLine(Last(new List<string> { "a", "b", "c" }));
+
+T Last<T>(List<T> items)
+{
+    return items[items.Count - 1];
+}
+
+class Slot<T>
+{
+    public T Item;
+    public void Put(T thing)
+    {
+        Item = thing;
+    }
+}`,
+    notes: [
+      N('class Slot<T>', 'T will be decided when the slot is created.', 'T определится, когда слот создадут.'),
+      N('Slot<int> ammo', 'Here T = int.', 'Здесь T = int.'),
+      N('T Last<T>(List<T> items)', 'A generic method: works for a list of anything.', 'Обобщённый метод: работает для списка чего угодно.'),
+    ],
+    quiz: [
+      Q(T('In GetComponent<Rigidbody2D>(), what is T?', 'Что такое T в GetComponent<Rigidbody2D>()?'), ['Rigidbody2D', 'GameObject', 'int'], 0, T('The type in < > replaces T.', 'Тип в < > подставляется вместо T.')),
+    ],
+    task: {
+      text: T('Write T First<T>(List<T> items) that returns items[0], and print First(new List<int> { 4, 5 }) → 4.', 'Напиши T First<T>(List<T> items), который возвращает items[0], и выведи First(new List<int> { 4, 5 }) → 4.'),
+      starter: 'using System;\nusing System.Collections.Generic;\n\nConsole.WriteLine(First(new List<int> { 4, 5 }));\n\n// write First<T> here\n',
+      expect: ['4'],
+      hint: T('T First<T>(List<T> items) { return items[0]; }', 'T First<T>(List<T> items) { return items[0]; }'),
+      solution: 'using System;\nusing System.Collections.Generic;\n\nConsole.WriteLine(First(new List<int> { 4, 5 }));\n\nT First<T>(List<T> items)\n{\n    return items[0];\n}\n',
+    },
+  },
+  {
+    id: 'null-safety',
+    icon: '🛡️',
+    title: T('Safe with null: ?. ?? ??=', 'Безопасно с null: ?. ?? ??='),
+    goal: T('Avoid NullReferenceException in one short line.', 'Избегать NullReferenceException одной короткой строкой.'),
+    intro: [
+      T('a?.b means "if a is null, the result is null — do not crash". a ?? b means "a, or b if a is null". a ??= b means "if a is null, put b in".', 'a?.b значит «если a = null, результат null — не падать». a ?? b значит «a, а если a = null — то b». a ??= b значит «если a = null, положить туда b».'),
+      T('Note for Unity: for destroyed GameObjects use if (obj != null) — ?. does not see that a Unity object was destroyed.', 'Важно для Unity: для уничтоженных GameObject используй if (obj != null) — ?. не видит, что объект Unity уничтожен.'),
+    ],
+    inGame: T('Optional references: target?.position, saved name ?? "Player".', 'Необязательные ссылки: target?.position, сохранённое имя ?? "Player".'),
+    lang: 'cs',
+    code: `using System;
+
+string savedName = null;
+Console.WriteLine("Length: " + (savedName?.Length ?? 0));
+string shown = savedName ?? "Player";
+Console.WriteLine("Hello, " + shown);
+savedName ??= "Ari";
+Console.WriteLine("Saved: " + savedName);`,
+    notes: [
+      N('savedName?.Length ?? 0', 'null?.Length is null → ?? gives 0.', 'null?.Length даёт null → ?? даёт 0.'),
+      N('savedName ?? "Player"', 'A default value when nothing is saved.', 'Значение по умолчанию, когда ничего не сохранено.'),
+      N('savedName ??= "Ari";', 'Fill only if empty.', 'Заполнить, только если пусто.'),
+    ],
+    quiz: [
+      Q(T('string s = null; what is s ?? "x"?', 'string s = null; чему равно s ?? "x"?'), ['null', '"x"', T('error', 'ошибка')], 1, T('?? takes the right side when the left is null.', '?? берёт правую часть, когда левая — null.')),
+    ],
+    task: {
+      text: T('nickname is null. Print it with a default "Guest" using ??.', 'nickname = null. Выведи его со значением по умолчанию "Guest" через ??.'),
+      starter: 'using System;\n\nstring nickname = null;\n',
+      expect: ['Guest'],
+      hint: T('Console.WriteLine(nickname ?? "Guest");', 'Console.WriteLine(nickname ?? "Guest");'),
+      solution: 'using System;\n\nstring nickname = null;\nConsole.WriteLine(nickname ?? "Guest");\n',
+    },
+  },
+  {
+    id: 'const-readonly',
+    icon: '🔐',
+    title: T('const and readonly: values that never change', 'const и readonly: значения, которые не меняются'),
+    goal: T('Protect important numbers from accidental changes.', 'Защитить важные числа от случайных изменений.'),
+    intro: [
+      T('const is fixed when you write the code: const int MaxLives = 3;. readonly is set once in the constructor and never changes after that.', 'const задаётся, когда пишешь код: const int MaxLives = 3;. readonly задаётся один раз в конструкторе и больше не меняется.'),
+      T('If someone tries to change them, C# reports an error before the game even starts — the cheapest bug fix ever.', 'Если кто-то попробует их изменить, C# покажет ошибку ещё до запуска игры — самое дешёвое исправление бага.'),
+    ],
+    inGame: T('Layer numbers, tag names (const string PlayerTag = "Player";), IDs.', 'Номера слоёв, имена тегов (const string PlayerTag = "Player";), идентификаторы.'),
+    lang: 'cs',
+    code: `using System;
+
+const int MaxLives = 3;
+Hero hero = new Hero("Ari");
+Console.WriteLine(hero.Name + " has " + MaxLives + " lives");
+Console.WriteLine("Tag: " + Tags.Player);
+
+class Hero
+{
+    public readonly string Name;
+    public Hero(string name)
+    {
+        Name = name;
+    }
+}
+
+class Tags
+{
+    public const string Player = "Player";
+}`,
+    notes: [
+      N('const int MaxLives = 3;', 'Never changes.', 'Никогда не меняется.'),
+      N('public readonly string Name;', 'Set once, in the constructor.', 'Задаётся один раз, в конструкторе.'),
+      N('public const string Player = "Player";', 'No more typos in tag names: Tags.Player everywhere.', 'Больше никаких опечаток в тегах: везде Tags.Player.'),
+    ],
+    quiz: [
+      Q(T('Where can a readonly field be set?', 'Где можно задать readonly-поле?'), [T('In the constructor (or where it is declared)', 'В конструкторе (или там, где объявлено)'), T('Anywhere', 'Где угодно'), T('Only in Update', 'Только в Update')], 0, T('After the constructor it is locked.', 'После конструктора оно заперто.')),
+    ],
+  },
+  {
+    id: 'dict-loop',
+    icon: '🗂️',
+    title: T('Going through a Dictionary', 'Перебор Dictionary'),
+    goal: T('Show every key and value — an inventory or a price list.', 'Показать все ключи и значения — инвентарь или прайс.'),
+    intro: [
+      T('foreach (var pair in dict) gives KeyValuePair items: pair.Key and pair.Value.', 'foreach (var pair in dict) даёт элементы KeyValuePair: pair.Key и pair.Value.'),
+      T('You can also go through only the keys (dict.Keys) or only the values (dict.Values).', 'Можно перебрать только ключи (dict.Keys) или только значения (dict.Values).'),
+    ],
+    inGame: T('An inventory screen: item → count.', 'Экран инвентаря: предмет → количество.'),
+    lang: 'cs',
+    code: `using System;
+using System.Collections.Generic;
+
+var bag = new Dictionary<string, int>();
+bag["potion"] = 2;
+bag["arrow"] = 15;
+bag["potion"] += 1;
+
+int total = 0;
+foreach (var pair in bag)
+{
+    Console.WriteLine(pair.Key + " x" + pair.Value);
+    total += pair.Value;
+}
+Console.WriteLine("Items: " + total);`,
+    notes: [
+      N('bag["potion"] += 1;', 'Change the value under a key.', 'Меняем значение под ключом.'),
+      N('foreach (var pair in bag)', 'Every key-value pair in turn.', 'Каждая пара ключ–значение по очереди.'),
+    ],
+    quiz: [
+      Q(T('What is "Items:" at the end?', 'Что будет в «Items:» в конце?'), ['17', '18', '2'], 1, T('3 potions + 15 arrows = 18.', '3 зелья + 15 стрел = 18.')),
+    ],
+    task: {
+      text: T('Print every key of the dictionary on its own line: hp, mp.', 'Выведи каждый ключ словаря на отдельной строке: hp, mp.'),
+      starter: 'using System;\nusing System.Collections.Generic;\n\nvar stats = new Dictionary<string, int> { ["hp"] = 10, ["mp"] = 4 };\n// foreach here\n',
+      expect: ['hp', 'mp'],
+      hint: T('foreach (var pair in stats) Console.WriteLine(pair.Key);', 'foreach (var pair in stats) Console.WriteLine(pair.Key);'),
+      solution: 'using System;\nusing System.Collections.Generic;\n\nvar stats = new Dictionary<string, int> { ["hp"] = 10, ["mp"] = 4 };\nforeach (var pair in stats)\n{\n    Console.WriteLine(pair.Key);\n}\n',
+    },
+  },
+];
+
 export const COURSES: Course[] = [
   { id: 'cs-unity', icon: '🎮', title: T('C# for Unity', 'C# для Unity'), about: T('From variables to classes, inheritance and vectors. Every example runs for real — watch the values change.', 'От переменных до классов, наследования и векторов. Каждый пример запускается по-настоящему — видно, как меняются значения.'), lessons: CS },
+  { id: 'cs-advanced', icon: '🚀', title: T('C# further (part 2)', 'C# дальше (часть 2)'), about: T('static, struct vs class (why CS1612 happens), interfaces, Action/Func, events, generics <T>, ?. ??, const/readonly, Dictionary loops — all running for real, with tasks.', 'static, struct и class (откуда CS1612), интерфейсы, Action/Func, события, обобщения <T>, ?. ??, const/readonly, перебор Dictionary — всё с настоящим запуском и заданиями.'), lessons: ADV },
   { id: 'unreal', icon: '🏗️', title: T('Unreal Engine C++', 'Unreal Engine C++'), about: T('Read real Unreal C++: Actors, Tick, UPROPERTY, pointers, Blueprint functions — compared with Unity.', 'Читаем настоящий C++ из Unreal: Actor, Tick, UPROPERTY, указатели, функции для Blueprints — в сравнении с Unity.'), lessons: UE },
 ];
 

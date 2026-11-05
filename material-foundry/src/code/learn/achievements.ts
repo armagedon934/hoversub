@@ -89,6 +89,9 @@ export function xpToday(days: Record<string, number>): number {
 export interface Facts {
   lessonsDone: number;
   courseDone: number;
+  advancedDone: number;
+  projectDone: number;
+  projectTotal: number;
   unityLevels: number;
   unityTotal: number;
   streak: number;
@@ -120,6 +123,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'first-lesson', icon: '🌱', title: T('First step', 'Первый шаг'), how: T('Finish any lesson.', 'Пройди любой урок.'), done: (f) => f.lessonsDone + f.courseDone >= 1, progress: (f) => p(f.lessonsDone + f.courseDone, 1) },
   { id: 'five-lessons', icon: '📚', title: T('Bookworm', 'Книжный червь'), how: T('Finish 5 lessons.', 'Пройди 5 уроков.'), done: (f) => f.lessonsDone + f.courseDone >= 5, progress: (f) => p(f.lessonsDone + f.courseDone, 5) },
   { id: 'course-half', icon: '🎮', title: T('Unity apprentice', 'Ученик Unity'), how: T('Finish 8 lessons of "C# for Unity".', 'Пройди 8 уроков курса «C# для Unity».'), done: (f) => f.courseDone >= 8, progress: (f) => p(f.courseDone, 8) },
+  { id: 'csharp-2', icon: '🚀', title: T('Beyond the basics', 'Дальше основ'), how: T('Finish 5 lessons of "C# further (part 2)".', 'Пройди 5 уроков курса «C# дальше (часть 2)».'), done: (f) => f.advancedDone >= 5, progress: (f) => p(f.advancedDone, 5) },
+  { id: 'own-game', icon: '🏗', title: T('My own game', 'Своя игра'), how: T('Finish all steps of "Project: your own platformer".', 'Пройди все шаги «Проекта: свой платформер».'), done: (f) => f.projectDone >= f.projectTotal, progress: (f) => p(f.projectDone, f.projectTotal) },
   { id: 'hello-unity', icon: '👋', title: T('Hello, Unity', 'Привет, Unity'), how: T('Win your first Mini-Unity level.', 'Пройди первый уровень Мини-Unity.'), done: (f) => f.unityLevels >= 1, progress: (f) => p(f.unityLevels, 1) },
   { id: 'unity-five', icon: '🕹', title: T('Script writer', 'Сценарист'), how: T('Win 5 Mini-Unity levels.', 'Пройди 5 уровней Мини-Unity.'), done: (f) => f.unityLevels >= 5, progress: (f) => p(f.unityLevels, 5) },
   { id: 'unity-all', icon: '🏆', title: T('Mini-Unity master', 'Мастер Мини-Unity'), how: T('Win every Mini-Unity level.', 'Пройди все уровни Мини-Unity.'), done: (f) => f.unityLevels >= f.unityTotal, progress: (f) => p(f.unityLevels, f.unityTotal) },

@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-05T00:46:07.003Z",
+  "date": "2026-11-05T02:22:26.822Z",
   "passed": 39,
   "failed": 0,
   "checks": [
@@ -76,7 +76,7 @@
     {
       "name": "Randomize seed changes the seed",
       "ok": true,
-      "detail": "seed 70807"
+      "detail": "seed 12033"
     },
     {
       "name": "Seed lock keeps the seed when switching presets",
@@ -131,12 +131,12 @@
     {
       "name": "High-resolution (2048) ZIP export completes",
       "ok": true,
-      "detail": "11.0 s"
+      "detail": "10.9 s"
     },
     {
       "name": "Interface keeps rendering frames during the 2048 export",
       "ok": true,
-      "detail": "frame gaps p95 17 ms, max 218 ms over 649 frames"
+      "detail": "frame gaps p95 17 ms, max 57 ms over 655 frames"
     },
     {
       "name": "ZIP contains the expected files",

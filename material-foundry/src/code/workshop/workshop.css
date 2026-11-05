@@ -1605,3 +1605,25 @@
     padding: 0 12px;
   }
 }
+
+.mu-tracks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mu-tracks button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.mu-tracks button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}

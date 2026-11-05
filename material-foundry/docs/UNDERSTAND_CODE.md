@@ -44,6 +44,11 @@ service and no API key involved. (An AI model running on your own computer can o
   from 15 templates with random numbers; the right answer comes from running the code, each wrong option explains its
   misconception; step-by-step replay), *Unity event order*, *Where does this code go?*, a printable *Unity C# cheat
   sheet*, 18 achievements and a daily XP goal.
+* **Course "C# further (part 2)"** — 9 lessons with tasks: static, struct vs class (why Vector3 is copied and CS1612),
+  interfaces, Action/Func, events, generics, ?. ?? ??=, const/readonly, Dictionary loops. The interpreter now copies
+  structs on assignment, supports multicast delegates (+=, -=), `event` fields and `x?.Method()` calls.
+* **"Project: your own platformer"** — 5 Mini-Unity steps that grow one script into a small game (walk → jump with a
+  ground ray → coins → stomp the enemy → win message); each step is played automatically by the tests.
 * **More Unity**: 50 recipes (39 of them Unity scripts, all playing in Mini-Unity and checked by behaviour) and
   14 Mini-Unity levels (new: coroutine, InvokeRepeating, ground raycast, FindWithTag, arrays/foreach).
 * **Error translator** — paste Unity Console / Visual Studio / compiler / Python / browser errors; 52 known kinds

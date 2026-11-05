@@ -9,6 +9,9 @@ import { create } from 'zustand';
 import { getLocale, pick, tr } from '../i18n';
 import { errorText, explainError } from '../run/errors';
 import { LEVELS, asLevel, sandboxLevel } from '../run/levels';
+import { PROJECT, PROJECT_IDS } from '../run/project';
+
+const ALL_LEVELS = [...LEVELS, ...PROJECT];
 import { ensureMainThreadTreeSitter } from '../run/mainThread';
 import { UnityWorld, type FrameResult, type GameObj, type Level } from '../run/unity';
 import { useLearn } from '../learn/progress';
@@ -253,7 +256,8 @@ export function MiniUnity() {
   const mark = useResume((s) => s.mark);
   const locale = getLocale();
   const [sandbox, setSandbox] = useState<Level | null>(null);
-  const level: Level = useMemo(() => sandbox ?? asLevel(LEVELS.find((l) => l.id === prog.levelId) ?? LEVELS[0], locale), [sandbox, prog.levelId, locale]);
+  const level: Level = useMemo(() => sandbox ?? asLevel(ALL_LEVELS.find((l) => l.id === prog.levelId) ?? LEVELS[0], locale), [sandbox, prog.levelId, locale]);
+  const track = PROJECT_IDS.has(prog.levelId) ? PROJECT : LEVELS;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const edRef = useRef<WorkshopEditor | null>(null);
@@ -459,8 +463,16 @@ export function MiniUnity() {
 
   return (
     <div className="mu" data-testid="mini-unity">
+      <div className="mu-tracks" role="tablist" aria-label={tr('What to play', 'Что проходить')}>
+        <button role="tab" aria-selected={track === LEVELS} className={track === LEVELS && !sandbox ? 'on' : ''} onClick={() => { setSandbox(null); prog.set({ levelId: LEVELS.find((l) => !done.has(l.id))?.id ?? LEVELS[0].id }); }} data-testid="mu-track-levels">
+          🕹 {tr('Levels', 'Уровни')} <span className="muted small">{LEVELS.filter((l) => done.has(l.id)).length}/{LEVELS.length}</span>
+        </button>
+        <button role="tab" aria-selected={track === PROJECT} className={track === PROJECT && !sandbox ? 'on' : ''} onClick={() => { setSandbox(null); prog.set({ levelId: PROJECT.find((l) => !done.has(l.id))?.id ?? PROJECT[0].id }); }} data-testid="mu-track-project">
+          🏗 {tr('Project: your own platformer', 'Проект: свой платформер')} <span className="muted small">{PROJECT.filter((l) => done.has(l.id)).length}/{PROJECT.length}</span>
+        </button>
+      </div>
       <div className="mu-levels" role="list" aria-label={tr('Levels', 'Уровни')}>
-        {LEVELS.map((l, i) => (
+        {track.map((l, i) => (
           <button
             key={l.id}
             role="listitem"
@@ -482,7 +494,7 @@ export function MiniUnity() {
           </button>
         ) : null}
         <span className="mu-count muted small">
-          {done.size}/{LEVELS.length} {tr('done', 'пройдено')}
+          {track.filter((l) => done.has(l.id)).length}/{track.length} {tr('done', 'пройдено')}
         </span>
       </div>
 
@@ -559,9 +571,9 @@ export function MiniUnity() {
               <div className="mu-overlay won" data-testid="mu-won">
                 <b>🏆 {message}</b>
                 {!sandbox ? <span>+25 XP</span> : null}
-                {!sandbox && LEVELS.findIndex((l) => l.id === level.id) < LEVELS.length - 1 ? (
-                  <button className="btn primary" onClick={() => prog.set({ levelId: LEVELS[LEVELS.findIndex((l) => l.id === level.id) + 1].id })} data-testid="mu-next">
-                    {tr('Next level →', 'Следующий уровень →')}
+                {!sandbox && track.findIndex((l) => l.id === level.id) < track.length - 1 ? (
+                  <button className="btn primary" onClick={() => prog.set({ levelId: track[track.findIndex((l) => l.id === level.id) + 1].id })} data-testid="mu-next">
+                    {track === PROJECT ? tr('Next step →', 'Следующий шаг →') : tr('Next level →', 'Следующий уровень →')}
                   </button>
                 ) : null}
               </div>

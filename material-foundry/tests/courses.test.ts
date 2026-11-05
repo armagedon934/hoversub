@@ -8,7 +8,8 @@ describe('courses', () => {
   it('has the C# for Unity course (16 lessons) and the Unreal C++ course', () => {
     expect(COURSES.find((c) => c.id === 'cs-unity')!.lessons.length).toBe(16);
     expect(COURSES.find((c) => c.id === 'unreal')!.lessons.length).toBe(4);
-    expect(COURSE_LESSON_COUNT).toBe(20);
+    expect(COURSES.find((c) => c.id === 'cs-advanced')!.lessons.length).toBe(9);
+    expect(COURSE_LESSON_COUNT).toBe(29);
   });
 
   for (const course of COURSES)

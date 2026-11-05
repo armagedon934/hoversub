@@ -332,3 +332,15 @@ The material studio suite (`npm run e2e`) was re-run on the same build: **39 pas
   predicting an output with a step-by-step replay, the perfect Unity event order, downloading the cheat sheet,
   achievements unlocking). It found that Chromium drops Cyrillic download file names, so downloads now use Latin
   names. `e2e:code` 68/68, materials 39/39, `e2e:desktop` 13/13.
+
+## 11. C# part 2 and "Project: your own platformer" (eighth iteration)
+
+* **Unit tests: 341, all passing.** `tests/courses.test.ts` (now 101 checks incl. the 9 new lessons): every example of
+  "C# further" runs with a step trace and every task's solution prints exactly the expected lines while the starter
+  does not. The interpreter fixes found while writing it are covered there: structs are copied on assignment
+  (`b = a; b.X = 10` leaves `a` unchanged; classes still share), `Action`/`Func` with `+=`/`-=` call every
+  subscriber, `event` fields work, and `x?.Method(…)` is skipped when `x` is null. `tests/csharp-run.test.ts` (24)
+  plays the 5 project steps: each reference solution wins and each starter does not (in step 4 the starter touches
+  the enemy from the side and loses; in step 5 it never writes the win message).
+* **Browser e2e `npm run e2e:workshop`: 59/59** — adds the three course cards and step 1 of the project won with a
+  real held arrow key.
