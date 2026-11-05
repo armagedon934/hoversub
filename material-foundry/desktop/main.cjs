@@ -80,7 +80,7 @@ function smokeTest(win) {
       const result = await win.webContents.executeJavaScript(`(async () => {
         const wait = async (sel) => { for (let i = 0; i < 300; i++) { const e = document.querySelector(sel); if (e) return e; await new Promise((r) => setTimeout(r, 100)); } throw new Error('missing ' + sel); };
         (await wait('[data-testid="mode-code"]')).click();
-        (await wait('[data-testid="start-workshop"]')).click();
+        (await wait('[data-testid="view-workshop"]')).click();
         await wait('[data-testid="ws-editor"] .cm-content');
         const pyodide = (await fetch('app://local/pyodide/pyodide-lock.json')).ok;
         const grammar = (await fetch('app://local/grammars/tree-sitter-c_sharp.wasm')).ok;
