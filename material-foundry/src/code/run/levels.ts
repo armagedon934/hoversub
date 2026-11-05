@@ -619,6 +619,421 @@ ${MOVE}
       { until: 7, keys: [] },
     ],
   },
+  {
+    id: 'coroutine',
+    icon: '⏳',
+    title: T('Coroutine: wait without freezing', 'Корутина: подождать, не замораживая игру'),
+    learn: T('A method that returns IEnumerator can pause: yield return new WaitForSeconds(2f) waits 2 seconds while the game keeps running. Start it with StartCoroutine(…).', 'Метод, который возвращает IEnumerator, умеет делать паузу: yield return new WaitForSeconds(2f) ждёт 2 секунды, а игра при этом идёт дальше. Запускают через StartCoroutine(…).'),
+    task: T('Start the coroutine and make it wait 2 seconds before writing Ready!', 'Запусти корутину и сделай так, чтобы она ждала 2 секунды перед тем, как написать Ready!'),
+    hint: T('In Start: StartCoroutine(Countdown()); In Countdown replace yield return null; with yield return new WaitForSeconds(2f);', 'В Start: StartCoroutine(Countdown()); В Countdown замени yield return null; на yield return new WaitForSeconds(2f);'),
+    width: 8,
+    height: 4,
+    player: { x: 4, y: 2 },
+    objects: [],
+    goal: { type: 'log', text: 'Ready!', afterSeconds: 2 },
+    starter: T(
+      `using System.Collections;
+using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    void Start()
+    {
+        // Start the coroutine here
+    }
+
+    IEnumerator Countdown()
+    {
+        Debug.Log("Wait...");
+        yield return null; // ← wait 2 seconds instead
+        Debug.Log("Ready!");
+    }
+}
+`,
+      `using System.Collections;
+using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    void Start()
+    {
+        // Запусти корутину здесь
+    }
+
+    IEnumerator Countdown()
+    {
+        Debug.Log("Wait...");
+        yield return null; // ← здесь нужно ждать 2 секунды
+        Debug.Log("Ready!");
+    }
+}
+`,
+    ),
+    solution: `using System.Collections;
+using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    void Start()
+    {
+        StartCoroutine(Countdown());
+    }
+
+    IEnumerator Countdown()
+    {
+        Debug.Log("Wait...");
+        yield return new WaitForSeconds(2f);
+        Debug.Log("Ready!");
+    }
+}
+`,
+    demo: [{ until: 4, keys: [] }],
+  },
+  {
+    id: 'invoke',
+    icon: '🔔',
+    title: T('Repeat on a schedule: InvokeRepeating', 'Повтор по расписанию: InvokeRepeating'),
+    learn: T('InvokeRepeating("Tick", 0.5f, 0.5f) calls the method Tick after 0.5 s and then every 0.5 s — a timer without writing a timer.', 'InvokeRepeating("Tick", 0.5f, 0.5f) вызывает метод Tick через 0.5 с, а потом каждые 0.5 с — таймер без своего таймера.'),
+    task: T('Make Tick run every half second until count reaches 5.', 'Сделай так, чтобы Tick вызывался каждые полсекунды, пока count не станет 5.'),
+    hint: T('In Start: InvokeRepeating("Tick", 0.5f, 0.5f);', 'В Start: InvokeRepeating("Tick", 0.5f, 0.5f);'),
+    width: 8,
+    height: 4,
+    player: { x: 4, y: 2 },
+    objects: [],
+    goal: { type: 'field', field: 'count', value: 5 },
+    starter: T(
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    public int count = 0;
+
+    void Start()
+    {
+        // Call Tick every 0.5 seconds
+    }
+
+    void Tick()
+    {
+        count++;
+        Debug.Log("Tick " + count);
+    }
+}
+`,
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    public int count = 0;
+
+    void Start()
+    {
+        // Вызывай Tick каждые 0.5 секунды
+    }
+
+    void Tick()
+    {
+        count++;
+        Debug.Log("Tick " + count);
+    }
+}
+`,
+    ),
+    solution: `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    public int count = 0;
+
+    void Start()
+    {
+        InvokeRepeating("Tick", 0.5f, 0.5f);
+    }
+
+    void Tick()
+    {
+        count++;
+        Debug.Log("Tick " + count);
+    }
+}
+`,
+    demo: [{ until: 5, keys: [] }],
+  },
+  {
+    id: 'ground-ray',
+    icon: '🔦',
+    title: T('Jump only from the ground (Raycast)', 'Прыжок только с земли (луч)'),
+    learn: T('Physics2D.Raycast shoots an invisible ray. A short ray down from the hero tells whether he stands on something — so no jumping in the air.', 'Physics2D.Raycast пускает невидимый луч. Короткий луч вниз от героя говорит, стоит ли он на чём-то, — значит, в воздухе прыгать нельзя.'),
+    task: T('Reach the flag. Spikes hang above: jumping in the air (pressing Space many times) flies into them. Allow a jump only on the ground.', 'Дойди до флага. Сверху висят шипы: прыжки в воздухе (много нажатий пробела) унесут героя прямо в них. Разреши прыгать только с земли.'),
+    hint: T('RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 0.6f); then jump only if hit.collider != null.', 'RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 0.6f); и прыгай, только если hit.collider != null.'),
+    width: 10,
+    height: 6,
+    player: { x: 1, y: 1.5, rigidbody: true },
+    objects: [
+      ...ground(10),
+      { name: 'Wall', tag: 'Wall', sprite: 'wall', x: 5, y: 1.5 },
+      ...[3, 4, 5, 6, 7].map((x) => ({ name: 'Spikes', tag: 'Enemy', sprite: 'enemy' as const, x, y: 4.6, danger: true })),
+      { name: 'Flag', tag: 'Finish', sprite: 'flag', x: 8.5, y: 1.5 },
+    ],
+    goal: { type: 'reach' },
+    starter: T(
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    public float speed = 3f;
+    public float jumpForce = 6f;
+    Rigidbody2D rb;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    void Update()
+    {
+        rb.linearVelocity = new Vector2(Input.GetAxis("Horizontal") * speed, rb.linearVelocity.y);
+        // Check the ground with a ray before jumping
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+        }
+    }
+}
+`,
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    public float speed = 3f;
+    public float jumpForce = 6f;
+    Rigidbody2D rb;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    void Update()
+    {
+        rb.linearVelocity = new Vector2(Input.GetAxis("Horizontal") * speed, rb.linearVelocity.y);
+        // Перед прыжком проверь лучом, есть ли земля под ногами
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+        }
+    }
+}
+`,
+    ),
+    solution: `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    public float speed = 3f;
+    public float jumpForce = 6f;
+    Rigidbody2D rb;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    void Update()
+    {
+        rb.linearVelocity = new Vector2(Input.GetAxis("Horizontal") * speed, rb.linearVelocity.y);
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 0.6f);
+        bool grounded = hit.collider != null;
+        if (Input.GetKeyDown(KeyCode.Space) && grounded)
+        {
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+        }
+    }
+}
+`,
+    demo: [
+      { until: 0.9, keys: ['ArrowRight'] },
+      { until: 0.95, keys: ['ArrowRight', ' '] },
+      { until: 1.1, keys: ['ArrowRight'] },
+      { until: 1.15, keys: ['ArrowRight', ' '] },
+      { until: 1.3, keys: ['ArrowRight'] },
+      { until: 1.35, keys: ['ArrowRight', ' '] },
+      { until: 1.5, keys: ['ArrowRight'] },
+      { until: 1.55, keys: ['ArrowRight', ' '] },
+      { until: 6, keys: ['ArrowRight'] },
+    ],
+  },
+  {
+    id: 'find-tag',
+    icon: '🎯',
+    title: T('Find objects by tag', 'Найти объект по тегу'),
+    learn: T('GameObject.FindWithTag("Enemy") finds an object with that tag anywhere in the scene (or null when there is none). Check for null before using it!', 'GameObject.FindWithTag("Enemy") находит объект с таким тегом где угодно в сцене (или null, если его нет). Перед использованием проверяй на null!'),
+    task: T('Each press of Space destroys one enemy. Destroy both.', 'Каждое нажатие пробела уничтожает одного врага. Уничтожь обоих.'),
+    hint: T('GameObject enemy = GameObject.FindWithTag("Enemy"); if (enemy != null) Destroy(enemy);', 'GameObject enemy = GameObject.FindWithTag("Enemy"); if (enemy != null) Destroy(enemy);'),
+    width: 8,
+    height: 4,
+    player: { x: 1, y: 2 },
+    objects: [
+      { name: 'Slime', tag: 'Enemy', sprite: 'enemy', x: 4, y: 2 },
+      { name: 'Bat', tag: 'Enemy', sprite: 'enemy', x: 6.5, y: 2.5, patrol: { dx: 0, dy: 1, speed: 2 } },
+    ],
+    goal: { type: 'destroyAll', tag: 'Enemy' },
+    starter: T(
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            // Find an enemy by its tag and destroy it
+        }
+    }
+}
+`,
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            // Найди врага по тегу и уничтожь его
+        }
+    }
+}
+`,
+    ),
+    solution: `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            GameObject enemy = GameObject.FindWithTag("Enemy");
+            if (enemy != null)
+            {
+                Destroy(enemy);
+            }
+        }
+    }
+}
+`,
+    demo: [
+      { until: 0.5, keys: [] },
+      { until: 0.55, keys: [' '] },
+      { until: 1, keys: [] },
+      { until: 1.05, keys: [' '] },
+      { until: 2, keys: [] },
+    ],
+  },
+  {
+    id: 'magnet',
+    icon: '🧲',
+    title: T('Arrays and foreach: a coin magnet', 'Массивы и foreach: магнит для монет'),
+    learn: T('FindGameObjectsWithTag gives an array of all such objects. foreach goes through every one of them — here every coin flies to the hero.', 'FindGameObjectsWithTag даёт массив всех таких объектов. foreach проходит по каждому из них — здесь каждая монета летит к герою.'),
+    task: T('The hero cannot move. Pull all coins to him.', 'Герой не может двигаться. Притяни к нему все монеты.'),
+    hint: T('In Start: coins = GameObject.FindGameObjectsWithTag("Coin"); In Update: foreach (GameObject c in coins) if (c != null) c.transform.position = Vector2.MoveTowards(c.transform.position, transform.position, 4f * Time.deltaTime);', 'В Start: coins = GameObject.FindGameObjectsWithTag("Coin"); В Update: foreach (GameObject c in coins) if (c != null) c.transform.position = Vector2.MoveTowards(c.transform.position, transform.position, 4f * Time.deltaTime);'),
+    width: 10,
+    height: 6,
+    player: { x: 5, y: 3 },
+    objects: [
+      { name: 'Coin', tag: 'Coin', sprite: 'coin', x: 1, y: 1 },
+      { name: 'Coin', tag: 'Coin', sprite: 'coin', x: 9, y: 1 },
+      { name: 'Coin', tag: 'Coin', sprite: 'coin', x: 1, y: 5 },
+      { name: 'Coin', tag: 'Coin', sprite: 'coin', x: 9, y: 5 },
+      { name: 'Coin', tag: 'Coin', sprite: 'coin', x: 5, y: 5.3 },
+    ],
+    goal: { type: 'collect' },
+    starter: T(
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    GameObject[] coins;
+
+    void Start()
+    {
+        // Find all coins once
+    }
+
+    void Update()
+    {
+        // Move every coin towards the hero
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Coin"))
+        {
+            Destroy(other.gameObject);
+        }
+    }
+}
+`,
+      `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    GameObject[] coins;
+
+    void Start()
+    {
+        // Найди все монеты один раз
+    }
+
+    void Update()
+    {
+        // Двигай каждую монету к герою
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Coin"))
+        {
+            Destroy(other.gameObject);
+        }
+    }
+}
+`,
+    ),
+    solution: `using UnityEngine;
+
+public class Hero : MonoBehaviour
+{
+    GameObject[] coins;
+
+    void Start()
+    {
+        coins = GameObject.FindGameObjectsWithTag("Coin");
+    }
+
+    void Update()
+    {
+        foreach (GameObject c in coins)
+        {
+            if (c != null)
+            {
+                c.transform.position = Vector2.MoveTowards(c.transform.position, transform.position, 4f * Time.deltaTime);
+            }
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Coin"))
+        {
+            Destroy(other.gameObject);
+        }
+    }
+}
+`,
+    demo: [{ until: 6, keys: [] }],
+  },
 ];
 
 export function starterOf(level: MiniLevel, locale: 'ru' | 'en'): string {
@@ -635,7 +1050,7 @@ export function asLevel(level: MiniLevel, locale: 'ru' | 'en'): Level {
 export function sandboxLevel(code: string, name: string): Level {
   const cls = /class\s+(\w+)\s*:\s*MonoBehaviour/.exec(code)?.[1] ?? '';
   const hero = /Player|Hero|Character/i.test(cls);
-  const attach = hero ? undefined : /Enemy|Patrol|Chase|Guard|Monster/i.test(cls) ? 'Enemy' : /Platform|Elevator|Lift/i.test(cls) ? 'Platform' : /Spawn/i.test(cls) ? 'Spawner' : /Camera/i.test(cls) ? 'MainCamera' : undefined;
+  const attach = hero ? undefined : /Enemy|Patrol|Chase|Guard|Monster/i.test(cls) ? 'Enemy' : /Platform|Elevator|Lift/i.test(cls) ? 'Platform' : /Spawn/i.test(cls) && !/Respawn/i.test(cls) ? 'Spawner' : /Camera/i.test(cls) ? 'MainCamera' : undefined;
   const physics = !attach && /Rigidbody2D/.test(code) && !/CharacterController/.test(code);
   const prefabFields: Record<string, 'bulletPrefab'> = {};
   if (/Shoot|Gun|Weapon|Fire/i.test(cls) || /bulletPrefab/.test(code))

@@ -886,6 +886,465 @@ public class ItemData : ScriptableObject
 }`,
     notes: [N('[CreateAssetMenu', 'Adds an item to the Create menu.', 'Добавляет пункт в меню Create.'), N(': ScriptableObject', 'Not a script on an object — a data file.', 'Не скрипт на объекте, а файл с данными.')],
   },
+  // ============================================================== Unity: more game feel
+  {
+    id: 'double-jump',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Double jump', 'Двойной прыжок'),
+    words: 'double jump air jump second jump двойной прыжок второй в воздухе',
+    about: T('Jump again once while in the air. Landing gives the jumps back.', 'Можно подпрыгнуть ещё раз в воздухе. При приземлении прыжки возвращаются.'),
+    setup: [T('Rigidbody2D and Collider2D on the player; a "Ground Check" point at the feet; platforms on the layer "Ground".', 'Rigidbody2D и Collider2D на игроке; точка «Ground Check» у ног; платформы на слое «Ground».')],
+    code: `using UnityEngine;
+
+public class PlayerDoubleJump : MonoBehaviour
+{
+    public float jumpForce = 8f;
+    public int extraJumps = 1;
+    public Transform groundCheck;
+    public LayerMask groundLayer;
+
+    private Rigidbody2D rb;
+    private int jumpsLeft;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    void Update()
+    {
+        bool onGround = Physics2D.OverlapCircle(groundCheck.position, 0.2f, groundLayer);
+        if (onGround && rb.linearVelocity.y <= 0.01f) jumpsLeft = extraJumps;
+
+        if (Input.GetKeyDown(KeyCode.Space) && (onGround || jumpsLeft > 0))
+        {
+            if (!onGround) jumpsLeft--;
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+        }
+    }
+}`,
+    notes: [
+      N('public int extraJumps = 1;', 'How many jumps in the air. 2 = triple jump.', 'Сколько прыжков в воздухе. 2 — тройной прыжок.'),
+      N('jumpsLeft = extraJumps;', 'On the ground the air jumps come back.', 'На земле прыжки в воздухе возвращаются.'),
+      N('if (!onGround) jumpsLeft--;', 'Spend one air jump.', 'Тратим один прыжок в воздухе.'),
+      N('rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);', 'Reset falling speed first, so the second jump is as high as the first.', 'Сначала обнуляем скорость падения — второй прыжок будет такой же высоты.'),
+    ],
+  },
+  {
+    id: 'dash',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Dash with Shift (with cooldown)', 'Рывок на Shift (с перезарядкой)'),
+    words: 'dash shift boost sprint cooldown рывок ускорение перезарядка дэш',
+    about: T('A short burst of speed in the direction you move, then a pause before the next dash.', 'Короткий рывок в сторону движения, затем пауза до следующего рывка.'),
+    code: `using System.Collections;
+using UnityEngine;
+
+public class PlayerDash : MonoBehaviour
+{
+    public float speed = 4f;
+    public float dashSpeed = 16f;
+    public float dashTime = 0.15f;
+    public float cooldown = 1f;
+
+    private bool dashing;
+    private float nextDash;
+    private float direction = 1f;
+
+    void Update()
+    {
+        float x = Input.GetAxisRaw("Horizontal");
+        if (x != 0) direction = x;
+        if (!dashing) transform.Translate(x * speed * Time.deltaTime, 0, 0);
+
+        if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= nextDash)
+        {
+            StartCoroutine(Dash());
+        }
+    }
+
+    IEnumerator Dash()
+    {
+        dashing = true;
+        nextDash = Time.time + cooldown;
+        float end = Time.time + dashTime;
+        while (Time.time < end)
+        {
+            transform.Translate(direction * dashSpeed * Time.deltaTime, 0, 0);
+            yield return null;
+        }
+        dashing = false;
+    }
+}`,
+    notes: [
+      N('if (x != 0) direction = x;', 'Remember the last direction, so a dash works even when standing.', 'Запоминаем последнее направление — рывок работает и стоя на месте.'),
+      N('Time.time >= nextDash', 'Cooldown: no dash spam.', 'Перезарядка: нельзя рваться без остановки.'),
+      N('yield return null;', 'Wait one frame and continue the loop — the dash lasts several frames.', 'Ждём один кадр и продолжаем цикл — рывок длится несколько кадров.'),
+    ],
+  },
+  {
+    id: 'respawn',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Respawn at a checkpoint after falling', 'Возрождение на чекпоинте после падения'),
+    words: 'respawn checkpoint fall die restart position возрождение чекпоинт падение упал точка сохранения',
+    about: T('Remembers the start (or the last checkpoint) and moves the player back when he falls out of the level.', 'Запоминает старт (или последний чекпоинт) и возвращает игрока, если он упал с уровня.'),
+    setup: [T('Checkpoints: objects with a trigger collider and the tag "Checkpoint".', 'Чекпоинты: объекты с триггер-коллайдером и тегом «Checkpoint».')],
+    code: `using UnityEngine;
+
+public class Respawn : MonoBehaviour
+{
+    public float fallLimit = -5f;
+    private Vector3 respawnPoint;
+
+    void Start()
+    {
+        respawnPoint = transform.position;
+    }
+
+    void Update()
+    {
+        if (transform.position.y < fallLimit)
+        {
+            transform.position = respawnPoint;
+            Debug.Log("Respawn!");
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Checkpoint"))
+        {
+            respawnPoint = other.transform.position;
+            Debug.Log("Checkpoint saved");
+        }
+    }
+}`,
+    notes: [
+      N('respawnPoint = transform.position;', 'At the start the respawn point is where the player stands.', 'В начале точка возрождения — там, где стоит игрок.'),
+      N('transform.position.y < fallLimit', 'Fell below the level?', 'Упал ниже уровня?'),
+      N('respawnPoint = other.transform.position;', 'A new checkpoint replaces the old one.', 'Новый чекпоинт заменяет старый.'),
+    ],
+  },
+  {
+    id: 'enemy-shooter',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Enemy that shoots at the player', 'Враг, который стреляет в игрока'),
+    words: 'enemy shoot turret aim player bullet invokerepeating враг стреляет турель целится пушка',
+    about: T('Every 1.5 seconds the enemy fires a bullet towards the player.', 'Каждые 1.5 секунды враг стреляет пулей в сторону игрока.'),
+    setup: [T('Put on the enemy; drag a bullet prefab (Rigidbody2D, Gravity 0) into "Bullet Prefab".', 'Повесь на врага; перетащи префаб пули (Rigidbody2D, Gravity 0) в «Bullet Prefab».')],
+    code: `using UnityEngine;
+
+public class EnemyShooter : MonoBehaviour
+{
+    public Rigidbody2D bulletPrefab;
+    public float bulletSpeed = 6f;
+    public float every = 1.5f;
+
+    private Transform player;
+
+    void Start()
+    {
+        player = GameObject.FindWithTag("Player").transform;
+        InvokeRepeating("Shoot", 1f, every);
+    }
+
+    void Shoot()
+    {
+        if (player == null) return;
+        Vector2 direction = (player.position - transform.position).normalized;
+        Rigidbody2D bullet = Instantiate(bulletPrefab, transform.position, Quaternion.identity);
+        bullet.linearVelocity = direction * bulletSpeed;
+        Destroy(bullet.gameObject, 4f);
+    }
+}`,
+    notes: [
+      N('InvokeRepeating("Shoot", 1f, every);', 'Call Shoot after 1 second, then every 1.5 seconds — no timer code needed.', 'Вызывать Shoot через 1 секунду, затем каждые 1.5 секунды — без своего таймера.'),
+      N('.normalized', 'Direction of length 1: the bullet speed is the same near and far.', 'Направление длиной 1: скорость пули одинаковая и рядом, и далеко.'),
+      N('Destroy(bullet.gameObject, 4f);', 'Missed bullets disappear after 4 seconds.', 'Промахнувшиеся пули исчезают через 4 секунды.'),
+    ],
+  },
+  {
+    id: 'homing',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Homing enemy (turns and flies to the player)', 'Самонаводящийся враг (поворачивается и летит к игроку)'),
+    words: 'homing missile follow rotate turn towards самонаводящийся ракета наведение поворот',
+    about: T('Turns its nose to the player and flies forward — like a homing missile.', 'Поворачивается «носом» к игроку и летит вперёд — как самонаводящаяся ракета.'),
+    code: `using UnityEngine;
+
+public class HomingEnemy : MonoBehaviour
+{
+    public Transform target;
+    public float speed = 2.5f;
+
+    void Update()
+    {
+        if (target == null) return;
+        Vector2 toTarget = target.position - transform.position;
+        float angle = Mathf.Atan2(toTarget.y, toTarget.x) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0, 0, angle);
+        transform.position = Vector2.MoveTowards(transform.position, target.position, speed * Time.deltaTime);
+    }
+}`,
+    notes: [
+      N('Mathf.Atan2(toTarget.y, toTarget.x)', 'The angle of the direction to the target (radians → degrees).', 'Угол направления на цель (радианы → градусы).'),
+      N('Quaternion.Euler(0, 0, angle)', 'Turn around Z — in 2D that is "turn to face".', 'Поворот вокруг Z — в 2D это «развернуться лицом».'),
+    ],
+  },
+  {
+    id: 'waypoints',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Follow a path of points (waypoints)', 'Движение по точкам маршрута (waypoints)'),
+    words: 'waypoints path route points array patrol маршрут точки путь массив обход',
+    about: T('An enemy or platform goes from point to point in a loop. Add as many points as you like in the Inspector.', 'Враг или платформа ходит от точки к точке по кругу. Точек можно добавить сколько угодно в Inspector.'),
+    setup: [T('Create empty objects as points and drag them into the "Points" list.', 'Создай пустые объекты-точки и перетащи их в список «Points».')],
+    code: `using UnityEngine;
+
+public class EnemyWaypoints : MonoBehaviour
+{
+    public Transform[] points;
+    public float speed = 3f;
+
+    private int index;
+
+    void Update()
+    {
+        if (points.Length == 0) return;
+        Transform target = points[index];
+        transform.position = Vector2.MoveTowards(transform.position, target.position, speed * Time.deltaTime);
+        if (Vector2.Distance(transform.position, target.position) < 0.05f)
+        {
+            index = (index + 1) % points.Length;
+        }
+    }
+}`,
+    notes: [
+      N('public Transform[] points;', 'An array: a list of points shown in the Inspector.', 'Массив: список точек, который видно в Inspector.'),
+      N('index = (index + 1) % points.Length;', '% wraps around: after the last point comes point 0 again.', '% замыкает круг: после последней точки снова точка 0.'),
+    ],
+  },
+  {
+    id: 'typewriter',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Dialogue text that types letter by letter', 'Текст диалога, который печатается по буквам'),
+    words: 'typewriter dialogue text letters typing dialog npc печатная машинка диалог текст по буквам реплика',
+    about: T('Shows a line of dialogue one letter at a time, like in RPGs.', 'Показывает реплику по одной букве, как в RPG.'),
+    setup: [T('UI → Text - TextMeshPro; drag it into "Text".', 'UI → Text - TextMeshPro; перетащи его в поле «Text».')],
+    code: `using System.Collections;
+using UnityEngine;
+using TMPro;
+
+public class DialogueTyper : MonoBehaviour
+{
+    public TMP_Text text;
+    public string message = "Hello, hero! Find the key.";
+    public float letterDelay = 0.04f;
+
+    void Start()
+    {
+        StartCoroutine(Type());
+    }
+
+    IEnumerator Type()
+    {
+        text.text = "";
+        for (int i = 1; i <= message.Length; i++)
+        {
+            text.text = message.Substring(0, i);
+            yield return new WaitForSeconds(letterDelay);
+        }
+    }
+}`,
+    notes: [
+      N('message.Substring(0, i)', 'The first i letters of the message.', 'Первые i букв сообщения.'),
+      N('yield return new WaitForSeconds(letterDelay);', 'A tiny pause after each letter.', 'Маленькая пауза после каждой буквы.'),
+    ],
+  },
+  {
+    id: 'regen',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Health regeneration over time', 'Восстановление здоровья со временем'),
+    words: 'regen regeneration heal over time health restore восстановление регенерация лечение здоровье',
+    about: T('Adds 1 health every second, never above the maximum.', 'Добавляет 1 здоровья каждую секунду, но не больше максимума.'),
+    code: `using UnityEngine;
+
+public class HealthRegen : MonoBehaviour
+{
+    public int health = 3;
+    public int maxHealth = 10;
+    public float every = 1f;
+
+    void Start()
+    {
+        InvokeRepeating("Regen", every, every);
+    }
+
+    void Regen()
+    {
+        if (health < maxHealth)
+        {
+            health++;
+            Debug.Log("Health: " + health);
+        }
+    }
+}`,
+    notes: [N('InvokeRepeating("Regen", every, every);', 'Call Regen again and again, every second.', 'Вызывать Regen снова и снова, каждую секунду.'), N('if (health < maxHealth)', 'Never above the maximum.', 'Не больше максимума.')],
+  },
+  {
+    id: 'coin-magnet',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Coin magnet (coins fly to the player)', 'Магнит для монет (монеты летят к игроку)'),
+    words: 'magnet coins attract pull collect магнит монеты притягивать собирать бонус',
+    about: T('Coins closer than "radius" fly to the player.', 'Монеты ближе, чем «radius», летят к игроку.'),
+    code: `using UnityEngine;
+
+public class CoinMagnet : MonoBehaviour
+{
+    public float radius = 3f;
+    public float pullSpeed = 6f;
+
+    private GameObject[] coins;
+
+    void Start()
+    {
+        coins = GameObject.FindGameObjectsWithTag("Coin");
+    }
+
+    void Update()
+    {
+        foreach (GameObject coin in coins)
+        {
+            if (coin == null) continue;
+            float distance = Vector2.Distance(transform.position, coin.transform.position);
+            if (distance < radius)
+            {
+                coin.transform.position = Vector2.MoveTowards(coin.transform.position, transform.position, pullSpeed * Time.deltaTime);
+            }
+        }
+    }
+}`,
+    notes: [
+      N('GameObject.FindGameObjectsWithTag("Coin")', 'Find all coins once, at the start (not every frame).', 'Находим все монеты один раз, в начале (а не каждый кадр).'),
+      N('if (coin == null) continue;', 'A collected coin is gone — skip it.', 'Собранной монеты уже нет — пропускаем.'),
+    ],
+  },
+  {
+    id: 'combo',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Combo counter (resets if you are slow)', 'Комбо-счётчик (сбрасывается, если медлишь)'),
+    words: 'combo multiplier streak chain score bonus комбо множитель серия очки бонус',
+    about: T('Each coin within 2 seconds of the previous one raises the combo; points = combo.', 'Каждая монета в течение 2 секунд после предыдущей увеличивает комбо; очки = комбо.'),
+    code: `using UnityEngine;
+
+public class ComboCounter : MonoBehaviour
+{
+    public float comboTime = 2f;
+    public int combo;
+    public int score;
+
+    private float timer;
+
+    void Update()
+    {
+        if (combo > 0)
+        {
+            timer -= Time.deltaTime;
+            if (timer <= 0)
+            {
+                combo = 0;
+                Debug.Log("Combo lost");
+            }
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Coin"))
+        {
+            combo++;
+            score += combo;
+            timer = comboTime;
+            Destroy(other.gameObject);
+            Debug.Log("Combo x" + combo + ", score " + score);
+        }
+    }
+}`,
+    notes: [
+      N('score += combo;', 'The longer the chain, the more each coin is worth.', 'Чем длиннее серия, тем дороже каждая монета.'),
+      N('timer = comboTime;', 'Every coin gives 2 more seconds.', 'Каждая монета даёт ещё 2 секунды.'),
+    ],
+  },
+  {
+    id: 'collect-all',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Win when all coins are collected', 'Победа, когда собраны все монеты'),
+    words: 'win victory all coins collected level complete goal победа все монеты собраны уровень пройден цель',
+    about: T('Checks how many coins are left and says "Victory!" once.', 'Проверяет, сколько монет осталось, и один раз пишет «Победа!».'),
+    code: `using UnityEngine;
+
+public class CoinGoal : MonoBehaviour
+{
+    private bool won;
+
+    void Update()
+    {
+        if (won) return;
+        int left = GameObject.FindGameObjectsWithTag("Coin").Length;
+        if (left == 0)
+        {
+            won = true;
+            Debug.Log("Victory! All coins collected");
+        }
+    }
+}`,
+    notes: [N('if (won) return;', 'Say it only once.', 'Сообщаем только один раз.'), N('.Length', 'How many coins are still on the level.', 'Сколько монет ещё на уровне.')],
+  },
+  {
+    id: 'enemy-turn',
+    lang: 'cs',
+    kind: 'unity',
+    title: T('Enemy turns around in front of obstacles (raycast)', 'Враг разворачивается перед препятствием (луч)'),
+    words: 'enemy turn around wall obstacle raycast ahead patrol враг разворот стена препятствие луч',
+    about: T('Walks forward and looks ahead with a ray; when something is in the way, turns around.', 'Идёт вперёд и смотрит лучом перед собой; если что-то мешает — разворачивается.'),
+    code: `using UnityEngine;
+
+public class EnemyTurnAround : MonoBehaviour
+{
+    public float speed = 2f;
+    public float lookAhead = 0.8f;
+
+    private float direction = 1f;
+
+    void Update()
+    {
+        transform.Translate(direction * speed * Time.deltaTime, 0, 0);
+        Vector2 ahead = new Vector2(direction, 0);
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, ahead, lookAhead);
+        Debug.DrawRay(transform.position, ahead * lookAhead, Color.yellow);
+        if (hit.collider != null)
+        {
+            direction = -direction;
+            Vector3 s = transform.localScale;
+            s.x = direction;
+            transform.localScale = s;
+        }
+    }
+}`,
+    notes: [
+      N('Physics2D.Raycast(transform.position, ahead, lookAhead)', 'A short ray in front of the enemy.', 'Короткий луч перед врагом.'),
+      N('direction = -direction;', 'Something in the way → walk the other way.', 'Что-то мешает → идём в другую сторону.'),
+    ],
+  },
   // ============================================================== Console C#
   {
     id: 'cs-hello-input',

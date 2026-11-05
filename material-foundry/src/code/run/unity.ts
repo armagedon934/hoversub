@@ -337,7 +337,12 @@ export class UnityWorld {
     for (const [name, cell] of this.script!.fields) {
       if (cell.v !== null && cell.v !== undefined) continue;
       const t = cell.type.replace(/^UnityEngine\./, '');
-      if (t === 'Transform') {
+      if (t === 'Transform[]' || t === 'List<Transform>') {
+        const pts = [point(`${name}[0]`, me.x - 3, me.y), point(`${name}[1]`, me.x + 3, me.y), point(`${name}[2]`, me.x, me.y + 2)];
+        const items = pts.map((g) => host('transform', g));
+        cell.v = t === 'Transform[]' ? { k: 'arr', items, elem: 'Transform' } : { k: 'list', items, elem: 'Transform' };
+        note(name, tr('3 points around the object (left, right, above)', '3 точки вокруг объекта (слева, справа, сверху)'));
+      } else if (t === 'Transform') {
         if (/ground|feet|foot|check/i.test(name)) {
           cell.v = host('transform', point(name, me.x, me.y - me.h / 2 - 0.05, { dx: 0, dy: -me.h / 2 - 0.05 }));
           note(name, tr('a point at the hero\'s feet', 'точка у ног героя'));
@@ -563,7 +568,7 @@ export class UnityWorld {
         o.y += o.vy * this.sdt;
         if (o.x < -1 || o.y < -1 || o.x > this.level.width + 1 || o.y > this.level.height + 1) o.alive = false;
         for (const t of this.objects)
-          if (t.alive && t.tag === 'Enemy' && this.overlaps(o, t)) {
+          if (!o.danger && t.alive && t.tag === 'Enemy' && this.overlaps(o, t)) {
             t.alive = false;
             o.alive = false;
           }
@@ -593,9 +598,10 @@ export class UnityWorld {
     this.overlapping = now;
     // The hero touching anything dangerous loses (whatever the script does).
     const p = this.player;
-    if (this.status === 'playing' && p.alive && this.objects.some((o) => o !== p && o.alive && o.danger && this.overlaps(p, o))) {
+    const hit = this.status === 'playing' && p.alive ? this.objects.find((o) => o !== p && o.alive && o.danger && this.overlaps(p, o)) : undefined;
+    if (hit) {
       this.status = 'lost';
-      this.message = tr('The hero touched an enemy. Try again!', 'Герой коснулся врага. Попробуй ещё раз!');
+      this.message = hit.bullet ? tr('The hero was hit by a bullet. Try again!', 'Героя подстрелили. Попробуй ещё раз!') : tr('The hero touched an enemy. Try again!', 'Герой коснулся врага. Попробуй ещё раз!');
     }
   }
 
@@ -741,6 +747,11 @@ export class UnityWorld {
           const pos = vecOf(args[1]) ?? (args[1] && typeof args[1] === 'object' && args[1].k === 'host' && args[1].kind === 'transform' ? v3((args[1].ref as GameObj).x, (args[1].ref as GameObj).y) : v3(me.x, me.y));
           const b = world.spawnPrefab(String(pf.ref), pos.x, pos.y);
           b.rot = angleOf(args[2]);
+          // Bullets fired by an enemy hurt the hero and fly through other enemies.
+          if (b.bullet && me.tag === 'Enemy') {
+            b.danger = true;
+            b.tag = 'EnemyBullet';
+          }
           return host('instance', b);
         }
         if (name === 'StartCoroutine') return world.startCoroutine(args[0], line);

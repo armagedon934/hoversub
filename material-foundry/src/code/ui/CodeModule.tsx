@@ -79,7 +79,7 @@ function Welcome() {
             🕹
           </span>
           <b>{tr('Mini-Unity', 'Мини-Unity')}</b>
-          <span>{tr('Write real Unity C# scripts and watch them move a hero. 9 levels from Start() to shooting.', 'Пиши настоящие C#-скрипты Unity и смотри, как они двигают героя. 9 уровней: от Start() до стрельбы.')}</span>
+          <span>{tr('Write real Unity C# scripts and watch them move a hero. 14 levels from Start() to coroutines and raycasts.', 'Пиши настоящие C#-скрипты Unity и смотри, как они двигают героя. 14 уровней: от Start() до корутин и лучей.')}</span>
         </button>
       </div>
       <div className="start-cards small-cards">
