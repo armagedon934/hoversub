@@ -11,7 +11,7 @@ Workflow `.github/workflows/desktop-installer.yml` на каждый push (и в
 «Desktop installer (Windows)» → *Run workflow*) собирает установщик на Windows, **устанавливает его
 в папку `C:\MF Test\Material Foundry`, запускает установленную программу в режиме самопроверки**
 (`--smoke-test`: открывает программу, раздел кода, редактор, проверяет файлы Python и грамматик),
-удаляет её и выкладывает `MaterialFoundry-Setup-1.0.0.exe` в **Artifacts** этого запуска
+удаляет её и выкладывает `MaterialFoundry-Setup-1.1.0.exe` в **Artifacts** этого запуска
 (хранится 30 дней).
 
 **Способ 2 — собрать самому на Windows** (нужен Node.js 20+):
@@ -25,7 +25,7 @@ npm ci
 npm run dist:win
 ```
 
-Готовый файл: `material-foundry/desktop/release/MaterialFoundry-Setup-1.0.0.exe`.
+Готовый файл: `material-foundry/desktop/release/MaterialFoundry-Setup-1.1.0.exe`.
 (На Linux тоже собирается, но нужен Wine с 32-битной частью: `wine64` + `wine32:i386`.)
 
 **Запустить без установки (для проверки):** `cd desktop && npm start`.
@@ -38,7 +38,7 @@ npm run dist:win
 - Ярлыки «Material Foundry» на рабочем столе и в меню «Пуск»; деинсталлятор
   `Uninstall Material Foundry.exe`. Данные пользователя (прогресс, файлы Мастерской) при удалении
   не стираются.
-- Тихая установка (для администраторов): `MaterialFoundry-Setup-1.0.0.exe /S /D=C:\Путь\К\Папке`.
+- Тихая установка (для администраторов): `MaterialFoundry-Setup-1.1.0.exe /S /D=C:\Путь\К\Папке`.
 
 ## Безопасность программы для ПК
 
